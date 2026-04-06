@@ -9,7 +9,21 @@ import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Partners from "@/pages/Partners";
 import PartnerDetail from "@/pages/PartnerDetail";
-import Placeholder from "@/pages/Placeholder";
+import Needs from "@/pages/Needs";
+import NeedDetail from "@/pages/NeedDetail";
+import Hypotheses from "@/pages/Hypotheses";
+import HypothesisDetail from "@/pages/HypothesisDetail";
+import NextSteps from "@/pages/NextSteps";
+import NextStepDetail from "@/pages/NextStepDetail";
+import Units from "@/pages/Units";
+import UnitDetail from "@/pages/UnitDetail";
+import Competencies from "@/pages/Competencies";
+import CompetencyDetail from "@/pages/CompetencyDetail";
+import Sources from "@/pages/Sources";
+import SourceDetail from "@/pages/SourceDetail";
+import EvidencePage from "@/pages/Evidence";
+import EvidenceDetail from "@/pages/EvidenceDetail";
+import Users from "@/pages/Users";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,14 +41,21 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/partners/:id" element={<PartnerDetail />} />
-              <Route path="/needs" element={<Placeholder />} />
-              <Route path="/hypotheses" element={<Placeholder />} />
-              <Route path="/next-steps" element={<Placeholder />} />
-              <Route path="/units" element={<Placeholder />} />
-              <Route path="/competencies" element={<Placeholder />} />
-              <Route path="/sources" element={<Placeholder />} />
-              <Route path="/evidence" element={<Placeholder />} />
-              <Route path="/users" element={<Placeholder />} />
+              <Route path="/needs" element={<Needs />} />
+              <Route path="/needs/:id" element={<NeedDetail />} />
+              <Route path="/hypotheses" element={<Hypotheses />} />
+              <Route path="/hypotheses/:id" element={<HypothesisDetail />} />
+              <Route path="/next-steps" element={<NextSteps />} />
+              <Route path="/next-steps/:id" element={<NextStepDetail />} />
+              <Route path="/units" element={<Units />} />
+              <Route path="/units/:id" element={<UnitDetail />} />
+              <Route path="/competencies" element={<Competencies />} />
+              <Route path="/competencies/:id" element={<CompetencyDetail />} />
+              <Route path="/sources" element={<Sources />} />
+              <Route path="/sources/:id" element={<SourceDetail />} />
+              <Route path="/evidence" element={<EvidencePage />} />
+              <Route path="/evidence/:id" element={<EvidenceDetail />} />
+              <Route path="/users" element={<Users />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
