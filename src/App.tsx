@@ -23,7 +23,7 @@ import Sources from "@/pages/Sources";
 import SourceDetail from "@/pages/SourceDetail";
 import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
-import Users from "@/pages/Users";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
