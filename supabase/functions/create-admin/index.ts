@@ -15,16 +15,34 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const users = [
-    { email: "planeteexpress2125@gmail.com", password: "admin123", full_name: "Антон Лощилов", role: "admin" },
-    { email: "loschilovanton@gmail.com", password: "analyst123", full_name: "Антон Лощилов (аналитик)", role: "analyst" },
-    { email: "viewer@example.com", password: "viewer123", full_name: "Просмотр", role: "viewer" },
-    { email: "shesterov@gmail.com", password: "analyst123", full_name: "Шестеров", role: "analyst" },
-  ];
+  let usersToCreate: { email: string; password: string; full_name: string; role: string }[];
+
+  try {
+    const body = await req.json();
+    // Support both { users: [...] } and legacy hardcoded format
+    if (body?.users && Array.isArray(body.users)) {
+      usersToCreate = body.users;
+    } else {
+      // Legacy: hardcoded users
+      usersToCreate = [
+        { email: "planeteexpress2125@gmail.com", password: "admin123", full_name: "Антон Лощилов", role: "admin" },
+        { email: "loschilovanton@gmail.com", password: "analyst123", full_name: "Антон Лощилов (аналитик)", role: "analyst" },
+        { email: "viewer@example.com", password: "viewer123", full_name: "Просмотр", role: "viewer" },
+        { email: "shesterov@gmail.com", password: "analyst123", full_name: "Шестеров", role: "analyst" },
+      ];
+    }
+  } catch {
+    usersToCreate = [
+      { email: "planeteexpress2125@gmail.com", password: "admin123", full_name: "Антон Лощилов", role: "admin" },
+      { email: "loschilovanton@gmail.com", password: "analyst123", full_name: "Антон Лощилов (аналитик)", role: "analyst" },
+      { email: "viewer@example.com", password: "viewer123", full_name: "Просмотр", role: "viewer" },
+      { email: "shesterov@gmail.com", password: "analyst123", full_name: "Шестеров", role: "analyst" },
+    ];
+  }
 
   const results = [];
 
-  for (const u of users) {
+  for (const u of usersToCreate) {
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: u.email,
       password: u.password,
@@ -37,7 +55,6 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Update role from default 'viewer' to target role
     if (u.role !== "viewer") {
       await supabaseAdmin
         .from("user_roles")

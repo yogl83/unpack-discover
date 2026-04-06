@@ -1,9 +1,10 @@
 import {
   Building2, ClipboardList, Lightbulb, ArrowRight,
-  Users2, Brain, FileText, ShieldCheck, UserCog, LayoutDashboard,
+  Users2, Brain, FileText, ShieldCheck, Settings, LayoutDashboard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -20,13 +21,16 @@ const navItems = [
   { title: "Компетенции", url: "/competencies", icon: Brain },
   { title: "Источники", url: "/sources", icon: FileText },
   { title: "Подтверждения", url: "/evidence", icon: ShieldCheck },
-  { title: "Пользователи", url: "/users", icon: UserCog },
 ];
+
+const adminItem = { title: "Администрирование", url: "/admin", icon: Settings };
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
+  
+  const { isAdmin } = useAuth();
+  const allItems = isAdmin ? [...navItems, adminItem] : navItems;
 
   return (
     <Sidebar collapsible="icon">
@@ -37,7 +41,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {allItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
                     <NavLink

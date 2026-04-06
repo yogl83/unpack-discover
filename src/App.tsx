@@ -23,7 +23,7 @@ import Sources from "@/pages/Sources";
 import SourceDetail from "@/pages/SourceDetail";
 import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
-import Users from "@/pages/Users";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,7 +55,7 @@ const App = () => (
               <Route path="/sources/:id" element={<SourceDetail />} />
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/evidence/:id" element={<EvidenceDetail />} />
-              <Route path="/users" element={<Users />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
