@@ -1,43 +1,62 @@
 
 
-# План: Импорт данных из MASTER_DATA_TEMPLATE-2.xlsx
+# План: Синхронизация с Google Sheets
+
+## Ситуация
+Встроенный коннектор Google Sheets в платформе отсутствует. Реализуем интеграцию через Google Service Account + Edge Function.
 
 ## Что делаем
-Загружаем реальные данные из Excel-шаблона в базу данных. Создаём пользователей и заполняем все сущности с сохранением связей.
 
-## Порядок импорта (согласно зависимостям)
+### 1. Настройка Google-доступа
+- Пользователь создаёт Google Service Account в Google Cloud Console
+- Получает JSON-ключ сервисного аккаунта
+- Сохраняем ключ как секрет `GOOGLE_SERVICE_ACCOUNT_KEY` через инструмент добавления секретов
 
-### 1. Создать пользователей (4 записи)
-- `admin@hse.ru` заменить на `planeteexpress2125@gmail.com` (Антон Лощилов, admin)
-- `loschilovanton@gmail.com` (analyst)
-- `viewer@example.com` (viewer)  
-- `shesterov@gmail.com` (analyst)
-- Включить auto-confirm, зарегистрировать через Edge Function `create-admin`, назначить роли
+### 2. Edge Function `sync-google-sheets`
+Файл: `supabase/functions/sync-google-sheets/index.ts`
 
-### 2. Партнёры (1 запись)
-- АО НПК «Северная заря» — все поля из Page 3
-- Использовать фиксированный UUID, сгенерированный из `34cd603e`
+Эндпоинты:
+- **POST /export** — выгрузка данных из БД в Google Sheet (создаёт листы: Partners, Contacts, Needs, Hypotheses, Units, Competencies, Sources, Evidence, NextSteps)
+- **POST /import** — загрузка данных из Google Sheet в БД (upsert по ID)
 
-### 3. Контакты (2 записи)
-- Лавров В.А. и Попов А. — привязка к партнёру
+Параметры запроса:
+```json
+{
+  "action": "export" | "import",
+  "spreadsheet_id": "1abc...",
+  "tables": ["partners", "contacts", ...] // опционально, по умолчанию все
+}
+```
 
-### 4. Подразделения МИЭМ (1 запись)
-- Лаборатория беспилотных интеллектуальных систем
+Логика:
+- Авторизация через JWT (только admin)
+- Google Sheets API v4 через REST (без SDK, прямые fetch-запросы)
+- JWT-подпись для Google OAuth2 через сервисный аккаунт
+- При экспорте: очищает лист → записывает заголовки + данные
+- При импорте: читает лист → upsert через Supabase service role
 
-### 5. Задачи партнеров (1 запись)
-- Система мониторинга «ПАМИР» — привязка к партнёру и контакту
+### 3. UI-компонент синхронизации
+Файл: `src/components/GoogleSheetsSync.tsx`
 
-### 6. Гипотезы (1 запись)
-- Связка задача↔партнёр↔подразделение
+- Диалог с полем ввода Spreadsheet ID
+- Выбор действия: Экспорт / Импорт
+- Чекбоксы выбора таблиц
+- Прогресс и результат операции
+- Кнопка доступна только admin
 
-## Технические детали
-- Все данные вставляются через SQL-миграцию (одна миграция со всеми INSERT)
-- Короткие ID из Excel (`34cd603e`) дополняются нулями до формата UUID: `34cd603e-0000-0000-0000-000000000000`
-- Пользователи создаются через обновлённую Edge Function (batch create)
-- Даты из Excel (числовые `46117`) конвертируются в ISO: `2026-04-06`
-- Пустые листы (источники, подтверждения, компетенции, шаги) пропускаются
+### 4. Интеграция в интерфейс
+- Кнопка «Google Sheets» в шапке или на странице `/users`
+- Видна только пользователям с ролью admin
 
 ## Файлы
-- `supabase/functions/create-admin/index.ts` — обновить для создания 4 пользователей
-- Новая SQL-миграция — INSERT для partners, contacts, miem_units, partner_needs, collaboration_hypotheses
+- `supabase/functions/sync-google-sheets/index.ts` — edge function
+- `src/components/GoogleSheetsSync.tsx` — UI-диалог синхронизации
+- `src/pages/Users.tsx` — добавить кнопку синхронизации
+- Секрет: `GOOGLE_SERVICE_ACCOUNT_KEY`
+
+## Порядок
+1. Запросить у пользователя секрет Google Service Account
+2. Создать edge function
+3. Создать UI-компонент
+4. Интегрировать в страницу пользователей
 
