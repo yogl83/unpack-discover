@@ -3,7 +3,7 @@ import {
   Users2, Brain, FileText, ShieldCheck, Settings, LayoutDashboard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
