@@ -55,7 +55,7 @@ const App = () => (
               <Route path="/sources/:id" element={<SourceDetail />} />
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/evidence/:id" element={<EvidenceDetail />} />
-              <Route path="/users" element={<Users />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

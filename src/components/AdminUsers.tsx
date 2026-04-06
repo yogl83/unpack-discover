@@ -12,7 +12,7 @@ import { Trash2, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-const roleLabels: Record<string, string> = { admin: "Админ", analyst: "Аналитик", viewer: "Наблюдатель" };
+
 
 export default function AdminUsers() {
   const qc = useQueryClient();
