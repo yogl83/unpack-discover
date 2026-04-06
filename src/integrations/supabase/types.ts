@@ -14,16 +14,859 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      collaboration_hypotheses: {
+        Row: {
+          competency_id: string | null
+          confidence_level: string | null
+          created_at: string
+          hypothesis_id: string
+          hypothesis_status: string | null
+          need_id: string
+          notes: string | null
+          owner_user_id: string | null
+          partner_id: string
+          rationale: string | null
+          recommended_collaboration_format: string | null
+          recommended_entry_point: string | null
+          relevance_score: number | null
+          title: string | null
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          competency_id?: string | null
+          confidence_level?: string | null
+          created_at?: string
+          hypothesis_id?: string
+          hypothesis_status?: string | null
+          need_id: string
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id: string
+          rationale?: string | null
+          recommended_collaboration_format?: string | null
+          recommended_entry_point?: string | null
+          relevance_score?: number | null
+          title?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          competency_id?: string | null
+          confidence_level?: string | null
+          created_at?: string
+          hypothesis_id?: string
+          hypothesis_status?: string | null
+          need_id?: string
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id?: string
+          rationale?: string | null
+          recommended_collaboration_format?: string | null
+          recommended_entry_point?: string | null
+          relevance_score?: number | null
+          title?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaboration_hypotheses_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["competency_id"]
+          },
+          {
+            foreignKeyName: "collaboration_hypotheses_need_id_fkey"
+            columns: ["need_id"]
+            isOneToOne: false
+            referencedRelation: "partner_needs"
+            referencedColumns: ["need_id"]
+          },
+          {
+            foreignKeyName: "collaboration_hypotheses_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "collaboration_hypotheses_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "collaboration_hypotheses_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "collaboration_hypotheses_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      competencies: {
+        Row: {
+          application_domain: string | null
+          competency_id: string
+          competency_name: string
+          competency_type: string | null
+          created_at: string
+          description: string | null
+          education_link: string | null
+          evidence_of_experience: string | null
+          keywords: string[] | null
+          maturity_level: string | null
+          methods_and_tools: string | null
+          notes: string | null
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          application_domain?: string | null
+          competency_id?: string
+          competency_name: string
+          competency_type?: string | null
+          created_at?: string
+          description?: string | null
+          education_link?: string | null
+          evidence_of_experience?: string | null
+          keywords?: string[] | null
+          maturity_level?: string | null
+          methods_and_tools?: string | null
+          notes?: string | null
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          application_domain?: string | null
+          competency_id?: string
+          competency_name?: string
+          competency_type?: string | null
+          created_at?: string
+          description?: string | null
+          education_link?: string | null
+          evidence_of_experience?: string | null
+          keywords?: string[] | null
+          maturity_level?: string | null
+          methods_and_tools?: string | null
+          notes?: string | null
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencies_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "competencies_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          contact_id: string
+          contact_role: string | null
+          created_at: string
+          department_name: string | null
+          email: string | null
+          full_name: string
+          influence_level: string | null
+          is_primary: boolean
+          job_title: string | null
+          last_contact_date: string | null
+          notes: string | null
+          partner_id: string
+          phone: string | null
+          relationship_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_id?: string
+          contact_role?: string | null
+          created_at?: string
+          department_name?: string | null
+          email?: string | null
+          full_name: string
+          influence_level?: string | null
+          is_primary?: boolean
+          job_title?: string | null
+          last_contact_date?: string | null
+          notes?: string | null
+          partner_id: string
+          phone?: string | null
+          relationship_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          contact_role?: string | null
+          created_at?: string
+          department_name?: string | null
+          email?: string | null
+          full_name?: string
+          influence_level?: string | null
+          is_primary?: boolean
+          job_title?: string | null
+          last_contact_date?: string | null
+          notes?: string | null
+          partner_id?: string
+          phone?: string | null
+          relationship_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "contacts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      evidence: {
+        Row: {
+          analyst_comment: string | null
+          competency_id: string | null
+          confidence_level: string | null
+          created_at: string
+          data_collection_method: string | null
+          entity_id: string
+          entity_type: string
+          evidence_id: string
+          field_name: string | null
+          field_value: string | null
+          hypothesis_id: string | null
+          need_id: string | null
+          partner_id: string | null
+          requires_interview_validation: boolean | null
+          source_id: string | null
+          unit_id: string | null
+        }
+        Insert: {
+          analyst_comment?: string | null
+          competency_id?: string | null
+          confidence_level?: string | null
+          created_at?: string
+          data_collection_method?: string | null
+          entity_id: string
+          entity_type: string
+          evidence_id?: string
+          field_name?: string | null
+          field_value?: string | null
+          hypothesis_id?: string | null
+          need_id?: string | null
+          partner_id?: string | null
+          requires_interview_validation?: boolean | null
+          source_id?: string | null
+          unit_id?: string | null
+        }
+        Update: {
+          analyst_comment?: string | null
+          competency_id?: string | null
+          confidence_level?: string | null
+          created_at?: string
+          data_collection_method?: string | null
+          entity_id?: string
+          entity_type?: string
+          evidence_id?: string
+          field_name?: string | null
+          field_value?: string | null
+          hypothesis_id?: string | null
+          need_id?: string | null
+          partner_id?: string | null
+          requires_interview_validation?: boolean | null
+          source_id?: string | null
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["competency_id"]
+          },
+          {
+            foreignKeyName: "evidence_hypothesis_id_fkey"
+            columns: ["hypothesis_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_hypotheses"
+            referencedColumns: ["hypothesis_id"]
+          },
+          {
+            foreignKeyName: "evidence_need_id_fkey"
+            columns: ["need_id"]
+            isOneToOne: false
+            referencedRelation: "partner_needs"
+            referencedColumns: ["need_id"]
+          },
+          {
+            foreignKeyName: "evidence_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "evidence_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "evidence_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["source_id"]
+          },
+          {
+            foreignKeyName: "evidence_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "evidence_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      miem_units: {
+        Row: {
+          application_domain: string | null
+          business_problem_focus: string | null
+          collaboration_formats: string[] | null
+          created_at: string
+          discussion_readiness: string | null
+          end_customer_fit: string | null
+          industry_fit: string | null
+          lead_name: string | null
+          notes: string | null
+          readiness_level: string | null
+          research_area: string | null
+          team_summary: string | null
+          unit_id: string
+          unit_name: string
+          unit_type: string | null
+          updated_at: string
+          value_chain_role: string | null
+        }
+        Insert: {
+          application_domain?: string | null
+          business_problem_focus?: string | null
+          collaboration_formats?: string[] | null
+          created_at?: string
+          discussion_readiness?: string | null
+          end_customer_fit?: string | null
+          industry_fit?: string | null
+          lead_name?: string | null
+          notes?: string | null
+          readiness_level?: string | null
+          research_area?: string | null
+          team_summary?: string | null
+          unit_id?: string
+          unit_name: string
+          unit_type?: string | null
+          updated_at?: string
+          value_chain_role?: string | null
+        }
+        Update: {
+          application_domain?: string | null
+          business_problem_focus?: string | null
+          collaboration_formats?: string[] | null
+          created_at?: string
+          discussion_readiness?: string | null
+          end_customer_fit?: string | null
+          industry_fit?: string | null
+          lead_name?: string | null
+          notes?: string | null
+          readiness_level?: string | null
+          research_area?: string | null
+          team_summary?: string | null
+          unit_id?: string
+          unit_name?: string
+          unit_type?: string | null
+          updated_at?: string
+          value_chain_role?: string | null
+        }
+        Relationships: []
+      }
+      next_steps: {
+        Row: {
+          action_description: string | null
+          action_title: string
+          created_at: string
+          due_date: string | null
+          entity_id: string
+          entity_type: string
+          hypothesis_id: string | null
+          need_id: string | null
+          next_step_id: string
+          next_step_status: string | null
+          notes: string | null
+          owner_user_id: string | null
+          partner_id: string | null
+          result: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_description?: string | null
+          action_title: string
+          created_at?: string
+          due_date?: string | null
+          entity_id: string
+          entity_type: string
+          hypothesis_id?: string | null
+          need_id?: string | null
+          next_step_id?: string
+          next_step_status?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id?: string | null
+          result?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_description?: string | null
+          action_title?: string
+          created_at?: string
+          due_date?: string | null
+          entity_id?: string
+          entity_type?: string
+          hypothesis_id?: string | null
+          need_id?: string | null
+          next_step_id?: string
+          next_step_status?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id?: string | null
+          result?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "next_steps_hypothesis_id_fkey"
+            columns: ["hypothesis_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_hypotheses"
+            referencedColumns: ["hypothesis_id"]
+          },
+          {
+            foreignKeyName: "next_steps_need_id_fkey"
+            columns: ["need_id"]
+            isOneToOne: false
+            referencedRelation: "partner_needs"
+            referencedColumns: ["need_id"]
+          },
+          {
+            foreignKeyName: "next_steps_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "next_steps_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partner_needs: {
+        Row: {
+          budget_signal: string | null
+          business_context: string | null
+          created_at: string
+          data_access_signal: string | null
+          description: string | null
+          expected_result: string | null
+          maturity_level: string | null
+          need_id: string
+          need_status: string | null
+          need_type: string | null
+          notes: string | null
+          owner_contact_id: string | null
+          partner_id: string
+          priority_level: string | null
+          recommended_collaboration_format: string | null
+          time_horizon: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget_signal?: string | null
+          business_context?: string | null
+          created_at?: string
+          data_access_signal?: string | null
+          description?: string | null
+          expected_result?: string | null
+          maturity_level?: string | null
+          need_id?: string
+          need_status?: string | null
+          need_type?: string | null
+          notes?: string | null
+          owner_contact_id?: string | null
+          partner_id: string
+          priority_level?: string | null
+          recommended_collaboration_format?: string | null
+          time_horizon?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget_signal?: string | null
+          business_context?: string | null
+          created_at?: string
+          data_access_signal?: string | null
+          description?: string | null
+          expected_result?: string | null
+          maturity_level?: string | null
+          need_id?: string
+          need_status?: string | null
+          need_type?: string | null
+          notes?: string | null
+          owner_contact_id?: string | null
+          partner_id?: string
+          priority_level?: string | null
+          recommended_collaboration_format?: string | null
+          time_horizon?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_needs_owner_contact_id_fkey"
+            columns: ["owner_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "partner_needs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_needs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          business_model: string | null
+          city: string | null
+          company_profile: string | null
+          company_size: string | null
+          created_at: string
+          geography: string | null
+          industry: string | null
+          legal_name: string | null
+          notes: string | null
+          owner_user_id: string | null
+          partner_id: string
+          partner_name: string
+          partner_status: string | null
+          priority_level: string | null
+          strategic_priorities: string | null
+          subindustry: string | null
+          technology_profile: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          business_model?: string | null
+          city?: string | null
+          company_profile?: string | null
+          company_size?: string | null
+          created_at?: string
+          geography?: string | null
+          industry?: string | null
+          legal_name?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id?: string
+          partner_name: string
+          partner_status?: string | null
+          priority_level?: string | null
+          strategic_priorities?: string | null
+          subindustry?: string | null
+          technology_profile?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          business_model?: string | null
+          city?: string | null
+          company_profile?: string | null
+          company_size?: string | null
+          created_at?: string
+          geography?: string | null
+          industry?: string | null
+          legal_name?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          partner_id?: string
+          partner_name?: string
+          partner_status?: string | null
+          priority_level?: string | null
+          strategic_priorities?: string | null
+          subindustry?: string | null
+          technology_profile?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sources: {
+        Row: {
+          checked_at: string | null
+          created_at: string
+          notes: string | null
+          partner_id: string | null
+          publication_date: string | null
+          publisher: string | null
+          source_id: string
+          source_reliability: string | null
+          source_type: string | null
+          source_url: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string
+          notes?: string | null
+          partner_id?: string | null
+          publication_date?: string | null
+          publisher?: string | null
+          source_id?: string
+          source_reliability?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string
+          notes?: string | null
+          partner_id?: string | null
+          publication_date?: string | null
+          publisher?: string | null
+          source_id?: string
+          source_reliability?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sources_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "sources_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
+      unit_portfolio_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          item_type: string
+          notes: string | null
+          organization_name: string | null
+          portfolio_item_id: string
+          title: string
+          unit_id: string
+          updated_at: string
+          url: string | null
+          year_from: number | null
+          year_to: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          item_type: string
+          notes?: string | null
+          organization_name?: string | null
+          portfolio_item_id?: string
+          title: string
+          unit_id: string
+          updated_at?: string
+          url?: string | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          item_type?: string
+          notes?: string | null
+          organization_name?: string | null
+          portfolio_item_id?: string
+          title?: string
+          unit_id?: string
+          updated_at?: string
+          url?: string | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_portfolio_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "unit_portfolio_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      partner_overview: {
+        Row: {
+          city: string | null
+          contacts_count: number | null
+          created_at: string | null
+          hypotheses_count: number | null
+          industry: string | null
+          needs_count: number | null
+          next_steps_count: number | null
+          owner_user_id: string | null
+          partner_id: string | null
+          partner_name: string | null
+          partner_status: string | null
+          priority_level: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      unit_overview: {
+        Row: {
+          competencies_count: number | null
+          lead_name: string | null
+          linked_hypotheses_count: number | null
+          readiness_level: string | null
+          research_area: string | null
+          unit_id: string | null
+          unit_name: string | null
+          unit_type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "analyst" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +993,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "analyst", "viewer"],
+    },
   },
 } as const
