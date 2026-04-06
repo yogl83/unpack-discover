@@ -52,7 +52,10 @@ export default function Users() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Пользователи</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Пользователи</h1>
+        {isAdmin && <GoogleSheetsSync />}
+      </div>
       {isLoading ? (
         <p className="text-muted-foreground">Загрузка...</p>
       ) : !users?.length ? (
