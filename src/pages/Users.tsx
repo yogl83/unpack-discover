@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import GoogleSheetsSync from "@/components/GoogleSheetsSync";
 
 const roleLabels: Record<string, string> = { admin: "Админ", analyst: "Аналитик", viewer: "Наблюдатель" };
 
