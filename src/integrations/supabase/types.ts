@@ -371,7 +371,10 @@ export type Database = {
           created_at: string
           discussion_readiness: string | null
           end_customer_fit: string | null
+          external_id: string | null
+          external_source: string | null
           industry_fit: string | null
+          last_synced_at: string | null
           lead_name: string | null
           notes: string | null
           readiness_level: string | null
@@ -390,7 +393,10 @@ export type Database = {
           created_at?: string
           discussion_readiness?: string | null
           end_customer_fit?: string | null
+          external_id?: string | null
+          external_source?: string | null
           industry_fit?: string | null
+          last_synced_at?: string | null
           lead_name?: string | null
           notes?: string | null
           readiness_level?: string | null
@@ -409,7 +415,10 @@ export type Database = {
           created_at?: string
           discussion_readiness?: string | null
           end_customer_fit?: string | null
+          external_id?: string | null
+          external_source?: string | null
           industry_fit?: string | null
+          last_synced_at?: string | null
           lead_name?: string | null
           notes?: string | null
           readiness_level?: string | null
@@ -598,8 +607,11 @@ export type Database = {
           company_profile: string | null
           company_size: string | null
           created_at: string
+          external_id: string | null
+          external_source: string | null
           geography: string | null
           industry: string | null
+          last_synced_at: string | null
           legal_name: string | null
           notes: string | null
           owner_user_id: string | null
@@ -619,8 +631,11 @@ export type Database = {
           company_profile?: string | null
           company_size?: string | null
           created_at?: string
+          external_id?: string | null
+          external_source?: string | null
           geography?: string | null
           industry?: string | null
+          last_synced_at?: string | null
           legal_name?: string | null
           notes?: string | null
           owner_user_id?: string | null
@@ -640,8 +655,11 @@ export type Database = {
           company_profile?: string | null
           company_size?: string | null
           created_at?: string
+          external_id?: string | null
+          external_source?: string | null
           geography?: string | null
           industry?: string | null
+          last_synced_at?: string | null
           legal_name?: string | null
           notes?: string | null
           owner_user_id?: string | null
@@ -743,6 +761,84 @@ export type Database = {
             referencedColumns: ["partner_id"]
           },
         ]
+      }
+      sync_log: {
+        Row: {
+          action: string
+          errors: Json | null
+          finished_at: string | null
+          id: string
+          row_errors: Json | null
+          spreadsheet_id: string | null
+          started_at: string
+          stats: Json | null
+          tables: string[]
+          trigger_user_id: string | null
+          triggered_by: string
+        }
+        Insert: {
+          action: string
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          row_errors?: Json | null
+          spreadsheet_id?: string | null
+          started_at?: string
+          stats?: Json | null
+          tables?: string[]
+          trigger_user_id?: string | null
+          triggered_by?: string
+        }
+        Update: {
+          action?: string
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          row_errors?: Json | null
+          spreadsheet_id?: string | null
+          started_at?: string
+          stats?: Json | null
+          tables?: string[]
+          trigger_user_id?: string | null
+          triggered_by?: string
+        }
+        Relationships: []
+      }
+      sync_settings: {
+        Row: {
+          auto_sync_enabled: boolean
+          auto_sync_interval_minutes: number
+          created_at: string
+          default_tables: string[]
+          enabled: boolean
+          id: string
+          spreadsheet_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          auto_sync_interval_minutes?: number
+          created_at?: string
+          default_tables?: string[]
+          enabled?: boolean
+          id?: string
+          spreadsheet_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          auto_sync_interval_minutes?: number
+          created_at?: string
+          default_tables?: string[]
+          enabled?: boolean
+          id?: string
+          spreadsheet_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       unit_portfolio_items: {
         Row: {
