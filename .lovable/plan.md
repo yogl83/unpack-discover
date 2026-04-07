@@ -1,59 +1,62 @@
 
+# План: Зрелая интеграция с Google Sheets
 
-# План: Админ-панель с настройками, синхронизацией и управлением пользователями
+## 1. Миграция БД
 
-## Что делаем
-Создаём полноценную страницу «Администрирование» (`/admin`) с вкладками, доступную только admin-пользователям. Объединяем управление пользователями, настройки синхронизации Google Sheets и системные параметры в одном месте.
-
-## Структура админ-панели
-
-```text
-/admin
-├── Вкладка «Пользователи» — таблица пользователей, смена ролей, удаление
-├── Вкладка «Синхронизация» — Google Sheets (настройки, экспорт/импорт)
-└── Вкладка «Настройки» — системные параметры приложения
+### 1a. Таблица `sync_settings` — persistent конфигурация
 ```
+sync_settings (id, spreadsheet_id, enabled, auto_sync_enabled, auto_sync_interval_minutes, default_tables[], updated_by, updated_at)
+```
+- RLS: только admin может читать/писать
+- Одна строка (singleton pattern)
 
-## Этапы
+### 1b. Таблица `sync_log` — журнал синхронизаций  
+```
+sync_log (id, action, triggered_by, tables[], stats jsonb, errors jsonb, started_at, finished_at)
+```
+- RLS: admin — полный доступ, analyst/viewer — только чтение
 
-### 1. Новая страница `/admin` с вкладками (Tabs)
-Файл: `src/pages/Admin.tsx`
+### 1c. Колонки `external_source` + `external_id` в `partners` и `miem_units`
+- Добавить `external_source text`, `external_id text` + unique constraint `(external_source, external_id)`
+- Добавить `last_synced_at timestamptz`
 
-- Вкладка **Пользователи**: переносим содержимое текущего `Users.tsx` (таблица, смена ролей, удаление, создание приглашения)
-- Вкладка **Синхронизация**: встраиваем и расширяем `GoogleSheetsSync` — сохранение Spreadsheet ID в localStorage, история последних синхронизаций, статус подключения
-- Вкладка **Настройки**: системная информация (количество записей, последняя синхронизация), возможность сброса кеша
+## 2. Edge Function `sync-google-sheets` — переработка
 
-### 2. Управление пользователями (расширение)
-- Добавить кнопку **«Добавить пользователя»** — диалог с email, ФИО, роль → вызов Edge Function `create-admin` для регистрации
-- Инлайн-редактирование ФИО пользователя
-- Фильтр по ролям
+- **Import**: если `idColumn` пустой, но есть `external_source + external_id` → искать по ним, создавать новую запись если не найдена
+- **Insert vs Update**: реально различать (SELECT перед upsert или использовать `ON CONFLICT ... DO UPDATE RETURNING`)
+- **Sync log**: писать результат в `sync_log`
+- **Spreadsheet ID**: читать из `sync_settings` если не передан в payload
+- **Field whitelist**: для import из Sheets обновлять только безопасные поля (не трогать `created_at`, `owner_user_id`, системные)
 
-### 3. Настройки синхронизации (расширение)
-- Поле Spreadsheet ID с сохранением (localStorage)
-- Кнопки быстрого экспорта/импорта без повторного ввода ID
-- Лог последних операций синхронизации
+## 3. Edge Function `trigger-sync` — bot/cron endpoint
 
-### 4. Обновление навигации
-- Заменить пункт «Пользователи» (`/users`) на «Администрирование» (`/admin`) в сайдбаре
-- Показывать этот пункт только для admin (условный рендеринг в `AppSidebar`)
-- Убрать старый роут `/users`, перенаправить на `/admin`
+- Новая функция для внешнего триггера
+- Два режима авторизации:
+  - Bearer admin token (как обычно)
+  - Machine token через секрет `SYNC_API_TOKEN` — для бота
+- Читает config из `sync_settings`
+- Вызывает ту же логику import/export
 
-## Файлы
+## 4. Cron-расписание (pg_cron)
 
-| Файл | Действие |
-|------|----------|
-| `src/pages/Admin.tsx` | Создать — главная страница админки с Tabs |
-| `src/pages/Users.tsx` | Удалить (логика переезжает в Admin) |
-| `src/components/AdminUsers.tsx` | Создать — компонент вкладки пользователей |
-| `src/components/AdminSync.tsx` | Создать — компонент вкладки синхронизации |
-| `src/components/AdminSettings.tsx` | Создать — компонент вкладки настроек |
-| `src/components/AppSidebar.tsx` | Обновить — условный пункт «Администрирование» для admin |
-| `src/App.tsx` | Обновить — заменить `/users` на `/admin` |
+- Если `auto_sync_enabled = true`, создать cron job который вызывает `trigger-sync`
+- INSERT через `supabase--insert` (не миграция)
 
-## Технические детали
-- Вкладки через shadcn `Tabs` компонент
-- Доступ к `/admin` защищён проверкой `isAdmin` из `useAuth()` — не-админы перенаправляются на `/`
-- Spreadsheet ID сохраняется в `localStorage` ключом `gsheets_spreadsheet_id`
-- Создание пользователя — вызов существующей Edge Function `create-admin` с параметрами
-- Компонент `GoogleSheetsSync` рефакторится в `AdminSync` с расширенным функционалом
+## 5. UI `AdminSync.tsx` — переработка
 
+- Читать/сохранять Spreadsheet ID из `sync_settings` (не localStorage)
+- Показывать статус подключения, last sync, auto sync toggle
+- История sync из `sync_log`
+- Summary: создано / обновлено / ошибок по таблицам
+- Ручной import/export остаётся
+
+## 6. Документация
+
+- README секция: настройка Google Sheets, колонки, external_id, бот-интеграция
+
+## Затрагиваемые файлы
+- **Миграция**: новые таблицы + ALTER partners/miem_units
+- `supabase/functions/sync-google-sheets/index.ts` — переработка import
+- `supabase/functions/trigger-sync/index.ts` — новая функция  
+- `src/components/AdminSync.tsx` — полная переработка UI
+- `README.md` — документация для бота
