@@ -79,7 +79,7 @@ export default function AdminSync() {
         .order("started_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as SyncLogEntry[];
+      return (data || []) as unknown as SyncLogEntry[];
     },
   });
 
