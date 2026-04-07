@@ -1,92 +1,40 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-/** Validate caller is authenticated admin. Returns caller user_id. */
-async function validateAdminCaller(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw { status: 401, message: "Authorization header missing or malformed" };
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const { data: { user }, error } = await userClient.auth.getUser();
-  if (error || !user) {
-    throw { status: 401, message: "Invalid or expired token" };
-  }
-
-  const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: roleData } = await adminClient
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .single();
-
-  if (!roleData) {
-    throw { status: 403, message: "Caller is not an admin" };
-  }
-
-  return user.id;
-}
+import { requireAdmin, getServiceClient } from "../_shared/auth.ts";
+import { optionsResponse } from "../_shared/cors.ts";
+import { successResponse, errorResponse, parseJsonBody } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return optionsResponse(req);
+  const origin = req.headers.get("Origin");
 
   try {
-    const callerId = await validateAdminCaller(req.headers.get("Authorization"));
+    const caller = await requireAdmin(req.headers.get("Authorization"));
 
-    let body: Record<string, unknown>;
-    try {
-      body = await req.json();
-    } catch {
-      throw { status: 400, message: "Invalid JSON body" };
-    }
+    const body = await parseJsonBody<{ userId?: string }>(req);
 
     const userId = body?.userId;
     if (!userId || typeof userId !== "string") {
       throw { status: 400, message: "userId is required" };
     }
 
-    if (userId === callerId) {
+    if (userId === caller.userId) {
       throw { status: 400, message: "Cannot delete yourself" };
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseAdmin = getServiceClient();
 
-    // Delete from auth.users — triggers/cascades will clean up profiles & user_roles
+    // Delete from auth.users — triggers/cascades clean up profiles & user_roles
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (error) {
-      throw { status: 500, message: error.message };
+      console.error("delete-user auth error:", error.message);
+      throw { status: 500, message: "Failed to delete user" };
     }
 
     // Explicit cleanup in case cascades are not set up
     await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
     await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    const status = err?.status || 500;
-    const message = err?.message || "Internal server error";
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse({ success: true }, origin);
+  } catch (err) {
+    return errorResponse(err, origin);
   }
 });

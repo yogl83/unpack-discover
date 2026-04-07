@@ -1,9 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { requireAdmin, getServiceClient } from "../_shared/auth.ts";
+import { optionsResponse } from "../_shared/cors.ts";
+import { successResponse, errorResponse, parseJsonBody } from "../_shared/http.ts";
 
 const ALLOWED_ROLES = ["admin", "analyst", "viewer"] as const;
 
@@ -12,40 +9,6 @@ interface CreateUserPayload {
   password: string;
   full_name: string;
   role: string;
-}
-
-/** Validate caller is authenticated admin. Returns user_id or throws. */
-async function validateAdminCaller(authHeader: string | null): Promise<string> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw { status: 401, message: "Authorization header missing or malformed" };
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const { data: { user }, error } = await userClient.auth.getUser();
-  if (error || !user) {
-    throw { status: 401, message: "Invalid or expired token" };
-  }
-
-  // Check admin role via service role client (bypasses RLS)
-  const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: roleData } = await adminClient
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .single();
-
-  if (!roleData) {
-    throw { status: 403, message: "Caller is not an admin" };
-  }
-
-  return user.id;
 }
 
 function validatePayload(body: unknown): CreateUserPayload {
@@ -72,38 +35,26 @@ function validatePayload(body: unknown): CreateUserPayload {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return optionsResponse(req);
+  const origin = req.headers.get("Origin");
 
   try {
-    // 1. Authenticate & authorize caller
-    await validateAdminCaller(req.headers.get("Authorization"));
+    await requireAdmin(req.headers.get("Authorization"));
 
-    // 2. Parse & validate payload
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      throw { status: 400, message: "Invalid JSON body" };
-    }
+    const rawBody = await parseJsonBody(req);
 
-    // Support both { users: [...] } array and single user object
+    // Support both { users: [...] } and single object
     let usersToCreate: CreateUserPayload[];
-    const bodyObj = body as Record<string, unknown>;
+    const bodyObj = rawBody as Record<string, unknown>;
     if (bodyObj?.users && Array.isArray(bodyObj.users)) {
       usersToCreate = bodyObj.users.map((u: unknown) => validatePayload(u));
     } else {
-      usersToCreate = [validatePayload(body)];
+      usersToCreate = [validatePayload(rawBody)];
     }
 
-    // 3. Create users
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
+    const supabaseAdmin = getServiceClient();
     const results = [];
+
     for (const u of usersToCreate) {
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: u.email,
@@ -128,16 +79,8 @@ Deno.serve(async (req) => {
       results.push({ email: u.email, user_id: data.user.id, role: u.role });
     }
 
-    return new Response(JSON.stringify({ results }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    const status = err?.status || 500;
-    const message = err?.message || "Internal server error";
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse({ results }, origin);
+  } catch (err) {
+    return errorResponse(err, origin);
   }
 });
