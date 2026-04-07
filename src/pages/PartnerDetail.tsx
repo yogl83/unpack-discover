@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -16,13 +16,12 @@ export default function PartnerDetail() {
   const { id } = useParams();
   const isNew = id === "new";
   const navigate = useNavigate();
-  const { canEdit } = useAuth();
-  const queryClient = useQueryClient();
+  const { canEdit, isAdmin } = useAuth();
+  const qc = useQueryClient();
 
   const { data: partner, isLoading } = useQuery({
     queryKey: ["partner", id],
     queryFn: async () => {
-      if (isNew) return null;
       const { data, error } = await supabase.from("partners").select("*").eq("partner_id", id!).single();
       if (error) throw error;
       return data;
@@ -38,28 +37,13 @@ export default function PartnerDetail() {
 
   useEffect(() => {
     if (partner) {
-      setForm({
-        partner_name: partner.partner_name || "",
-        legal_name: partner.legal_name || "",
-        website_url: partner.website_url || "",
-        industry: partner.industry || "",
-        subindustry: partner.subindustry || "",
-        business_model: partner.business_model || "",
-        city: partner.city || "",
-        geography: partner.geography || "",
-        company_size: partner.company_size || "",
-        company_profile: partner.company_profile || "",
-        technology_profile: partner.technology_profile || "",
-        strategic_priorities: partner.strategic_priorities || "",
-        priority_level: partner.priority_level || "",
-        partner_status: partner.partner_status || "new",
-        notes: partner.notes || "",
-      });
+      setForm(Object.fromEntries(Object.keys(form).map(k => [k, (partner as any)[k] || ""])) as any);
     }
   }, [partner]);
 
-  const mutation = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
+      if (!form.partner_name.trim()) { toast.error("Введите название партнера"); throw new Error("required"); }
       if (isNew) {
         const { error } = await supabase.from("partners").insert(form);
         if (error) throw error;
@@ -70,9 +54,18 @@ export default function PartnerDetail() {
     },
     onSuccess: () => {
       toast.success(isNew ? "Партнер создан" : "Изменения сохранены");
-      queryClient.invalidateQueries({ queryKey: ["partners"] });
+      qc.invalidateQueries({ queryKey: ["partners"] });
       navigate("/partners");
     },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("partners").delete().eq("partner_id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Партнер удален"); qc.invalidateQueries({ queryKey: ["partners"] }); navigate("/partners"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -85,7 +78,13 @@ export default function PartnerDetail() {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/partners"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый партнер" : form.partner_name}</h1>
+        {!isNew && isAdmin && (
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить партнера и все связанные данные?")) del.mutate(); }}>
+            <Trash2 className="mr-1 h-4 w-4" />Удалить
+          </Button>
+        )}
       </div>
+
       <Card>
         <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -126,6 +125,23 @@ export default function PartnerDetail() {
             <Input value={form.city} onChange={e => set("city", e.target.value)} disabled={!canEdit} />
           </div>
           <div className="space-y-2">
+            <Label>География</Label>
+            <Input value={form.geography} onChange={e => set("geography", e.target.value)} disabled={!canEdit} placeholder="Россия, СНГ, международный..." />
+          </div>
+          <div className="space-y-2">
+            <Label>Размер компании</Label>
+            <Select value={form.company_size} onValueChange={v => set("company_size", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="startup">Стартап (&lt;50)</SelectItem>
+                <SelectItem value="small">Малый (50–250)</SelectItem>
+                <SelectItem value="medium">Средний (250–1000)</SelectItem>
+                <SelectItem value="large">Крупный (1000–5000)</SelectItem>
+                <SelectItem value="enterprise">Корпорация (5000+)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label>Статус</Label>
             <Select value={form.partner_status} onValueChange={v => set("partner_status", v)} disabled={!canEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -156,13 +172,22 @@ export default function PartnerDetail() {
             <Textarea value={form.company_profile} onChange={e => set("company_profile", e.target.value)} disabled={!canEdit} rows={3} />
           </div>
           <div className="space-y-2 sm:col-span-2">
+            <Label>Технологический профиль</Label>
+            <Textarea value={form.technology_profile} onChange={e => set("technology_profile", e.target.value)} disabled={!canEdit} rows={2} placeholder="Используемые технологии, стек, платформы..." />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Стратегические приоритеты</Label>
+            <Textarea value={form.strategic_priorities} onChange={e => set("strategic_priorities", e.target.value)} disabled={!canEdit} rows={2} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
             <Label>Заметки</Label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={3} />
           </div>
         </CardContent>
       </Card>
+
       {canEdit && (
-        <Button onClick={() => mutation.mutate()} disabled={!form.partner_name || mutation.isPending}>
+        <Button onClick={() => save.mutate()} disabled={!form.partner_name.trim() || save.isPending}>
           <Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}
         </Button>
       )}
