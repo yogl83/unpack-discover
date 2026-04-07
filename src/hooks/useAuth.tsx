@@ -11,7 +11,6 @@ interface AuthContextType {
   profile: { full_name: string; email: string } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   canEdit: boolean;
   isAdmin: boolean;
