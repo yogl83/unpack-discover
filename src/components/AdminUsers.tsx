@@ -47,10 +47,11 @@ export default function AdminUsers() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
-      if (error) throw error;
-      const { error: e2 } = await supabase.from("profiles").delete().eq("id", userId);
-      if (e2) throw e2;
+      const res = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users-list"] }); toast.success("Пользователь удалён"); },
     onError: (e: any) => toast.error(e.message),

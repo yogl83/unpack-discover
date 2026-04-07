@@ -11,7 +11,6 @@ interface AuthContextType {
   profile: { full_name: string; email: string } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   canEdit: boolean;
   isAdmin: boolean;
@@ -67,18 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    return { error };
-  };
-
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -87,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user, session, role, profile, loading,
-        signIn, signUp, signOut,
+        signIn, signOut,
         canEdit: role === "admin" || role === "analyst",
         isAdmin: role === "admin",
       }}
