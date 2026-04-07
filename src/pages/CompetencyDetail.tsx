@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -24,6 +26,16 @@ export default function CompetencyDetail() {
   const { data: item, isLoading } = useQuery({
     queryKey: ["competency", id],
     queryFn: async () => { const { data, error } = await supabase.from("competencies").select("*").eq("competency_id", id!).single(); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: linkedHypotheses } = useQuery({
+    queryKey: ["competency-hypotheses", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("collaboration_hypotheses").select("*, partners(partner_name), partner_needs(title)").eq("competency_id", id!).order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
     enabled: !isNew,
   });
 
@@ -71,9 +83,31 @@ export default function CompetencyDetail() {
               <SelectContent>{units?.map(u => <SelectItem key={u.unit_id} value={u.unit_id}>{u.unit_name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-2"><Label>Тип</Label><Input value={form.competency_type} onChange={e => set("competency_type", e.target.value)} disabled={!canEdit} /></div>
+          <div className="space-y-2">
+            <Label>Тип</Label>
+            <Select value={form.competency_type} onValueChange={v => set("competency_type", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="technical">Техническая</SelectItem>
+                <SelectItem value="methodological">Методологическая</SelectItem>
+                <SelectItem value="domain">Предметная</SelectItem>
+                <SelectItem value="interdisciplinary">Междисциплинарная</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2"><Label>Область применения</Label><Input value={form.application_domain} onChange={e => set("application_domain", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2"><Label>Уровень зрелости</Label><Input value={form.maturity_level} onChange={e => set("maturity_level", e.target.value)} disabled={!canEdit} /></div>
+          <div className="space-y-2">
+            <Label>Уровень зрелости</Label>
+            <Select value={form.maturity_level} onValueChange={v => set("maturity_level", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="emerging">Зарождающийся</SelectItem>
+                <SelectItem value="developing">Развивающийся</SelectItem>
+                <SelectItem value="established">Устоявшийся</SelectItem>
+                <SelectItem value="leading">Лидирующий</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2 sm:col-span-2"><Label>Описание</Label><Textarea value={form.description} onChange={e => set("description", e.target.value)} disabled={!canEdit} rows={3} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Методы и инструменты</Label><Textarea value={form.methods_and_tools} onChange={e => set("methods_and_tools", e.target.value)} disabled={!canEdit} rows={2} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Подтверждение опыта</Label><Textarea value={form.evidence_of_experience} onChange={e => set("evidence_of_experience", e.target.value)} disabled={!canEdit} rows={2} /></div>
@@ -81,6 +115,32 @@ export default function CompetencyDetail() {
           <div className="space-y-2 sm:col-span-2"><Label>Заметки</Label><Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={2} /></div>
         </CardContent>
       </Card>
+
+      {/* Linked hypotheses */}
+      {!isNew && linkedHypotheses && linkedHypotheses.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Связанные гипотезы ({linkedHypotheses.length})</CardTitle></CardHeader>
+          <CardContent>
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead>Статус</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {linkedHypotheses.map(h => (
+                    <TableRow key={h.hypothesis_id}>
+                      <TableCell><Link to={`/hypotheses/${h.hypothesis_id}`} className="font-medium text-primary hover:underline">{h.title || "Без названия"}</Link></TableCell>
+                      <TableCell className="text-muted-foreground">{(h.partners as any)?.partner_name || "—"}</TableCell>
+                      <TableCell><Badge variant="secondary">{h.hypothesis_status || "—"}</Badge></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
     </div>
   );

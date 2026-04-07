@@ -20,6 +20,8 @@ export default function NextStepDetail() {
   const qc = useQueryClient();
 
   const { data: partners } = useQuery({ queryKey: ["partners-select"], queryFn: async () => { const { data } = await supabase.from("partners").select("partner_id, partner_name").order("partner_name"); return data || []; } });
+  const { data: hypotheses } = useQuery({ queryKey: ["hypotheses-select"], queryFn: async () => { const { data } = await supabase.from("collaboration_hypotheses").select("hypothesis_id, title, partner_id").order("title"); return data || []; } });
+  const { data: needs } = useQuery({ queryKey: ["needs-select"], queryFn: async () => { const { data } = await supabase.from("partner_needs").select("need_id, title, partner_id").order("title"); return data || []; } });
 
   const { data: item, isLoading } = useQuery({
     queryKey: ["next-step", id],
@@ -29,21 +31,31 @@ export default function NextStepDetail() {
 
   const [form, setForm] = useState({
     action_title: "", action_description: "", entity_type: "partner", entity_id: "",
-    partner_id: "", next_step_status: "new", due_date: "", result: "", notes: "",
+    partner_id: "", need_id: "", hypothesis_id: "",
+    next_step_status: "new", due_date: "", result: "", notes: "",
   });
 
   useEffect(() => { if (item) setForm(Object.fromEntries(Object.keys(form).map(k => [k, String((item as any)[k] ?? "")])) as any); }, [item]);
+
+  // Filter hypotheses/needs by selected partner
+  const filteredHypotheses = form.partner_id
+    ? hypotheses?.filter(h => h.partner_id === form.partner_id) || []
+    : hypotheses || [];
+  const filteredNeeds = form.partner_id
+    ? needs?.filter(n => n.partner_id === form.partner_id) || []
+    : needs || [];
 
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
         ...form,
         partner_id: form.partner_id || null,
-        entity_id: form.partner_id || form.entity_id,
+        need_id: form.need_id || null,
+        hypothesis_id: form.hypothesis_id || null,
+        entity_id: form.partner_id || form.entity_id || "00000000-0000-0000-0000-000000000000",
         due_date: form.due_date || null,
       };
       if (!payload.action_title) { toast.error("Укажите действие"); throw new Error("required"); }
-      if (!payload.entity_id) { toast.error("Укажите партнера"); throw new Error("required"); }
       if (isNew) { const { error } = await supabase.from("next_steps").insert(payload as any); if (error) throw error; }
       else { const { error } = await supabase.from("next_steps").update(payload as any).eq("next_step_id", id!); if (error) throw error; }
     },
@@ -56,7 +68,17 @@ export default function NextStepDetail() {
     onSuccess: () => { toast.success("Удалено"); navigate("/next-steps"); },
   });
 
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k: string, v: string) => {
+    setForm(p => {
+      const next = { ...p, [k]: v };
+      if (k === "partner_id" && v !== p.partner_id) {
+        next.need_id = "";
+        next.hypothesis_id = "";
+      }
+      return next;
+    });
+  };
+
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
   return (
@@ -78,12 +100,38 @@ export default function NextStepDetail() {
             </Select>
           </div>
           <div className="space-y-2">
+            <Label>Потребность</Label>
+            <Select value={form.need_id} onValueChange={v => set("need_id", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+              <SelectContent>{filteredNeeds.map(n => <SelectItem key={n.need_id} value={n.need_id}>{n.title}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Гипотеза</Label>
+            <Select value={form.hypothesis_id} onValueChange={v => set("hypothesis_id", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+              <SelectContent>{filteredHypotheses.map(h => <SelectItem key={h.hypothesis_id} value={h.hypothesis_id}>{h.title || "Без названия"}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label>Статус</Label>
             <Select value={form.next_step_status} onValueChange={v => set("next_step_status", v)} disabled={!canEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="new">Новый</SelectItem><SelectItem value="in_progress">В работе</SelectItem>
-                <SelectItem value="done">Выполнен</SelectItem><SelectItem value="cancelled">Отменён</SelectItem>
+                <SelectItem value="new">Новый</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="done">Выполнен</SelectItem>
+                <SelectItem value="cancelled">Отменён</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2"><Label>Тип сущности</Label>
+            <Select value={form.entity_type} onValueChange={v => set("entity_type", v)} disabled={!canEdit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="partner">Партнер</SelectItem>
+                <SelectItem value="need">Потребность</SelectItem>
+                <SelectItem value="hypothesis">Гипотеза</SelectItem>
               </SelectContent>
             </Select>
           </div>
