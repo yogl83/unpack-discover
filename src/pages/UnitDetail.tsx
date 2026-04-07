@@ -8,9 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+
+const statusLabels: Record<string, string> = {
+  new: "Новая", testing: "Тестируется", confirmed: "Подтверждена", rejected: "Отклонена",
+};
 
 export default function UnitDetail() {
   const { id } = useParams();
@@ -22,6 +29,24 @@ export default function UnitDetail() {
   const { data: item, isLoading } = useQuery({
     queryKey: ["unit", id],
     queryFn: async () => { const { data, error } = await supabase.from("miem_units").select("*").eq("unit_id", id!).single(); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: competencies } = useQuery({
+    queryKey: ["unit-competencies", id],
+    queryFn: async () => { const { data, error } = await supabase.from("competencies").select("*").eq("unit_id", id!).order("competency_name"); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: hypotheses } = useQuery({
+    queryKey: ["unit-hypotheses", id],
+    queryFn: async () => { const { data, error } = await supabase.from("collaboration_hypotheses").select("*, partners(partner_name), partner_needs(title)").eq("unit_id", id!).order("updated_at", { ascending: false }); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: portfolio } = useQuery({
+    queryKey: ["unit-portfolio", id],
+    queryFn: async () => { const { data, error } = await supabase.from("unit_portfolio_items").select("*").eq("unit_id", id!).order("year_from", { ascending: false }); if (error) throw error; return data; },
     enabled: !isNew,
   });
 
@@ -39,7 +64,7 @@ export default function UnitDetail() {
       if (isNew) { const { error } = await supabase.from("miem_units").insert(form as any); if (error) throw error; }
       else { const { error } = await supabase.from("miem_units").update(form as any).eq("unit_id", id!); if (error) throw error; }
     },
-    onSuccess: () => { toast.success(isNew ? "Создано" : "Сохранено"); qc.invalidateQueries({ queryKey: ["units"] }); navigate("/units"); },
+    onSuccess: () => { toast.success(isNew ? "Создано" : "Сохранено"); qc.invalidateQueries({ queryKey: ["units"] }); if (isNew) navigate("/units"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -52,37 +77,158 @@ export default function UnitDetail() {
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/units"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый коллектив" : form.unit_name}</h1>
         {!isNew && isAdmin && <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить?")) del.mutate(); }}><Trash2 className="mr-1 h-4 w-4" />Удалить</Button>}
       </div>
-      <Card>
-        <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2"><Label>Название *</Label><Input value={form.unit_name} onChange={e => set("unit_name", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2">
-            <Label>Тип</Label>
-            <Select value={form.unit_type} onValueChange={v => set("unit_type", v)} disabled={!canEdit}>
-              <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lab">Лаборатория</SelectItem><SelectItem value="project_group">Проектная группа</SelectItem>
-                <SelectItem value="center">Центр</SelectItem><SelectItem value="department">Департамент</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2"><Label>Руководитель</Label><Input value={form.lead_name} onChange={e => set("lead_name", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2"><Label>Область исследований</Label><Input value={form.research_area} onChange={e => set("research_area", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2"><Label>Область применения</Label><Input value={form.application_domain} onChange={e => set("application_domain", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2"><Label>Отрасль</Label><Input value={form.industry_fit} onChange={e => set("industry_fit", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2"><Label>Уровень готовности</Label><Input value={form.readiness_level} onChange={e => set("readiness_level", e.target.value)} disabled={!canEdit} /></div>
-          <div className="space-y-2 sm:col-span-2"><Label>Описание команды</Label><Textarea value={form.team_summary} onChange={e => set("team_summary", e.target.value)} disabled={!canEdit} rows={3} /></div>
-          <div className="space-y-2 sm:col-span-2"><Label>Фокус бизнес-проблем</Label><Textarea value={form.business_problem_focus} onChange={e => set("business_problem_focus", e.target.value)} disabled={!canEdit} rows={3} /></div>
-          <div className="space-y-2 sm:col-span-2"><Label>Заметки</Label><Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={2} /></div>
-        </CardContent>
-      </Card>
-      {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
+
+      <Tabs defaultValue="info">
+        <TabsList>
+          <TabsTrigger value="info">Информация</TabsTrigger>
+          {!isNew && (
+            <>
+              <TabsTrigger value="competencies" className="gap-1.5">
+                <Brain className="h-3.5 w-3.5" />Компетенции
+                {competencies?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{competencies.length}</Badge> : null}
+              </TabsTrigger>
+              <TabsTrigger value="hypotheses" className="gap-1.5">
+                <Lightbulb className="h-3.5 w-3.5" />Гипотезы
+                {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
+              </TabsTrigger>
+              <TabsTrigger value="portfolio" className="gap-1.5">
+                <Briefcase className="h-3.5 w-3.5" />Портфолио
+                {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
+              </TabsTrigger>
+            </>
+          )}
+        </TabsList>
+
+        <TabsContent value="info" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2"><Label>Название *</Label><Input value={form.unit_name} onChange={e => set("unit_name", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2">
+                <Label>Тип</Label>
+                <Select value={form.unit_type} onValueChange={v => set("unit_type", v)} disabled={!canEdit}>
+                  <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lab">Лаборатория</SelectItem>
+                    <SelectItem value="project_group">Проектная группа</SelectItem>
+                    <SelectItem value="center">Центр</SelectItem>
+                    <SelectItem value="department">Департамент</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Руководитель</Label><Input value={form.lead_name} onChange={e => set("lead_name", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Область исследований</Label><Input value={form.research_area} onChange={e => set("research_area", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Область применения</Label><Input value={form.application_domain} onChange={e => set("application_domain", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Отрасль</Label><Input value={form.industry_fit} onChange={e => set("industry_fit", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Конечный потребитель</Label><Input value={form.end_customer_fit} onChange={e => set("end_customer_fit", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Роль в цепочке</Label><Input value={form.value_chain_role} onChange={e => set("value_chain_role", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Уровень готовности</Label><Input value={form.readiness_level} onChange={e => set("readiness_level", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2"><Label>Готовность к обсуждению</Label><Input value={form.discussion_readiness} onChange={e => set("discussion_readiness", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2 sm:col-span-2"><Label>Описание команды</Label><Textarea value={form.team_summary} onChange={e => set("team_summary", e.target.value)} disabled={!canEdit} rows={3} /></div>
+              <div className="space-y-2 sm:col-span-2"><Label>Фокус бизнес-проблем</Label><Textarea value={form.business_problem_focus} onChange={e => set("business_problem_focus", e.target.value)} disabled={!canEdit} rows={3} /></div>
+              <div className="space-y-2 sm:col-span-2"><Label>Заметки</Label><Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={2} /></div>
+            </CardContent>
+          </Card>
+          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
+        </TabsContent>
+
+        {!isNew && (
+          <TabsContent value="competencies" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Компетенции</h2>
+              {canEdit && <Button size="sm" variant="outline" asChild><Link to="/competencies/new"><Plus className="mr-1 h-4 w-4" />Добавить</Link></Button>}
+            </div>
+            {!competencies?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет компетенций</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Область</TableHead><TableHead>Зрелость</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {competencies.map(c => (
+                      <TableRow key={c.competency_id}>
+                        <TableCell><Link to={`/competencies/${c.competency_id}`} className="font-medium text-primary hover:underline">{c.competency_name}</Link></TableCell>
+                        <TableCell className="text-muted-foreground">{c.competency_type || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.application_domain || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.maturity_level || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        )}
+
+        {!isNew && (
+          <TabsContent value="hypotheses" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Гипотезы</h2>
+              {canEdit && <Button size="sm" variant="outline" asChild><Link to="/hypotheses/new"><Plus className="mr-1 h-4 w-4" />Добавить</Link></Button>}
+            </div>
+            {!hypotheses?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет гипотез</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead>Потребность</TableHead><TableHead>Статус</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {hypotheses.map(h => (
+                      <TableRow key={h.hypothesis_id}>
+                        <TableCell><Link to={`/hypotheses/${h.hypothesis_id}`} className="font-medium text-primary hover:underline">{h.title || "Без названия"}</Link></TableCell>
+                        <TableCell className="text-muted-foreground">{(h.partners as any)?.partner_name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{(h.partner_needs as any)?.title || "—"}</TableCell>
+                        <TableCell><Badge variant="secondary">{statusLabels[h.hypothesis_status || ""] || h.hypothesis_status || "—"}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        )}
+
+        {!isNew && (
+          <TabsContent value="portfolio" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Портфолио</h2>
+            </div>
+            {!portfolio?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет элементов портфолио</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Организация</TableHead><TableHead>Период</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {portfolio.map(p => (
+                      <TableRow key={p.portfolio_item_id}>
+                        <TableCell className="font-medium">
+                          {p.url ? <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.title}</a> : p.title}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.item_type || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.organization_name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.year_from ? `${p.year_from}${p.year_to ? `–${p.year_to}` : "–н.в."}` : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
