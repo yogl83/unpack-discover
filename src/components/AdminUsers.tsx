@@ -12,8 +12,6 @@ import { Trash2, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-
-
 export default function AdminUsers() {
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -38,11 +36,14 @@ export default function AdminUsers() {
 
   const changeRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const { error } = await supabase.from("user_roles").update({ role: role as any }).eq("user_id", userId);
-      if (error) throw error;
+      const res = await supabase.functions.invoke("update-user-role", {
+        body: { userId, role },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users-list"] }); toast.success("Роль изменена"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteUser = useMutation({
@@ -54,7 +55,7 @@ export default function AdminUsers() {
       if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users-list"] }); toast.success("Пользователь удалён"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const addUser = useMutation({
@@ -71,7 +72,7 @@ export default function AdminUsers() {
       setAddOpen(false);
       setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("viewer");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = users?.filter(u => roleFilter === "all" || u.role === roleFilter);

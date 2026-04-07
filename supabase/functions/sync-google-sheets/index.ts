@@ -1,5 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { requireAdmin, getServiceClient } from "../_shared/auth.ts";
+import { optionsResponse } from "../_shared/cors.ts";
+import { successResponse, errorResponse, parseJsonBody } from "../_shared/http.ts";
 
 // --- Google Auth helpers ---
 
@@ -24,7 +25,6 @@ async function createGoogleJWT(serviceAccount: { client_email: string; private_k
   const payloadB64 = base64url(enc.encode(JSON.stringify(payload)));
   const signingInput = `${headerB64}.${payloadB64}`;
 
-  // Import PEM private key
   const pemBody = serviceAccount.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
@@ -39,7 +39,7 @@ async function createGoogleJWT(serviceAccount: { client_email: string; private_k
   return `${signingInput}.${base64url(sig)}`;
 }
 
-async function getAccessToken(serviceAccount: any): Promise<string> {
+async function getAccessToken(serviceAccount: { client_email: string; private_key: string }): Promise<string> {
   const jwt = await createGoogleJWT(serviceAccount);
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -47,7 +47,10 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
   const data = await res.json();
-  if (!data.access_token) throw new Error("Failed to get Google access token: " + JSON.stringify(data));
+  if (!data.access_token) {
+    console.error("Google token error:", JSON.stringify(data));
+    throw { status: 502, message: "Failed to authenticate with Google" };
+  }
   return data.access_token;
 }
 
@@ -99,9 +102,12 @@ const TABLE_CONFIGS: TableConfig[] = [
   },
 ];
 
+const ALLOWED_TABLES = new Set(TABLE_CONFIGS.map((c) => c.table));
+const ALLOWED_ACTIONS = new Set(["export", "import"]);
+
 // --- Sheets API helpers ---
 
-async function sheetsRequest(accessToken: string, url: string, method = "GET", body?: any) {
+async function sheetsRequest(accessToken: string, url: string, method = "GET", body?: unknown) {
   const opts: RequestInit = {
     method,
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -110,7 +116,8 @@ async function sheetsRequest(accessToken: string, url: string, method = "GET", b
   const res = await fetch(url, opts);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Sheets API error ${res.status}: ${text}`);
+    console.error(`Sheets API error ${res.status}: ${text}`);
+    throw { status: 502, message: `Google Sheets API error (${res.status})` };
   }
   return res.json();
 }
@@ -119,37 +126,36 @@ const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
 // --- Export ---
 
-async function exportToSheets(supabaseAdmin: any, accessToken: string, spreadsheetId: string, tables: string[]) {
+async function exportToSheets(supabaseAdmin: ReturnType<typeof getServiceClient>, accessToken: string, spreadsheetId: string, tables: string[]) {
   const configs = tables.length > 0
     ? TABLE_CONFIGS.filter(c => tables.includes(c.table))
     : TABLE_CONFIGS;
 
   const results: Record<string, number> = {};
 
-  // Get existing sheets
   const meta = await sheetsRequest(accessToken, `${SHEETS_BASE}/${spreadsheetId}`);
-  const existingSheets = (meta.sheets || []).map((s: any) => s.properties.title);
+  const existingSheets = (meta.sheets || []).map((s: Record<string, any>) => s.properties.title);
 
   for (const cfg of configs) {
-    // Fetch data
     const { data, error } = await supabaseAdmin.from(cfg.table).select("*");
-    if (error) throw new Error(`DB error on ${cfg.table}: ${error.message}`);
+    if (error) {
+      console.error(`DB error on ${cfg.table}:`, error.message);
+      throw { status: 500, message: `Database read error for ${cfg.table}` };
+    }
 
-    // Create sheet if not exists
     if (!existingSheets.includes(cfg.sheetName)) {
       await sheetsRequest(accessToken, `${SHEETS_BASE}/${spreadsheetId}:batchUpdate`, "POST", {
         requests: [{ addSheet: { properties: { title: cfg.sheetName } } }],
       });
     }
 
-    // Clear and write
     const range = `${cfg.sheetName}!A1`;
     await sheetsRequest(accessToken, `${SHEETS_BASE}/${spreadsheetId}/values/${cfg.sheetName}:clear`, "POST", {});
 
-    const rows = [cfg.columns];
+    const rows: string[][] = [cfg.columns];
     for (const row of (data || [])) {
       rows.push(cfg.columns.map(col => {
-        const v = row[col];
+        const v = (row as Record<string, unknown>)[col];
         if (v === null || v === undefined) return "";
         if (Array.isArray(v)) return v.join(", ");
         return String(v);
@@ -170,7 +176,7 @@ async function exportToSheets(supabaseAdmin: any, accessToken: string, spreadshe
 
 // --- Import ---
 
-async function importFromSheets(supabaseAdmin: any, accessToken: string, spreadsheetId: string, tables: string[]) {
+async function importFromSheets(supabaseAdmin: ReturnType<typeof getServiceClient>, accessToken: string, spreadsheetId: string, tables: string[]) {
   const configs = tables.length > 0
     ? TABLE_CONFIGS.filter(c => tables.includes(c.table))
     : TABLE_CONFIGS;
@@ -194,27 +200,23 @@ async function importFromSheets(supabaseAdmin: any, accessToken: string, spreads
       }
 
       const headers = rows[0];
-      const validCols = headers.filter(h => cfg.columns.includes(h));
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        const record: Record<string, any> = {};
+        const record: Record<string, unknown> = {};
         for (let j = 0; j < headers.length; j++) {
           const col = headers[j];
           if (!cfg.columns.includes(col)) continue;
-          let val: any = row[j] || null;
+          let val: unknown = row[j] || null;
           if (val === "") val = null;
-          // Handle arrays (comma-separated)
           if (val && (col === "keywords" || col === "collaboration_formats")) {
-            val = val.split(",").map((s: string) => s.trim()).filter(Boolean);
+            val = (val as string).split(",").map((s: string) => s.trim()).filter(Boolean);
           }
-          // Handle booleans
           if (col === "is_primary" || col === "requires_interview_validation") {
             val = val === "true" || val === "TRUE" || val === "1";
           }
-          // Handle numbers
           if (col === "relevance_score" && val) {
-            val = parseFloat(val) || null;
+            val = parseFloat(val as string) || null;
           }
           record[col] = val;
         }
@@ -224,7 +226,6 @@ async function importFromSheets(supabaseAdmin: any, accessToken: string, spreads
           continue;
         }
 
-        // Upsert
         const { error } = await supabaseAdmin
           .from(cfg.table)
           .upsert(record, { onConflict: cfg.idColumn });
@@ -235,11 +236,13 @@ async function importFromSheets(supabaseAdmin: any, accessToken: string, spreads
           result.inserted++;
         }
       }
-    } catch (e: any) {
-      if (e.message?.includes("404") || e.message?.includes("Unable to parse range")) {
+    } catch (e: unknown) {
+      const msg = (e as any)?.message || String(e);
+      if (msg.includes("404") || msg.includes("Unable to parse range")) {
         result.errors.push(`Sheet "${cfg.sheetName}" not found`);
       } else {
-        result.errors.push(e.message);
+        result.errors.push(`Sync error for ${cfg.sheetName}`);
+        console.error(`Import error for ${cfg.table}:`, msg);
       }
     }
 
@@ -249,74 +252,89 @@ async function importFromSheets(supabaseAdmin: any, accessToken: string, spreads
   return results;
 }
 
+// --- Request validation ---
+
+interface SyncPayload {
+  action: string;
+  spreadsheet_id: string;
+  tables: string[];
+}
+
+function validatePayload(body: unknown): SyncPayload {
+  if (!body || typeof body !== "object") {
+    throw { status: 400, message: "Invalid request body" };
+  }
+
+  const { action, spreadsheet_id, tables } = body as Record<string, unknown>;
+
+  if (!action || typeof action !== "string" || !ALLOWED_ACTIONS.has(action)) {
+    throw { status: 400, message: "action must be 'export' or 'import'" };
+  }
+
+  if (!spreadsheet_id || typeof spreadsheet_id !== "string" || spreadsheet_id.trim().length < 10) {
+    throw { status: 400, message: "Valid spreadsheet_id is required" };
+  }
+
+  // Validate spreadsheet_id format (alphanumeric + hyphens + underscores)
+  if (!/^[a-zA-Z0-9_-]+$/.test(spreadsheet_id)) {
+    throw { status: 400, message: "Invalid spreadsheet_id format" };
+  }
+
+  let validTables: string[] = [];
+  if (tables && Array.isArray(tables)) {
+    for (const t of tables) {
+      if (typeof t !== "string" || !ALLOWED_TABLES.has(t)) {
+        throw { status: 400, message: `Invalid table name: ${t}. Allowed: ${[...ALLOWED_TABLES].join(", ")}` };
+      }
+    }
+    validTables = tables as string[];
+  }
+
+  return { action, spreadsheet_id: spreadsheet_id.trim(), tables: validTables };
+}
+
 // --- Main handler ---
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return optionsResponse(req);
+  const origin = req.headers.get("Origin");
 
   try {
-    // Auth check - admin only
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    await requireAdmin(req.headers.get("Authorization"));
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify user is admin
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const userId = user.id;
-
-    // Check admin role using service client
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", userId).single();
-    if (!roleData || roleData.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Forbidden: admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // Parse request
-    const { action, spreadsheet_id, tables = [] } = await req.json();
-    if (!action || !spreadsheet_id) {
-      return new Response(JSON.stringify({ error: "Missing action or spreadsheet_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    const rawBody = await parseJsonBody(req);
+    const { action, spreadsheet_id, tables } = validatePayload(rawBody);
 
     // Google auth
     const saKeyRaw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
     if (!saKeyRaw) {
-      return new Response(JSON.stringify({ error: "Google Service Account key not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw { status: 500, message: "Google Service Account key not configured" };
     }
-    const serviceAccount = JSON.parse(saKeyRaw);
-    const accessToken = await getAccessToken(serviceAccount);
 
-    let result: any;
+    let serviceAccount: { client_email: string; private_key: string };
+    try {
+      serviceAccount = JSON.parse(saKeyRaw);
+    } catch {
+      console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY");
+      throw { status: 500, message: "Invalid Google Service Account configuration" };
+    }
+
+    const accessToken = await getAccessToken(serviceAccount);
+    const adminClient = getServiceClient();
+
+    let result: unknown;
     if (action === "export") {
       result = await exportToSheets(adminClient, accessToken, spreadsheet_id, tables);
-    } else if (action === "import") {
-      result = await importFromSheets(adminClient, accessToken, spreadsheet_id, tables);
     } else {
-      return new Response(JSON.stringify({ error: "Invalid action. Use 'export' or 'import'" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      result = await importFromSheets(adminClient, accessToken, spreadsheet_id, tables);
     }
 
-    return new Response(JSON.stringify({ success: true, action, result }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e: any) {
-    console.error("sync-google-sheets error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse({ success: true, action, result }, origin);
+  } catch (err) {
+    if (typeof err === "object" && err !== null && "status" in err) {
+      return errorResponse(err, origin);
+    }
+    console.error("sync-google-sheets unexpected error:", err);
+    return errorResponse({ status: 500, message: "Internal sync error" }, origin);
   }
 });
