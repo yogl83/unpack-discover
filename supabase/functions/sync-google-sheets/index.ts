@@ -464,9 +464,23 @@ Deno.serve(async (req) => {
 
     let serviceAccount: { client_email: string; private_key: string };
     try {
-      serviceAccount = JSON.parse(saKeyRaw);
-    } catch {
-      throw { status: 500, message: "Invalid Google Service Account configuration" };
+      // Handle potential base64-encoded or double-escaped JSON
+      let jsonStr = saKeyRaw.trim();
+      // Try base64 decode if it doesn't look like JSON
+      if (!jsonStr.startsWith("{")) {
+        try {
+          jsonStr = atob(jsonStr);
+        } catch {
+          // not base64, use as-is
+        }
+      }
+      serviceAccount = JSON.parse(jsonStr);
+      if (!serviceAccount.client_email || !serviceAccount.private_key) {
+        throw new Error("Missing client_email or private_key");
+      }
+    } catch (parseErr) {
+      console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:", (parseErr as Error).message, "Raw length:", saKeyRaw.length, "First 20 chars:", saKeyRaw.substring(0, 20));
+      throw { status: 500, message: "Invalid Google Service Account configuration. Ensure the secret contains valid JSON with client_email and private_key fields." };
     }
 
     const accessToken = await getAccessToken(serviceAccount);
