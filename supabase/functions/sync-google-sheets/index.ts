@@ -129,7 +129,14 @@ async function sheetsRequest(accessToken: string, url: string, method = "GET", b
   if (!res.ok) {
     const text = await res.text();
     console.error(`Sheets API error ${res.status}: ${text}`);
-    throw { status: 502, message: `Google Sheets API error (${res.status})` };
+    // Provide actionable message for common errors
+    if (res.status === 403) {
+      const hint = text.includes("SERVICE_DISABLED")
+        ? "Google Sheets API is not enabled in your Google Cloud project. Enable it at https://console.cloud.google.com/apis/library/sheets.googleapis.com"
+        : "The service account does not have access to this spreadsheet. Share the spreadsheet with the service account email.";
+      throw { status: 403, message: hint };
+    }
+    throw { status: res.status >= 500 ? 502 : res.status, message: `Google Sheets API error (${res.status})` };
   }
   return res.json();
 }
