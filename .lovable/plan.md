@@ -1,31 +1,68 @@
 
 
-# Root Cause and Fix Plan
+# Регистрация с подтверждением администратором
 
-## Problem
-The previous security hardening migration revoked `EXECUTE` on `public.has_role()` from the `authenticated` role. This broke **every RLS policy** in the system that calls `has_role()` — which is nearly all of them. As a result:
+## Как это будет работать
 
-1. **Partners page shows "Загрузка..."** — the query to `partner_overview` (view) triggers RLS on underlying tables, which call `has_role()`, which now returns "permission denied"
-2. **Admin panel is inaccessible** — the sidebar hides "Администрирование" because `useAuth` fails to read from `user_roles` (also gated by `has_role()`)
-3. **All write operations fail** — INSERT/UPDATE/DELETE policies all use `has_role()`
+1. На странице `/auth` появляется ссылка "Запросить доступ"
+2. Пользователь заполняет форму: ФИО, email, пароль
+3. Аккаунт создаётся, но помечается как `pending` (не подтверждён)
+4. При попытке входа pending-пользователь видит сообщение "Ваш аккаунт ожидает подтверждения"
+5. Админ в панели "Пользователи" видит список заявок и может одобрить или отклонить
+6. После одобрения пользователь может войти
 
-The DB logs confirm: **"permission denied for function has_role"** repeated hundreds of times.
+## Технические изменения
 
-## Fix
+### 1. Миграция БД
+- Добавить столбец `approved boolean NOT NULL DEFAULT false` в `profiles`
+- Добавить столбец `approved_by uuid` в `profiles`
+- Добавить столбец `approved_at timestamptz` в `profiles`
 
-One migration to restore `EXECUTE` permission on `has_role` to the `authenticated` role:
+### 2. Edge Function `register-request`
+- Публичная (без JWT), аналогично `bootstrap-admin`
+- Создаёт пользователя через `supabase.auth.admin.createUser` с `email_confirm: true`
+- Устанавливает `profiles.approved = false`
+- Роль остаётся `viewer` (по умолчанию от триггера)
+- Rate-limiting: проверка на дубликат email
 
-```sql
-GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated;
-```
+### 3. Edge Function `approve-user`
+- Требует admin (через `requireAdmin`)
+- Принимает `{ userId, approved: true/false }`
+- Если `approved: true` — обновляет `profiles.approved = true`, `approved_by`, `approved_at`
+- Если `approved: false` — удаляет пользователя полностью
 
-This is safe because:
-- `has_role()` is `SECURITY DEFINER` — it runs as the function owner (superuser), bypassing RLS on `user_roles`
-- A user can only check roles, not modify them
-- The original concern about "role enumeration" is not a real risk here — users can only check their own role via RLS on `user_roles` anyway, and the function is needed for RLS to work at all
+### 4. Изменение `useAuth` (фронтенд)
+- После получения профиля проверять `profile.approved`
+- Если `approved === false` — показывать экран "Ожидание подтверждения", не пускать в приложение
+- Добавить `isPending` в контекст
 
-No other files need changes. The frontend code is correct — it's just getting errors from the database.
+### 5. Изменение `Auth.tsx`
+- Добавить переключатель "Запросить доступ" рядом с "Забыли пароль?"
+- Форма регистрации: ФИО, email, пароль
+- После отправки — сообщение "Заявка отправлена, ожидайте подтверждения администратора"
 
-## Files Changed
-- 1 new migration: `GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated`
+### 6. Изменение `AdminUsers.tsx`
+- Добавить вкладку/фильтр "Ожидающие подтверждения"
+- Для pending-пользователей показывать кнопки "Одобрить" / "Отклонить"
+- При одобрении можно сразу выбрать роль (viewer/analyst/admin)
+
+### 7. RLS
+- Существующие политики уже блокируют доступ к данным для viewer
+- Дополнительно: в `useAuth` блокировать навигацию для неподтверждённых
+
+## Файлы
+
+| Файл | Действие |
+|------|----------|
+| миграция SQL | Новый — добавить `approved`, `approved_by`, `approved_at` в `profiles` |
+| `supabase/functions/register-request/index.ts` | Новый — публичная регистрация |
+| `supabase/functions/approve-user/index.ts` | Новый — admin-only одобрение/отклонение |
+| `src/pages/Auth.tsx` | Изменить — добавить форму запроса доступа |
+| `src/hooks/useAuth.tsx` | Изменить — проверка `approved`, добавить `isPending` |
+| `src/components/AdminUsers.tsx` | Изменить — вкладка pending + кнопки approve/reject |
+
+## Ограничения и компромиссы
+
+- Email-уведомление админу о новой заявке — не реализуется в первой итерации (можно добавить позже)
+- Пользователь не получает email при одобрении — узнаёт при повторной попытке входа (можно добавить позже)
 
