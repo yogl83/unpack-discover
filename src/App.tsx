@@ -25,6 +25,7 @@ import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
 import Admin from "@/pages/Admin";
 import ResetPassword from "@/pages/ResetPassword";
+import Bootstrap from "@/pages/Bootstrap";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/bootstrap" element={<Bootstrap />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/partners" element={<Partners />} />
