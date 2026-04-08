@@ -25,6 +25,7 @@ import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
 import Admin from "@/pages/Admin";
 import ResetPassword from "@/pages/ResetPassword";
+import Bootstrap from "@/pages/Bootstrap";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
