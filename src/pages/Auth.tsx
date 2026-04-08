@@ -13,6 +13,8 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Загрузка...</p></div>;
   if (user) return <Navigate to="/" replace />;
