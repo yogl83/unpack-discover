@@ -8,12 +8,13 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
-  profile: { full_name: string; email: string } | null;
+  profile: { full_name: string; email: string; approved: boolean } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   canEdit: boolean;
   isAdmin: boolean;
+  isPending: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,16 +23,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; email: string; approved: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
     const [roleRes, profileRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).limit(1).single(),
-      supabase.from("profiles").select("full_name, email").eq("id", userId).single(),
+      supabase.from("profiles").select("full_name, email, approved").eq("id", userId).single(),
     ]);
     if (roleRes.data) setRole(roleRes.data.role as AppRole);
-    if (profileRes.data) setProfile(profileRes.data);
+    if (profileRes.data) setProfile(profileRes.data as any);
   };
 
   useEffect(() => {
@@ -70,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const isPending = !!user && profile !== null && !profile.approved;
+
   return (
     <AuthContext.Provider
       value={{
@@ -77,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn, signOut,
         canEdit: role === "admin" || role === "analyst",
         isAdmin: role === "admin",
+        isPending,
       }}
     >
       {children}
