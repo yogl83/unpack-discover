@@ -1,62 +1,31 @@
 
-# План: Зрелая интеграция с Google Sheets
 
-## 1. Миграция БД
+# Root Cause and Fix Plan
 
-### 1a. Таблица `sync_settings` — persistent конфигурация
+## Problem
+The previous security hardening migration revoked `EXECUTE` on `public.has_role()` from the `authenticated` role. This broke **every RLS policy** in the system that calls `has_role()` — which is nearly all of them. As a result:
+
+1. **Partners page shows "Загрузка..."** — the query to `partner_overview` (view) triggers RLS on underlying tables, which call `has_role()`, which now returns "permission denied"
+2. **Admin panel is inaccessible** — the sidebar hides "Администрирование" because `useAuth` fails to read from `user_roles` (also gated by `has_role()`)
+3. **All write operations fail** — INSERT/UPDATE/DELETE policies all use `has_role()`
+
+The DB logs confirm: **"permission denied for function has_role"** repeated hundreds of times.
+
+## Fix
+
+One migration to restore `EXECUTE` permission on `has_role` to the `authenticated` role:
+
+```sql
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated;
 ```
-sync_settings (id, spreadsheet_id, enabled, auto_sync_enabled, auto_sync_interval_minutes, default_tables[], updated_by, updated_at)
-```
-- RLS: только admin может читать/писать
-- Одна строка (singleton pattern)
 
-### 1b. Таблица `sync_log` — журнал синхронизаций  
-```
-sync_log (id, action, triggered_by, tables[], stats jsonb, errors jsonb, started_at, finished_at)
-```
-- RLS: admin — полный доступ, analyst/viewer — только чтение
+This is safe because:
+- `has_role()` is `SECURITY DEFINER` — it runs as the function owner (superuser), bypassing RLS on `user_roles`
+- A user can only check roles, not modify them
+- The original concern about "role enumeration" is not a real risk here — users can only check their own role via RLS on `user_roles` anyway, and the function is needed for RLS to work at all
 
-### 1c. Колонки `external_source` + `external_id` в `partners` и `miem_units`
-- Добавить `external_source text`, `external_id text` + unique constraint `(external_source, external_id)`
-- Добавить `last_synced_at timestamptz`
+No other files need changes. The frontend code is correct — it's just getting errors from the database.
 
-## 2. Edge Function `sync-google-sheets` — переработка
+## Files Changed
+- 1 new migration: `GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated`
 
-- **Import**: если `idColumn` пустой, но есть `external_source + external_id` → искать по ним, создавать новую запись если не найдена
-- **Insert vs Update**: реально различать (SELECT перед upsert или использовать `ON CONFLICT ... DO UPDATE RETURNING`)
-- **Sync log**: писать результат в `sync_log`
-- **Spreadsheet ID**: читать из `sync_settings` если не передан в payload
-- **Field whitelist**: для import из Sheets обновлять только безопасные поля (не трогать `created_at`, `owner_user_id`, системные)
-
-## 3. Edge Function `trigger-sync` — bot/cron endpoint
-
-- Новая функция для внешнего триггера
-- Два режима авторизации:
-  - Bearer admin token (как обычно)
-  - Machine token через секрет `SYNC_API_TOKEN` — для бота
-- Читает config из `sync_settings`
-- Вызывает ту же логику import/export
-
-## 4. Cron-расписание (pg_cron)
-
-- Если `auto_sync_enabled = true`, создать cron job который вызывает `trigger-sync`
-- INSERT через `supabase--insert` (не миграция)
-
-## 5. UI `AdminSync.tsx` — переработка
-
-- Читать/сохранять Spreadsheet ID из `sync_settings` (не localStorage)
-- Показывать статус подключения, last sync, auto sync toggle
-- История sync из `sync_log`
-- Summary: создано / обновлено / ошибок по таблицам
-- Ручной import/export остаётся
-
-## 6. Документация
-
-- README секция: настройка Google Sheets, колонки, external_id, бот-интеграция
-
-## Затрагиваемые файлы
-- **Миграция**: новые таблицы + ALTER partners/miem_units
-- `supabase/functions/sync-google-sheets/index.ts` — переработка import
-- `supabase/functions/trigger-sync/index.ts` — новая функция  
-- `src/components/AdminSync.tsx` — полная переработка UI
-- `README.md` — документация для бота
