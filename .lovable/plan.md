@@ -1,97 +1,104 @@
 
 
-# Модуль Partner Profile — План реализации
+# Двухсторонний контактный контур — План реализации
 
 ## Обзор
 
-Добавляем структурированный профайл компании как first-class сущность: две новые таблицы, storage bucket для файлов, вкладка "Профайл" в карточке партнёра, workflow (draft → review → approved → archived), миграция старых данных, подготовка к LLM-draft.
+Добавляем полноценный CRUD для внешних контактов партнёра, новую таблицу `unit_contacts` для внутренних контактов МИЭМ, и связку обоих типов контактов в UI.
 
-## Шаг 1. Миграция БД — таблицы и bucket
+## Шаг 1. Миграция БД
 
-Одна SQL-миграция создаёт:
+Одна SQL-миграция:
 
-**Таблица `partner_profiles`** (30+ полей):
-- `profile_id` uuid PK, `partner_id` uuid NOT NULL (FK → partners), `title` text
-- Статус/версионирование: `status` (draft/review/approved/archived), `version_number` int default 1, `is_current` bool default false, `profile_date` date
-- Тип: `profile_type` (manual/uploaded/hybrid/llm_draft), `source_type` (manual/upload/sheets/llm/external_bot)
-- 11 секций контента: `summary_short`, `company_overview`, `business_scale`, `technology_focus`, `strategic_priorities`, `talent_needs`, `collaboration_opportunities`, `current_relationship_with_miem`, `relationship_with_other_universities`, `recent_news_and_plans`, `key_events_and_touchpoints`, `risks_and_constraints`, `recommended_next_steps`
-- Метаданные: `references_json` jsonb, `change_summary`, `based_on_profile_id` uuid, `created_by`/`updated_by`/`approved_by` uuid, `approved_at`, timestamps
-- LLM-ready (Phase 2): `generation_status`, `generated_from_prompt`, `generated_from_sources_json` jsonb, `needs_human_review` bool, `last_generated_at`
-- Индексы: `partner_id`, `status`, `is_current`, `profile_date`
-- Constraint: unique partial index `(partner_id) WHERE is_current = true AND status = 'approved'` — один current approved на партнёра
+**Обновить таблицу `contacts`** — добавить недостающие поля:
+- `telegram` text
+- `linkedin` text  
+- `contact_kind` text default 'official' (official / warm / operational / decision_maker / technical / other)
+- `last_interaction_at` timestamptz
 
-**Таблица `partner_profile_files`**:
-- `file_id` uuid PK, `profile_id` uuid FK, `partner_id` uuid FK
-- `storage_bucket` text default 'partner-profile-files', `storage_path` text NOT NULL
-- `original_filename`, `mime_type`, `file_size` bigint, `uploaded_by` uuid
-- `is_source_document` bool default true, `notes`, `created_at`
+**Создать таблицу `unit_contacts`**:
+- `unit_contact_id` uuid PK default gen_random_uuid()
+- `unit_id` uuid NOT NULL (FK → miem_units)
+- `full_name` text NOT NULL
+- `job_title` text
+- `email` text
+- `phone` text
+- `telegram` text
+- `contact_role` text
+- `is_primary` boolean default false
+- `availability_notes` text
+- `notes` text
+- `created_at` / `updated_at` timestamptz
 
-**Storage bucket**: `partner-profile-files` (private)
+**RLS для `unit_contacts`** — стандартная модель:
+- SELECT: all authenticated
+- INSERT/UPDATE: admin + analyst
+- DELETE: admin only
 
-**RLS-политики** (используя существующий `has_role()`):
-- `partner_profiles` SELECT: all authenticated; INSERT/UPDATE: admin + analyst; DELETE: admin only
-- `partner_profile_files` SELECT: all authenticated; INSERT/UPDATE: admin + analyst; DELETE: admin only
-- Storage `partner-profile-files`: authenticated upload (admin/analyst), authenticated read
+**Индексы**: `unit_id` на `unit_contacts`
 
-**Миграция данных**: для каждого партнёра с заполненным `company_profile` / `technology_profile` / `strategic_priorities` создаётся initial profile (status=approved, is_current=true, profile_type=manual, source_type=manual)
+## Шаг 2. Страница контакта партнёра (ContactForm)
 
-## Шаг 2. UI — компонент PartnerProfileTab
+Новый файл `src/pages/PartnerContactDetail.tsx`:
+- Полноценная форма create/edit для внешнего контакта
+- Все поля: ФИО, должность, email, телефон, telegram, linkedin, роль, тип контакта (contact_kind), primary, заметки
+- Select для `contact_kind` с русскими лейблами (Официальный, Тёплый, Оперативный, ЛПР, Технический, Другой)
+- Кнопки: Сохранить, Удалить (admin)
+- Навигация назад к карточке партнёра
 
-Новый файл `src/components/partner/PartnerProfileTab.tsx` (~400 строк):
+## Шаг 3. Страница контакта МИЭМ (UnitContactForm)
 
-**Режим просмотра** (current approved profile):
-- Заголовок с badge статуса, версией, датой, автором
-- Секции профайла в карточках (Accordion или Cards)
-- Список прикреплённых файлов с кнопкой скачивания
-- Profile freshness indicator: цветной badge (нет профайла / draft / устарел / актуален)
+Новый файл `src/pages/UnitContactDetail.tsx`:
+- Аналогичная форма для внутреннего контакта
+- Поля: ФИО, должность, email, телефон, telegram, роль, primary, доступность, заметки
+- Навигация назад к карточке коллектива
 
-**Режим редактирования** (для analyst/admin):
-- Кнопка "Создать новый профайл" / "Редактировать draft"
-- Форма с секциями (каждая секция — Textarea)
-- Upload файлов (drag & drop или кнопка)
-- Кнопки workflow: "Сохранить черновик", "На рассмотрение" (analyst), "Утвердить" / "Архивировать" (admin)
+## Шаг 4. Маршруты
 
-**История версий**:
-- Таблица прошлых версий (версия, статус, дата, автор)
+В `App.tsx` добавить:
+- `/partners/:partnerId/contacts/new` → PartnerContactDetail
+- `/partners/:partnerId/contacts/:contactId` → PartnerContactDetail
+- `/units/:unitId/contacts/new` → UnitContactDetail
+- `/units/:unitId/contacts/:contactId` → UnitContactDetail
 
-## Шаг 3. Интеграция в PartnerDetail
+## Шаг 5. Обновить PartnerDetail.tsx
 
-В `src/pages/PartnerDetail.tsx`:
-- Новая вкладка "Профайл" с иконкой FileText между "Информация" и "Контакты"
-- Badge с freshness-индикатором на вкладке
-- Старые поля `company_profile`, `technology_profile`, `strategic_priorities` в Info tab остаются read-only с пометкой "Перенесено в Профайл" (fallback, если профайл ещё не создан — показываем старые данные)
+Вкладка «Контакты»:
+- Разделить на 2 секции: «Контакты партнёра» и «Контакты МИЭМ»
+- Контакты партнёра — из `contacts`, клик по строке ведёт на редактирование
+- Badge `contact_kind` на каждом контакте
+- Контакты МИЭМ — read-only блок, подтянутый через гипотезы (unit_id → unit_contacts)
+- Кнопка «Добавить» ведёт на `/partners/:id/contacts/new`
 
-## Шаг 4. Profile Freshness в списке Partners
+## Шаг 6. Обновить UnitDetail.tsx
 
-В `src/pages/Partners.tsx` — новая колонка "Профайл" с цветным индикатором:
-- Серый: нет профайла
-- Жёлтый: только draft
-- Зелёный: approved и актуален (< 90 дней)
-- Оранжевый: approved, но устарел (> 90 дней)
-
-Для этого потребуется обновить view `partner_overview` или добавить join.
+Новая вкладка «Контакты» (иконка Users):
+- Список из `unit_contacts` по `unit_id`
+- Кнопка «Добавить» → `/units/:id/contacts/new`
+- Клик по строке → редактирование
+- Badge primary / роль
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| Миграция SQL | Создать — 2 таблицы, bucket, RLS, индексы, data migration |
-| `src/components/partner/PartnerProfileTab.tsx` | Создать — основной UI профайла |
-| `src/components/partner/ProfileFileUpload.tsx` | Создать — компонент загрузки файлов |
-| `src/components/partner/ProfileFreshnessBadge.tsx` | Создать — индикатор актуальности |
-| `src/pages/PartnerDetail.tsx` | Изменить — добавить вкладку Профайл |
-| `src/pages/Partners.tsx` | Изменить — добавить колонку freshness |
+| Миграция SQL | Создать — ALTER contacts + CREATE unit_contacts + RLS |
+| `src/pages/PartnerContactDetail.tsx` | Создать — форма внешнего контакта |
+| `src/pages/UnitContactDetail.tsx` | Создать — форма внутреннего контакта |
+| `src/App.tsx` | Изменить — 4 новых маршрута |
+| `src/pages/PartnerDetail.tsx` | Изменить — секция МИЭМ-контактов + клик по строке |
+| `src/pages/UnitDetail.tsx` | Изменить — новая вкладка Контакты |
 
-## Что готово для Phase 2 (LLM)
+## Phase 2 (не реализуется сейчас)
 
-- Поля `generation_status`, `generated_from_prompt`, `generated_from_sources_json`, `needs_human_review`, `last_generated_at` уже в таблице
-- `profile_type = 'llm_draft'` и `source_type = 'llm'` уже в enum
-- `based_on_profile_id` для цепочки версий
-- Section-level provenance можно добавить позже через отдельную таблицу `partner_profile_sections` без изменения текущей схемы
+- Привязка контакта к next_step / гипотезе / встрече
+- История коммуникаций (touchpoint log)
+- Глобальный поиск/фильтр по контактам
+- Массовые операции
 
-## Что НЕ меняется
+## Что не меняется
 
-- Google Sheets sync — не затрагивается
-- Auth / roles / bootstrap — без изменений
-- Существующие таблицы — не модифицируются (поля в `partners` остаются для обратной совместимости)
+- Существующие данные в `contacts` сохраняются (ALTER ADD COLUMN)
+- Google Sheets sync, auth, profiles — без изменений
+- RLS модель консистентна с остальными таблицами
 
