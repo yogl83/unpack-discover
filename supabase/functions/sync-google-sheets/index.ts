@@ -235,7 +235,8 @@ async function importFromSheets(
 
       const rows: string[][] = sheetData.values || [];
       if (rows.length < 2) {
-        result.errors.push("No data rows");
+        result.skipped = 1;
+        result.empty = true;
         stats[cfg.table] = result;
         continue;
       }
