@@ -1,28 +1,25 @@
 
 
-# Исправление импорта contacts и partner_needs из Google Sheets
+# Улучшение отображения пустых листов при синхронизации
 
 ## Проблема
-
-Edge function `sync-google-sheets` не включает `partner_id` в список `importableColumns` для таблиц `contacts` и `partner_needs`. При импорте строка с `contact_id` делает upsert, но `partner_id` отфильтровывается → NOT NULL violation.
-
-Аналогично: `need_id` и `hypothesis_id` могут быть нужны для связанных таблиц (`next_steps`, `evidence`).
+Пустые листы Google Sheets отображаются как ошибки (красный ×1), хотя это нормальная ситуация — данных просто нет.
 
 ## Решение
 
-Добавить обязательные FK-столбцы в `importableColumns` для всех таблиц, где они нужны:
+### 1. Edge function: не считать пустой лист ошибкой
+**Файл:** `supabase/functions/sync-google-sheets/index.ts`
+- Вместо `errors: ["No data rows"]` возвращать `skipped: 1` или `empty: true` с пустым массивом errors
+- Не добавлять "No data rows" в `row_errors`
 
-| Таблица | Добавить в importableColumns |
-|---------|------------------------------|
-| `contacts` | `partner_id` |
-| `partner_needs` | `partner_id`, `owner_contact_id` |
-| `collaboration_hypotheses` | `partner_id`, `need_id`, `unit_id`, `competency_id` |
-| `next_steps` | `entity_type`, `entity_id`, `partner_id`, `need_id`, `hypothesis_id` |
-| `evidence` | `entity_type`, `entity_id`, `source_id`, `partner_id`, `need_id`, `unit_id`, `competency_id`, `hypothesis_id` |
+### 2. UI: показывать пустые листы нейтрально
+**Файл:** `src/components/AdminSync.tsx`
+- Если таблица пуста (0 inserted, 0 updated, 0 errors) — показывать серый "—" или "Пусто" вместо красного ×
+- Красный × оставить только для реальных ошибок (constraint violations и т.п.)
 
 ## Файлы
-
-- `supabase/functions/sync-google-sheets/index.ts` — обновить `importableColumns` для 5 таблиц
-
-После изменения — передеплой edge function и повторный импорт.
+| Файл | Изменение |
+|------|-----------|
+| `supabase/functions/sync-google-sheets/index.ts` | Не записывать "No data rows" как ошибку |
+| `src/components/AdminSync.tsx` | Нейтральное отображение пустых таблиц |
 
