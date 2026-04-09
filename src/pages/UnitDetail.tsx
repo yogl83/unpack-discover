@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -47,6 +47,12 @@ export default function UnitDetail() {
   const { data: portfolio } = useQuery({
     queryKey: ["unit-portfolio", id],
     queryFn: async () => { const { data, error } = await supabase.from("unit_portfolio_items").select("*").eq("unit_id", id!).order("year_from", { ascending: false }); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: unitContacts } = useQuery({
+    queryKey: ["unit-contacts", id],
+    queryFn: async () => { const { data, error } = await supabase.from("unit_contacts").select("*").eq("unit_id", id!).order("is_primary", { ascending: false }); if (error) throw error; return data; },
     enabled: !isNew,
   });
 
@@ -100,6 +106,10 @@ export default function UnitDetail() {
               <TabsTrigger value="portfolio" className="gap-1.5">
                 <Briefcase className="h-3.5 w-3.5" />Портфолио
                 {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
+              </TabsTrigger>
+              <TabsTrigger value="contacts" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" />Контакты
+                {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
               </TabsTrigger>
             </>
           )}
@@ -220,6 +230,37 @@ export default function UnitDetail() {
                         <TableCell className="text-muted-foreground">{p.item_type || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{p.organization_name || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{p.year_from ? `${p.year_from}${p.year_to ? `–${p.year_to}` : "–н.в."}` : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        )}
+
+        {!isNew && (
+          <TabsContent value="contacts" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Контакты коллектива</h2>
+              {canEdit && <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
+            </div>
+            {!unitContacts?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>ФИО</TableHead><TableHead>Должность</TableHead><TableHead>Роль</TableHead><TableHead>Email</TableHead><TableHead>Основной</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {unitContacts.map(c => (
+                      <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
+                        <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
+                        <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
