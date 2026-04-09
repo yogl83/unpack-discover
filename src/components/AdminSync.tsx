@@ -288,16 +288,18 @@ export default function AdminSync() {
             {lastSync.action === "import" && lastSync.stats && (
               <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
                 {Object.entries(lastSync.stats as Record<string, any>).map(([table, s]) => {
-                  const stat = s as { inserted?: number; updated?: number; skipped?: number; errors?: string[] };
+                  const stat = s as { inserted?: number; updated?: number; skipped?: number; errors?: string[]; empty?: boolean };
                   const tableLabel = TABLES.find(t => t.key === table)?.label || table;
                   const hasErrors = (stat.errors?.length || 0) > 0;
+                  const isEmpty = stat.empty === true;
                   return (
                     <div key={table} className={`rounded border p-2 text-xs ${hasErrors ? "border-destructive/50" : ""}`}>
                       <p className="font-medium">{tableLabel}</p>
                       <div className="flex gap-2 mt-1 text-muted-foreground">
-                        {(stat.inserted || 0) > 0 && <span className="text-green-600">+{stat.inserted}</span>}
-                        {(stat.updated || 0) > 0 && <span className="text-blue-600">↻{stat.updated}</span>}
-                        {(stat.skipped || 0) > 0 && <span>⊘{stat.skipped}</span>}
+                        {isEmpty && <span className="text-muted-foreground">— Пусто</span>}
+                        {!isEmpty && (stat.inserted || 0) > 0 && <span className="text-green-600">+{stat.inserted}</span>}
+                        {!isEmpty && (stat.updated || 0) > 0 && <span className="text-blue-600">↻{stat.updated}</span>}
+                        {!isEmpty && (stat.skipped || 0) > 0 && <span>⊘{stat.skipped}</span>}
                         {hasErrors && <span className="text-destructive">✕{stat.errors!.length}</span>}
                       </div>
                     </div>
