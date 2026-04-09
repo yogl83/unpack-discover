@@ -25,6 +25,8 @@ import Sources from "@/pages/Sources";
 import SourceDetail from "@/pages/SourceDetail";
 import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
+import ExternalContacts from "@/pages/ExternalContacts";
+import InternalContacts from "@/pages/InternalContacts";
 import Admin from "@/pages/Admin";
 import ResetPassword from "@/pages/ResetPassword";
 import Bootstrap from "@/pages/Bootstrap";
@@ -65,6 +67,8 @@ const App = () => (
               <Route path="/sources/:id" element={<SourceDetail />} />
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/evidence/:id" element={<EvidenceDetail />} />
+              <Route path="/contacts/external" element={<ExternalContacts />} />
+              <Route path="/contacts/internal" element={<InternalContacts />} />
               <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />

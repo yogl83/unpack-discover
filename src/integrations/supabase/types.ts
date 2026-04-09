@@ -387,6 +387,7 @@ export type Database = {
           external_source: string | null
           industry_fit: string | null
           last_synced_at: string | null
+          lead_contact_id: string | null
           lead_name: string | null
           notes: string | null
           readiness_level: string | null
@@ -409,6 +410,7 @@ export type Database = {
           external_source?: string | null
           industry_fit?: string | null
           last_synced_at?: string | null
+          lead_contact_id?: string | null
           lead_name?: string | null
           notes?: string | null
           readiness_level?: string | null
@@ -431,6 +433,7 @@ export type Database = {
           external_source?: string | null
           industry_fit?: string | null
           last_synced_at?: string | null
+          lead_contact_id?: string | null
           lead_name?: string | null
           notes?: string | null
           readiness_level?: string | null
@@ -442,7 +445,15 @@ export type Database = {
           updated_at?: string
           value_chain_role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "miem_units_lead_contact_id_fkey"
+            columns: ["lead_contact_id"]
+            isOneToOne: false
+            referencedRelation: "unit_contacts"
+            referencedColumns: ["unit_contact_id"]
+          },
+        ]
       }
       next_steps: {
         Row: {
@@ -1066,6 +1077,67 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      unit_contact_memberships: {
+        Row: {
+          created_at: string
+          is_lead: boolean
+          is_primary: boolean
+          member_role: string
+          membership_id: string
+          notes: string | null
+          sort_order: number
+          unit_contact_id: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_lead?: boolean
+          is_primary?: boolean
+          member_role?: string
+          membership_id?: string
+          notes?: string | null
+          sort_order?: number
+          unit_contact_id: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_lead?: boolean
+          is_primary?: boolean
+          member_role?: string
+          membership_id?: string
+          notes?: string | null
+          sort_order?: number
+          unit_contact_id?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_contact_memberships_unit_contact_id_fkey"
+            columns: ["unit_contact_id"]
+            isOneToOne: false
+            referencedRelation: "unit_contacts"
+            referencedColumns: ["unit_contact_id"]
+          },
+          {
+            foreignKeyName: "unit_contact_memberships_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "unit_contact_memberships_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
       }
       unit_contacts: {
         Row: {
