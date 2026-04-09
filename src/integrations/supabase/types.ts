@@ -600,6 +600,212 @@ export type Database = {
           },
         ]
       }
+      partner_profile_files: {
+        Row: {
+          created_at: string
+          file_id: string
+          file_size: number | null
+          is_source_document: boolean
+          mime_type: string | null
+          notes: string | null
+          original_filename: string
+          partner_id: string
+          profile_id: string
+          storage_bucket: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          is_source_document?: boolean
+          mime_type?: string | null
+          notes?: string | null
+          original_filename: string
+          partner_id: string
+          profile_id: string
+          storage_bucket?: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          is_source_document?: boolean
+          mime_type?: string | null
+          notes?: string | null
+          original_filename?: string
+          partner_id?: string
+          profile_id?: string
+          storage_bucket?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_profile_files_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_profile_files_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_profile_files_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "partner_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      partner_profiles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          based_on_profile_id: string | null
+          business_scale: string | null
+          change_summary: string | null
+          collaboration_opportunities: string | null
+          company_overview: string | null
+          created_at: string
+          created_by: string | null
+          current_relationship_with_miem: string | null
+          generated_from_prompt: string | null
+          generated_from_sources_json: Json | null
+          generation_status: string | null
+          is_current: boolean
+          key_events_and_touchpoints: string | null
+          last_generated_at: string | null
+          needs_human_review: boolean | null
+          partner_id: string
+          profile_date: string | null
+          profile_id: string
+          profile_type: string
+          recent_news_and_plans: string | null
+          recommended_next_steps: string | null
+          references_json: Json
+          relationship_with_other_universities: string | null
+          risks_and_constraints: string | null
+          source_type: string
+          status: string
+          strategic_priorities: string | null
+          summary_short: string | null
+          talent_needs: string | null
+          technology_focus: string | null
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          based_on_profile_id?: string | null
+          business_scale?: string | null
+          change_summary?: string | null
+          collaboration_opportunities?: string | null
+          company_overview?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_relationship_with_miem?: string | null
+          generated_from_prompt?: string | null
+          generated_from_sources_json?: Json | null
+          generation_status?: string | null
+          is_current?: boolean
+          key_events_and_touchpoints?: string | null
+          last_generated_at?: string | null
+          needs_human_review?: boolean | null
+          partner_id: string
+          profile_date?: string | null
+          profile_id?: string
+          profile_type?: string
+          recent_news_and_plans?: string | null
+          recommended_next_steps?: string | null
+          references_json?: Json
+          relationship_with_other_universities?: string | null
+          risks_and_constraints?: string | null
+          source_type?: string
+          status?: string
+          strategic_priorities?: string | null
+          summary_short?: string | null
+          talent_needs?: string | null
+          technology_focus?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          based_on_profile_id?: string | null
+          business_scale?: string | null
+          change_summary?: string | null
+          collaboration_opportunities?: string | null
+          company_overview?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_relationship_with_miem?: string | null
+          generated_from_prompt?: string | null
+          generated_from_sources_json?: Json | null
+          generation_status?: string | null
+          is_current?: boolean
+          key_events_and_touchpoints?: string | null
+          last_generated_at?: string | null
+          needs_human_review?: boolean | null
+          partner_id?: string
+          profile_date?: string | null
+          profile_id?: string
+          profile_type?: string
+          recent_news_and_plans?: string | null
+          recommended_next_steps?: string | null
+          references_json?: Json
+          relationship_with_other_universities?: string | null
+          risks_and_constraints?: string | null
+          source_type?: string
+          status?: string
+          strategic_priorities?: string | null
+          summary_short?: string | null
+          talent_needs?: string | null
+          technology_focus?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_profiles_based_on_profile_id_fkey"
+            columns: ["based_on_profile_id"]
+            isOneToOne: false
+            referencedRelation: "partner_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "partner_profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_overview"
+            referencedColumns: ["partner_id"]
+          },
+          {
+            foreignKeyName: "partner_profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           business_model: string | null
