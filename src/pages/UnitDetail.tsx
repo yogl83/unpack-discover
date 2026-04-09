@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -47,6 +47,12 @@ export default function UnitDetail() {
   const { data: portfolio } = useQuery({
     queryKey: ["unit-portfolio", id],
     queryFn: async () => { const { data, error } = await supabase.from("unit_portfolio_items").select("*").eq("unit_id", id!).order("year_from", { ascending: false }); if (error) throw error; return data; },
+    enabled: !isNew,
+  });
+
+  const { data: unitContacts } = useQuery({
+    queryKey: ["unit-contacts", id],
+    queryFn: async () => { const { data, error } = await supabase.from("unit_contacts").select("*").eq("unit_id", id!).order("is_primary", { ascending: false }); if (error) throw error; return data; },
     enabled: !isNew,
   });
 
@@ -100,6 +106,10 @@ export default function UnitDetail() {
               <TabsTrigger value="portfolio" className="gap-1.5">
                 <Briefcase className="h-3.5 w-3.5" />Портфолио
                 {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
+              </TabsTrigger>
+              <TabsTrigger value="contacts" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" />Контакты
+                {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
               </TabsTrigger>
             </>
           )}
