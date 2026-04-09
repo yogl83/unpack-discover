@@ -288,7 +288,7 @@ export default function AdminSync() {
             {lastSync.action === "import" && lastSync.stats && (
               <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
                 {Object.entries(lastSync.stats as Record<string, any>).map(([table, s]) => {
-                  const stat = s as { inserted?: number; updated?: number; skipped?: number; errors?: string[] };
+                  const stat = s as { inserted?: number; updated?: number; skipped?: number; errors?: string[]; empty?: boolean };
                   const tableLabel = TABLES.find(t => t.key === table)?.label || table;
                   const hasErrors = (stat.errors?.length || 0) > 0;
                   const isEmpty = stat.empty === true;
