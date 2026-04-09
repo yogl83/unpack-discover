@@ -1,51 +1,28 @@
 
 
-# Подключение домена partnership.miem.online и настройка почты
+# Исправление импорта contacts и partner_needs из Google Sheets
 
-## 1. Подключение домена к Lovable
+## Проблема
 
-В панели DNS у Beget для `partnership.miem.online` нужно изменить записи:
+Edge function `sync-google-sheets` не включает `partner_id` в список `importableColumns` для таблиц `contacts` и `partner_needs`. При импорте строка с `contact_id` делает upsert, но `partner_id` отфильтровывается → NOT NULL violation.
 
-```text
-Текущие записи (удалить/заменить):
-  A    5.101.153.129        ← удалить
+Аналогично: `need_id` и `hypothesis_id` могут быть нужны для связанных таблиц (`next_steps`, `evidence`).
 
-Новые записи (добавить):
-  A    @    185.158.133.1    ← IP Lovable
-  TXT  _lovable  lovable_verify=<код>  ← появится при подключении
-```
+## Решение
 
-**Шаги:**
-1. В Lovable: **Project Settings → Domains → Connect Domain** → ввести `partnership.miem.online`
-2. Lovable покажет точные DNS-записи (A-запись и TXT для верификации)
-3. В Beget: удалить старую A-запись `5.101.153.129`, добавить новую A → `185.158.133.1` и TXT `_lovable` с указанным значением
-4. Если нужен www: добавить также `www.partnership.miem.online` в Lovable и A-запись `www` → `185.158.133.1`
-5. MX-записи (mx1/mx2.beget.com) и SPF — оставить как есть, они для почтовых ящиков Beget и не мешают
+Добавить обязательные FK-столбцы в `importableColumns` для всех таблиц, где они нужны:
 
-DNS-пропагация: до 72 часов, обычно 15-30 минут. SSL выдаётся автоматически.
+| Таблица | Добавить в importableColumns |
+|---------|------------------------------|
+| `contacts` | `partner_id` |
+| `partner_needs` | `partner_id`, `owner_contact_id` |
+| `collaboration_hypotheses` | `partner_id`, `need_id`, `unit_id`, `competency_id` |
+| `next_steps` | `entity_type`, `entity_id`, `partner_id`, `need_id`, `hypothesis_id` |
+| `evidence` | `entity_type`, `entity_id`, `source_id`, `partner_id`, `need_id`, `unit_id`, `competency_id`, `hypothesis_id` |
 
-## 2. Настройка отправки email (уведомления об одобрении)
+## Файлы
 
-После подключения домена можно настроить отправку писем с адреса вроде `noreply@partnership.miem.online`:
+- `supabase/functions/sync-google-sheets/index.ts` — обновить `importableColumns` для 5 таблиц
 
-1. В Lovable откроется диалог настройки email-домена — нужно будет добавить NS-записи для поддомена (например `notify.partnership.miem.online`) в Beget
-2. После верификации DNS — я создам шаблон письма об одобрении и подключу его к потоку approve-user
-
-**Важно:** NS-записи для email-поддомена не конфликтуют с существующими MX-записями, т.к. используется отдельный поддомен.
-
-## Порядок действий
-
-| Шаг | Где | Что делать |
-|-----|-----|-----------|
-| 1 | Lovable | Connect Domain → `partnership.miem.online` |
-| 2 | Beget | Обновить DNS по инструкции из Lovable |
-| 3 | Lovable | Дождаться верификации домена |
-| 4 | Lovable | Настроить email домен (я покажу кнопку) |
-| 5 | Beget | Добавить NS-записи для email поддомена |
-| 6 | Код | Я создам шаблон письма и подключу к approve-user |
-
-## Файлы (после настройки домена)
-
-- Новый шаблон email для уведомления об одобрении
-- Обновление `approve-user` edge function для отправки письма
+После изменения — передеплой edge function и повторный импорт.
 
