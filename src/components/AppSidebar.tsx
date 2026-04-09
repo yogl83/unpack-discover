@@ -1,15 +1,18 @@
 import {
   Building2, ClipboardList, Lightbulb, ArrowRight,
   Users2, Brain, FileText, ShieldCheck, Settings, LayoutDashboard,
+  Contact, ChevronRight,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const navItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
@@ -23,14 +26,20 @@ const navItems = [
   { title: "Подтверждения", url: "/evidence", icon: ShieldCheck },
 ];
 
+const contactSubItems = [
+  { title: "Внешние контакты", url: "/contacts/external" },
+  { title: "Внутренние контакты", url: "/contacts/internal" },
+];
+
 const adminItem = { title: "Администрирование", url: "/admin", icon: Settings };
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  
   const { isAdmin } = useAuth();
-  const allItems = isAdmin ? [...navItems, adminItem] : navItems;
+  const location = useLocation();
+
+  const isContactsActive = location.pathname.startsWith("/contacts/");
 
   return (
     <Sidebar collapsible="icon">
@@ -41,7 +50,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {allItems.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -56,6 +65,57 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Contacts with sub-items */}
+              <Collapsible defaultOpen={isContactsActive} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton className={`hover:bg-sidebar-accent/50 ${isContactsActive ? "bg-sidebar-accent text-sidebar-primary font-medium" : ""}`}>
+                      <Contact className="mr-2 h-4 w-4 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1">Контакты</span>
+                          <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        </>
+                      )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  {!collapsed && (
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {contactSubItems.map((sub) => (
+                          <SidebarMenuSubItem key={sub.url}>
+                            <SidebarMenuSubButton asChild>
+                              <NavLink
+                                to={sub.url}
+                                className="hover:bg-sidebar-accent/50"
+                                activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                              >
+                                {sub.title}
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  )}
+                </SidebarMenuItem>
+              </Collapsible>
+
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={adminItem.url}
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <adminItem.icon className="mr-2 h-4 w-4 shrink-0" />
+                      {!collapsed && <span>{adminItem.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
