@@ -10,6 +10,7 @@ import {
 import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
 
 const statusLabels: Record<string, string> = {
   new: "Новый", in_review: "На рассмотрении", in_progress: "В работе",
@@ -43,6 +44,48 @@ export default function Partners() {
     },
   });
 
+  // Fetch current profiles for freshness indicators
+  const partnerIds = partners?.map(p => p.partner_id).filter(Boolean) as string[] | undefined;
+  const { data: profiles } = useQuery({
+    queryKey: ["partner-profiles-freshness", partnerIds],
+    queryFn: async () => {
+      if (!partnerIds?.length) return [];
+      const { data, error } = await supabase
+        .from("partner_profiles")
+        .select("profile_id, partner_id, status, is_current, updated_at")
+        .in("partner_id", partnerIds)
+        .in("status", ["approved", "draft", "review"])
+        .eq("is_current", true);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!partnerIds?.length,
+  });
+
+  // Also fetch drafts (not is_current) for partners without current profile
+  const { data: drafts } = useQuery({
+    queryKey: ["partner-profiles-drafts", partnerIds],
+    queryFn: async () => {
+      if (!partnerIds?.length) return [];
+      const { data, error } = await supabase
+        .from("partner_profiles")
+        .select("profile_id, partner_id, status, is_current, updated_at")
+        .in("partner_id", partnerIds)
+        .in("status", ["draft", "review"]);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!partnerIds?.length,
+  });
+
+  const getProfileForPartner = (partnerId: string | null) => {
+    if (!partnerId) return null;
+    const current = profiles?.find(p => p.partner_id === partnerId);
+    if (current) return current;
+    const draft = drafts?.find(p => p.partner_id === partnerId);
+    return draft || null;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -65,16 +108,17 @@ export default function Partners() {
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Название</TableHead>
-                <TableHead>Отрасль</TableHead>
-                <TableHead>Город</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Приоритет</TableHead>
-                <TableHead className="text-right">Контакты</TableHead>
-                <TableHead className="text-right">Задачи</TableHead>
-                <TableHead className="text-right">Гипотезы</TableHead>
-              </TableRow>
+             <TableRow>
+                 <TableHead>Название</TableHead>
+                 <TableHead>Профайл</TableHead>
+                 <TableHead>Отрасль</TableHead>
+                 <TableHead>Город</TableHead>
+                 <TableHead>Статус</TableHead>
+                 <TableHead>Приоритет</TableHead>
+                 <TableHead className="text-right">Контакты</TableHead>
+                 <TableHead className="text-right">Задачи</TableHead>
+                 <TableHead className="text-right">Гипотезы</TableHead>
+               </TableRow>
             </TableHeader>
             <TableBody>
               {partners.map((p) => (
@@ -83,8 +127,17 @@ export default function Partners() {
                     <Link to={`/partners/${p.partner_id}`} className="font-medium text-primary hover:underline">
                       {p.partner_name}
                     </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{p.industry || "—"}</TableCell>
+                   </TableCell>
+                   <TableCell>
+                     <ProfileFreshnessBadge
+                       profile={(() => {
+                         const prof = getProfileForPartner(p.partner_id);
+                         return prof ? { status: prof.status, is_current: prof.is_current, updated_at: prof.updated_at } : null;
+                       })()}
+                       compact
+                     />
+                   </TableCell>
+                   <TableCell className="text-muted-foreground">{p.industry || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{p.city || "—"}</TableCell>
                   <TableCell>
                     {p.partner_status && (
