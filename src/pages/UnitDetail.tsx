@@ -11,12 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
 const statusLabels: Record<string, string> = {
   new: "Новая", testing: "Тестируется", confirmed: "Подтверждена", rejected: "Отклонена",
+};
+
+const memberRoleLabels: Record<string, string> = {
+  lead: "Руководитель", deputy: "Заместитель", researcher: "Исследователь",
+  engineer: "Инженер", pm: "PM", expert: "Эксперт", other: "Другой",
 };
 
 export default function UnitDetail() {
@@ -56,19 +61,40 @@ export default function UnitDetail() {
     enabled: !isNew,
   });
 
+  const { data: memberships } = useQuery({
+    queryKey: ["unit-memberships", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unit_contact_memberships")
+        .select("*, unit_contacts(full_name, job_title, email)")
+        .eq("unit_id", id!)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !isNew,
+  });
+
   const [form, setForm] = useState({
     unit_name: "", unit_type: "", lead_name: "", team_summary: "", research_area: "",
     business_problem_focus: "", application_domain: "", industry_fit: "", end_customer_fit: "",
     value_chain_role: "", readiness_level: "", discussion_readiness: "", notes: "",
   });
+  const [leadContactId, setLeadContactId] = useState<string | null>(null);
 
-  useEffect(() => { if (item) setForm(Object.fromEntries(Object.keys(form).map(k => [k, (item as any)[k] || ""])) as any); }, [item]);
+  useEffect(() => {
+    if (item) {
+      setForm(Object.fromEntries(Object.keys(form).map(k => [k, (item as any)[k] || ""])) as any);
+      setLeadContactId((item as any).lead_contact_id || null);
+    }
+  }, [item]);
 
   const save = useMutation({
     mutationFn: async () => {
       if (!form.unit_name) { toast.error("Укажите название"); throw new Error("required"); }
-      if (isNew) { const { error } = await supabase.from("miem_units").insert(form as any); if (error) throw error; }
-      else { const { error } = await supabase.from("miem_units").update(form as any).eq("unit_id", id!); if (error) throw error; }
+      const payload = { ...form, lead_contact_id: leadContactId } as any;
+      if (isNew) { const { error } = await supabase.from("miem_units").insert(payload); if (error) throw error; }
+      else { const { error } = await supabase.from("miem_units").update(payload).eq("unit_id", id!); if (error) throw error; }
     },
     onSuccess: () => { toast.success(isNew ? "Создано" : "Сохранено"); qc.invalidateQueries({ queryKey: ["units"] }); if (isNew) navigate("/units"); },
     onError: (e: any) => toast.error(e.message),
@@ -79,8 +105,60 @@ export default function UnitDetail() {
     onSuccess: () => { toast.success("Удалено"); navigate("/units"); },
   });
 
+  // Membership mutations
+  const [addMemberContact, setAddMemberContact] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState("other");
+
+  const addMembership = useMutation({
+    mutationFn: async () => {
+      if (!addMemberContact) { toast.error("Выберите контакт"); throw new Error("required"); }
+      const { error } = await supabase.from("unit_contact_memberships").insert({
+        unit_id: id!,
+        unit_contact_id: addMemberContact,
+        member_role: addMemberRole,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Участник добавлен");
+      setAddMemberContact("");
+      setAddMemberRole("other");
+      qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeMembership = useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { error } = await supabase.from("unit_contact_memberships").delete().eq("membership_id", membershipId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Участник удалён"); qc.invalidateQueries({ queryKey: ["unit-memberships", id] }); },
+  });
+
+  const setMemberLead = useMutation({
+    mutationFn: async ({ membershipId, contactId }: { membershipId: string; contactId: string }) => {
+      // Reset all is_lead for this unit
+      await supabase.from("unit_contact_memberships").update({ is_lead: false } as any).eq("unit_id", id!);
+      // Set this one
+      await supabase.from("unit_contact_memberships").update({ is_lead: true, member_role: "lead" } as any).eq("membership_id", membershipId);
+      // Update miem_units.lead_contact_id
+      await supabase.from("miem_units").update({ lead_contact_id: contactId } as any).eq("unit_id", id!);
+    },
+    onSuccess: () => {
+      toast.success("Руководитель назначен");
+      qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
+      qc.invalidateQueries({ queryKey: ["unit", id] });
+    },
+  });
+
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
+
+  // Contacts not yet in memberships
+  const availableContacts = unitContacts?.filter(
+    uc => !memberships?.some(m => m.unit_contact_id === uc.unit_contact_id)
+  );
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -132,7 +210,23 @@ export default function UnitDetail() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Руководитель</Label><Input value={form.lead_name} onChange={e => set("lead_name", e.target.value)} disabled={!canEdit} /></div>
+              <div className="space-y-2">
+                <Label>Руководитель</Label>
+                {!isNew && unitContacts?.length ? (
+                  <Select value={leadContactId || ""} onValueChange={v => setLeadContactId(v || null)} disabled={!canEdit}>
+                    <SelectTrigger><SelectValue placeholder={form.lead_name || "Выберите контакт"} /></SelectTrigger>
+                    <SelectContent>
+                      {unitContacts.map(uc => (
+                        <SelectItem key={uc.unit_contact_id} value={uc.unit_contact_id}>
+                          {uc.full_name}{uc.job_title ? ` — ${uc.job_title}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.lead_name} onChange={e => set("lead_name", e.target.value)} disabled={!canEdit} placeholder={isNew ? "Введите ФИО" : "Нет контактов — добавьте во вкладке Контакты"} />
+                )}
+              </div>
               <div className="space-y-2"><Label>Область исследований</Label><Input value={form.research_area} onChange={e => set("research_area", e.target.value)} disabled={!canEdit} /></div>
               <div className="space-y-2"><Label>Область применения</Label><Input value={form.application_domain} onChange={e => set("application_domain", e.target.value)} disabled={!canEdit} /></div>
               <div className="space-y-2"><Label>Отрасль</Label><Input value={form.industry_fit} onChange={e => set("industry_fit", e.target.value)} disabled={!canEdit} /></div>
@@ -148,6 +242,7 @@ export default function UnitDetail() {
           {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
         </TabsContent>
 
+        {/* Competencies tab */}
         {!isNew && (
           <TabsContent value="competencies" className="space-y-4">
             <div className="flex items-center justify-between">
@@ -178,6 +273,7 @@ export default function UnitDetail() {
           </TabsContent>
         )}
 
+        {/* Hypotheses tab */}
         {!isNew && (
           <TabsContent value="hypotheses" className="space-y-4">
             <div className="flex items-center justify-between">
@@ -208,6 +304,7 @@ export default function UnitDetail() {
           </TabsContent>
         )}
 
+        {/* Portfolio tab */}
         {!isNew && (
           <TabsContent value="portfolio" className="space-y-4">
             <div className="flex items-center justify-between">
@@ -239,34 +336,118 @@ export default function UnitDetail() {
           </TabsContent>
         )}
 
+        {/* Contacts + Team Composition tab */}
         {!isNew && (
-          <TabsContent value="contacts" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Контакты коллектива</h2>
-              {canEdit && <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
-            </div>
-            {!unitContacts?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>ФИО</TableHead><TableHead>Должность</TableHead><TableHead>Роль</TableHead><TableHead>Email</TableHead><TableHead>Основной</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {unitContacts.map(c => (
-                      <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
-                        <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                        <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+          <TabsContent value="contacts" className="space-y-6">
+            {/* Team Composition */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Состав коллектива
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!memberships?.length ? (
+                  <p className="text-muted-foreground text-sm py-4 text-center">Состав не определён</p>
+                ) : (
+                  <div className="rounded-lg border">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>ФИО</TableHead><TableHead>Роль</TableHead><TableHead>Руководитель</TableHead><TableHead>Действия</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {memberships.map(m => (
+                          <TableRow key={m.membership_id}>
+                            <TableCell className="font-medium">
+                              <Link to={`/units/${id}/contacts/${m.unit_contact_id}`} className="text-primary hover:underline">
+                                {(m.unit_contacts as any)?.full_name || "—"}
+                              </Link>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{memberRoleLabels[m.member_role] || m.member_role}</Badge>
+                            </TableCell>
+                            <TableCell>{m.is_lead ? <Badge>Да</Badge> : "—"}</TableCell>
+                            <TableCell className="flex gap-1">
+                              {canEdit && !m.is_lead && (
+                                <Button size="sm" variant="ghost" onClick={() => setMemberLead.mutate({ membershipId: m.membership_id, contactId: m.unit_contact_id })}>
+                                  Назначить рук.
+                                </Button>
+                              )}
+                              {isAdmin && (
+                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("Убрать из состава?")) removeMembership.mutate(m.membership_id); }}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {canEdit && availableContacts && availableContacts.length > 0 && (
+                  <div className="flex items-end gap-3 pt-2">
+                    <div className="space-y-1 flex-1">
+                      <Label className="text-xs">Контакт</Label>
+                      <Select value={addMemberContact} onValueChange={setAddMemberContact}>
+                        <SelectTrigger><SelectValue placeholder="Выберите контакт" /></SelectTrigger>
+                        <SelectContent>
+                          {availableContacts.map(uc => (
+                            <SelectItem key={uc.unit_contact_id} value={uc.unit_contact_id}>
+                              {uc.full_name}{uc.job_title ? ` — ${uc.job_title}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1 w-[160px]">
+                      <Label className="text-xs">Роль</Label>
+                      <Select value={addMemberRole} onValueChange={setAddMemberRole}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(memberRoleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button size="sm" onClick={() => addMembership.mutate()} disabled={addMembership.isPending}>
+                      <Plus className="mr-1 h-4 w-4" />Добавить
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Contacts list */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Контакты коллектива</h2>
+                {canEdit && <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
               </div>
-            )}
+              {!unitContacts?.length ? (
+                <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
+              ) : (
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>ФИО</TableHead><TableHead>Должность</TableHead><TableHead>Роль</TableHead><TableHead>Email</TableHead><TableHead>Основной</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {unitContacts.map(c => (
+                        <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
+                          <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
+                          <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </TabsContent>
         )}
       </Tabs>
