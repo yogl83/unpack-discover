@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, Trash2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -28,6 +30,16 @@ export default function HypothesisDetail() {
     queryKey: ["hypothesis", id],
     queryFn: async () => { const { data, error } = await supabase.from("collaboration_hypotheses").select("*").eq("hypothesis_id", id!).single(); if (error) throw error; return data; },
     enabled: !isNew,
+  });
+
+  const { data: hypothesisEvidence } = useQuery({
+    queryKey: ["hypothesis-evidence", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("evidence").select("*, sources(title)").eq("hypothesis_id", id!).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !isNew && !!id,
   });
 
   const [form, setForm] = useState({
@@ -191,6 +203,51 @@ export default function HypothesisDetail() {
         <Button onClick={() => save.mutate()} disabled={!form.partner_id || !form.need_id || save.isPending}>
           <Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}
         </Button>
+      )}
+
+      {/* === EVIDENCE BLOCK === */}
+      {!isNew && id && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Подтверждения</CardTitle>
+              {hypothesisEvidence?.length ? (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypothesisEvidence.length}</Badge>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!hypothesisEvidence?.length ? (
+              <p className="text-muted-foreground text-sm py-4 text-center">Нет подтверждений для этой гипотезы</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Поле</TableHead>
+                      <TableHead>Значение</TableHead>
+                      <TableHead>Уверенность</TableHead>
+                      <TableHead>Источник</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {hypothesisEvidence.map(e => (
+                      <TableRow key={e.evidence_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/evidence/${e.evidence_id}`)}>
+                        <TableCell className="font-medium">{e.field_name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-[200px] truncate">{e.field_value || "—"}</TableCell>
+                        <TableCell>
+                          {e.confidence_level ? <Badge variant="outline">{e.confidence_level}</Badge> : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{(e.sources as any)?.title || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

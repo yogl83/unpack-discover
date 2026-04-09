@@ -65,7 +65,6 @@ export default function PartnerContactDetail() {
     email: "",
     phone: "",
     telegram: "",
-    linkedin: "",
     contact_role: "",
     contact_kind: "official",
     influence_level: "",
@@ -83,7 +82,6 @@ export default function PartnerContactDetail() {
         email: item.email || "",
         phone: item.phone || "",
         telegram: (item as any).telegram || "",
-        linkedin: (item as any).linkedin || "",
         contact_role: item.contact_role || "",
         contact_kind: (item as any).contact_kind || "official",
         influence_level: item.influence_level || "",
@@ -173,10 +171,6 @@ export default function PartnerContactDetail() {
           <div className="space-y-2">
             <Label>Telegram</Label>
             <Input value={form.telegram} onChange={e => set("telegram", e.target.value)} disabled={!canEdit} placeholder="@username" />
-          </div>
-          <div className="space-y-2">
-            <Label>LinkedIn</Label>
-            <Input value={form.linkedin} onChange={e => set("linkedin", e.target.value)} disabled={!canEdit} placeholder="URL профиля" />
           </div>
           <div className="space-y-2">
             <Label>Тип контакта</Label>
