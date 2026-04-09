@@ -67,19 +67,19 @@ const TABLE_CONFIGS: TableConfig[] = [
   {
     table: "contacts", sheetName: "Contacts", idColumn: "contact_id",
     columns: ["contact_id","partner_id","full_name","job_title","department_name","email","phone","contact_role","influence_level","relationship_status","last_contact_date","is_primary","notes"],
-    importableColumns: ["full_name","job_title","department_name","email","phone","contact_role","influence_level","relationship_status","last_contact_date","is_primary","notes"],
+    importableColumns: ["partner_id","full_name","job_title","department_name","email","phone","contact_role","influence_level","relationship_status","last_contact_date","is_primary","notes"],
     supportsExternalCreate: false,
   },
   {
     table: "partner_needs", sheetName: "Needs", idColumn: "need_id",
     columns: ["need_id","partner_id","title","description","need_type","business_context","expected_result","time_horizon","maturity_level","need_status","priority_level","budget_signal","data_access_signal","recommended_collaboration_format","owner_contact_id","notes"],
-    importableColumns: ["title","description","need_type","business_context","expected_result","time_horizon","maturity_level","need_status","priority_level","budget_signal","data_access_signal","recommended_collaboration_format","notes"],
+    importableColumns: ["partner_id","owner_contact_id","title","description","need_type","business_context","expected_result","time_horizon","maturity_level","need_status","priority_level","budget_signal","data_access_signal","recommended_collaboration_format","notes"],
     supportsExternalCreate: false,
   },
   {
     table: "collaboration_hypotheses", sheetName: "Hypotheses", idColumn: "hypothesis_id",
     columns: ["hypothesis_id","partner_id","need_id","unit_id","competency_id","title","rationale","relevance_score","confidence_level","recommended_collaboration_format","recommended_entry_point","hypothesis_status","owner_user_id","notes"],
-    importableColumns: ["title","rationale","relevance_score","confidence_level","recommended_collaboration_format","recommended_entry_point","hypothesis_status","notes"],
+    importableColumns: ["partner_id","need_id","unit_id","competency_id","title","rationale","relevance_score","confidence_level","recommended_collaboration_format","recommended_entry_point","hypothesis_status","notes"],
     supportsExternalCreate: false,
   },
   {
@@ -103,13 +103,13 @@ const TABLE_CONFIGS: TableConfig[] = [
   {
     table: "evidence", sheetName: "Evidence", idColumn: "evidence_id",
     columns: ["evidence_id","entity_type","entity_id","partner_id","need_id","unit_id","competency_id","hypothesis_id","field_name","field_value","data_collection_method","source_id","confidence_level","requires_interview_validation","analyst_comment"],
-    importableColumns: ["field_name","field_value","data_collection_method","confidence_level","requires_interview_validation","analyst_comment"],
+    importableColumns: ["entity_type","entity_id","source_id","partner_id","need_id","unit_id","competency_id","hypothesis_id","field_name","field_value","data_collection_method","confidence_level","requires_interview_validation","analyst_comment"],
     supportsExternalCreate: false,
   },
   {
     table: "next_steps", sheetName: "NextSteps", idColumn: "next_step_id",
     columns: ["next_step_id","entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","owner_user_id","due_date","next_step_status","result","notes"],
-    importableColumns: ["action_title","action_description","due_date","next_step_status","result","notes"],
+    importableColumns: ["entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","due_date","next_step_status","result","notes"],
     supportsExternalCreate: false,
   },
 ];
