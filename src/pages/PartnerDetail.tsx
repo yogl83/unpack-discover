@@ -278,45 +278,55 @@ export default function PartnerDetail() {
 
         {/* === CONTACTS TAB === */}
         {!isNew && (
-          <TabsContent value="contacts" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Контактные лица</h2>
-              {canEdit && (
-                <Button size="sm" variant="outline" onClick={() => navigate(`/partners/${id}/contacts/new`)}>
-                  <Plus className="mr-1 h-4 w-4" />Добавить
-                </Button>
+          <TabsContent value="contacts" className="space-y-6">
+            {/* Partner contacts */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Контакты партнёра</h2>
+                {canEdit && (
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/partners/${id}/contacts/new`)}>
+                    <Plus className="mr-1 h-4 w-4" />Добавить
+                  </Button>
+                )}
+              </div>
+              {!contacts?.length ? (
+                <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
+              ) : (
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ФИО</TableHead>
+                        <TableHead>Должность</TableHead>
+                        <TableHead>Тип</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Телефон</TableHead>
+                        <TableHead>Основной</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contacts.map(c => (
+                        <TableRow key={c.contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/partners/${id}/contacts/${c.contact_id}`)}>
+                          <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {{"official":"Офиц.","warm":"Тёплый","operational":"Операт.","decision_maker":"ЛПР","technical":"Техн.","other":"Другой"}[(c as any).contact_kind] || (c as any).contact_kind || "—"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
+                          <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </div>
-            {!contacts?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ФИО</TableHead>
-                      <TableHead>Должность</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Телефон</TableHead>
-                      <TableHead>Роль</TableHead>
-                      <TableHead>Основной</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contacts.map(c => (
-                      <TableRow key={c.contact_id}>
-                        <TableCell className="font-medium">{c.full_name}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
-                        <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+
+            {/* MIEM contacts (read-only, from linked units via hypotheses) */}
+            <MiemContactsBlock partnerId={id!} />
           </TabsContent>
         )}
 

@@ -9,6 +9,8 @@ import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Partners from "@/pages/Partners";
 import PartnerDetail from "@/pages/PartnerDetail";
+import PartnerContactDetail from "@/pages/PartnerContactDetail";
+import UnitContactDetail from "@/pages/UnitContactDetail";
 import Needs from "@/pages/Needs";
 import NeedDetail from "@/pages/NeedDetail";
 import Hypotheses from "@/pages/Hypotheses";
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/partners/:id" element={<PartnerDetail />} />
+              <Route path="/partners/:partnerId/contacts/new" element={<PartnerContactDetail />} />
+              <Route path="/partners/:partnerId/contacts/:contactId" element={<PartnerContactDetail />} />
               <Route path="/needs" element={<Needs />} />
               <Route path="/needs/:id" element={<NeedDetail />} />
               <Route path="/hypotheses" element={<Hypotheses />} />
@@ -53,6 +57,8 @@ const App = () => (
               <Route path="/next-steps/:id" element={<NextStepDetail />} />
               <Route path="/units" element={<Units />} />
               <Route path="/units/:id" element={<UnitDetail />} />
+              <Route path="/units/:unitId/contacts/new" element={<UnitContactDetail />} />
+              <Route path="/units/:unitId/contacts/:contactId" element={<UnitContactDetail />} />
               <Route path="/competencies" element={<Competencies />} />
               <Route path="/competencies/:id" element={<CompetencyDetail />} />
               <Route path="/sources" element={<Sources />} />
