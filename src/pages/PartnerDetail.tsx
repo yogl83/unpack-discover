@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb, FileText } from "lucide-react";
+import { PartnerProfileTab } from "@/components/partner/PartnerProfileTab";
+import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -36,7 +38,7 @@ export default function PartnerDetail() {
       if (error) throw error;
       return data;
     },
-    enabled: !isNew,
+    enabled: !isNew && !!id,
   });
 
   // Related data queries
@@ -131,6 +133,9 @@ export default function PartnerDetail() {
           <TabsTrigger value="info">Информация</TabsTrigger>
           {!isNew && (
             <>
+              <TabsTrigger value="profile" className="gap-1.5">
+                <FileText className="h-3.5 w-3.5" />Профайл
+              </TabsTrigger>
               <TabsTrigger value="contacts" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" />Контакты
                 {contacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{contacts.length}</Badge> : null}
@@ -255,6 +260,21 @@ export default function PartnerDetail() {
             </Button>
           )}
         </TabsContent>
+
+        {/* === PROFILE TAB === */}
+        {!isNew && id && (
+          <TabsContent value="profile">
+            <PartnerProfileTab
+              partnerId={id}
+              partnerName={form.partner_name}
+              legacyProfile={{
+                company_profile: form.company_profile,
+                technology_profile: form.technology_profile,
+                strategic_priorities: form.strategic_priorities,
+              }}
+            />
+          </TabsContent>
+        )}
 
         {/* === CONTACTS TAB === */}
         {!isNew && (
