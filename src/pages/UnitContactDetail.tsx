@@ -25,9 +25,12 @@ const roleLabels: Record<string, string> = {
 export default function UnitContactDetail() {
   const { unitId, contactId } = useParams();
   const isNew = contactId === "new" || !contactId;
+  const standalone = !unitId;
   const navigate = useNavigate();
   const { canEdit, isAdmin } = useAuth();
   const qc = useQueryClient();
+
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
 
   const { data: unit } = useQuery({
     queryKey: ["unit", unitId],
@@ -37,6 +40,16 @@ export default function UnitContactDetail() {
       return data;
     },
     enabled: !!unitId,
+  });
+
+  const { data: allUnits } = useQuery({
+    queryKey: ["units-list-for-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("miem_units").select("unit_id, unit_name").order("unit_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: standalone,
   });
 
   const { data: item, isLoading } = useQuery({
@@ -74,13 +87,18 @@ export default function UnitContactDetail() {
         availability_notes: item.availability_notes || "",
         notes: item.notes || "",
       });
+      if (standalone && item.unit_id) {
+        setSelectedUnitId(item.unit_id);
+      }
     }
-  }, [item]);
+  }, [item, standalone]);
+
+  const effectiveUnitId = standalone ? (selectedUnitId || null) : unitId!;
 
   const save = useMutation({
     mutationFn: async () => {
       if (!form.full_name.trim()) { toast.error("Укажите ФИО"); throw new Error("required"); }
-      const payload = { ...form, unit_id: unitId! };
+      const payload = { ...form, unit_id: effectiveUnitId } as any;
       if (isNew) {
         const { error } = await supabase.from("unit_contacts").insert(payload);
         if (error) throw error;
@@ -91,8 +109,13 @@ export default function UnitContactDetail() {
     },
     onSuccess: () => {
       toast.success(isNew ? "Контакт создан" : "Сохранено");
-      qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
-      navigate(`/units/${unitId}`);
+      if (standalone) {
+        qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
+        navigate("/contacts/internal");
+      } else {
+        qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
+        navigate(`/units/${unitId}`);
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -104,12 +127,18 @@ export default function UnitContactDetail() {
     },
     onSuccess: () => {
       toast.success("Контакт удалён");
-      qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
-      navigate(`/units/${unitId}`);
+      if (standalone) {
+        qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
+        navigate("/contacts/internal");
+      } else {
+        qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
+        navigate(`/units/${unitId}`);
+      }
     },
   });
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const backLink = standalone ? "/contacts/internal" : `/units/${unitId}`;
 
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
@@ -117,10 +146,12 @@ export default function UnitContactDetail() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link to={`/units/${unitId}`}><ArrowLeft className="h-4 w-4" /></Link>
+          <Link to={backLink}><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
-          <p className="text-sm text-muted-foreground">{unit?.unit_name || "Коллектив"} → Контакты</p>
+          <p className="text-sm text-muted-foreground">
+            {standalone ? "Внутренние контакты" : `${unit?.unit_name || "Коллектив"} → Контакты`}
+          </p>
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт МИЭМ" : form.full_name}</h1>
         </div>
         {!isNew && isAdmin && (
@@ -133,6 +164,19 @@ export default function UnitContactDetail() {
       <Card>
         <CardHeader><CardTitle>Контактная информация</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          {standalone && (
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Коллектив</Label>
+              <Select value={selectedUnitId} onValueChange={setSelectedUnitId} disabled={!canEdit}>
+                <SelectTrigger><SelectValue placeholder="Без привязки (можно выбрать позже)" /></SelectTrigger>
+                <SelectContent>
+                  {allUnits?.map(u => (
+                    <SelectItem key={u.unit_id} value={u.unit_id}>{u.unit_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2 sm:col-span-2">
             <Label>ФИО *</Label>
             <Input value={form.full_name} onChange={e => set("full_name", e.target.value)} disabled={!canEdit} />

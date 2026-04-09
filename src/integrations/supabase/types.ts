@@ -196,7 +196,7 @@ export type Database = {
           last_interaction_at: string | null
           linkedin: string | null
           notes: string | null
-          partner_id: string
+          partner_id: string | null
           phone: string | null
           relationship_status: string | null
           telegram: string | null
@@ -217,7 +217,7 @@ export type Database = {
           last_interaction_at?: string | null
           linkedin?: string | null
           notes?: string | null
-          partner_id: string
+          partner_id?: string | null
           phone?: string | null
           relationship_status?: string | null
           telegram?: string | null
@@ -238,7 +238,7 @@ export type Database = {
           last_interaction_at?: string | null
           linkedin?: string | null
           notes?: string | null
-          partner_id?: string
+          partner_id?: string | null
           phone?: string | null
           relationship_status?: string | null
           telegram?: string | null
@@ -1152,7 +1152,7 @@ export type Database = {
           phone: string | null
           telegram: string | null
           unit_contact_id: string
-          unit_id: string
+          unit_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1167,7 +1167,7 @@ export type Database = {
           phone?: string | null
           telegram?: string | null
           unit_contact_id?: string
-          unit_id: string
+          unit_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1182,7 +1182,7 @@ export type Database = {
           phone?: string | null
           telegram?: string | null
           unit_contact_id?: string
-          unit_id?: string
+          unit_id?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -68,7 +68,11 @@ const App = () => (
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/evidence/:id" element={<EvidenceDetail />} />
               <Route path="/contacts/external" element={<ExternalContacts />} />
+              <Route path="/contacts/external/new" element={<PartnerContactDetail />} />
+              <Route path="/contacts/external/:contactId" element={<PartnerContactDetail />} />
               <Route path="/contacts/internal" element={<InternalContacts />} />
+              <Route path="/contacts/internal/new" element={<UnitContactDetail />} />
+              <Route path="/contacts/internal/:contactId" element={<UnitContactDetail />} />
               <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
