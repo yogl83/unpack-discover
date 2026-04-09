@@ -183,6 +183,7 @@ export type Database = {
       contacts: {
         Row: {
           contact_id: string
+          contact_kind: string
           contact_role: string | null
           created_at: string
           department_name: string | null
@@ -192,14 +193,18 @@ export type Database = {
           is_primary: boolean
           job_title: string | null
           last_contact_date: string | null
+          last_interaction_at: string | null
+          linkedin: string | null
           notes: string | null
           partner_id: string
           phone: string | null
           relationship_status: string | null
+          telegram: string | null
           updated_at: string
         }
         Insert: {
           contact_id?: string
+          contact_kind?: string
           contact_role?: string | null
           created_at?: string
           department_name?: string | null
@@ -209,14 +214,18 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           last_contact_date?: string | null
+          last_interaction_at?: string | null
+          linkedin?: string | null
           notes?: string | null
           partner_id: string
           phone?: string | null
           relationship_status?: string | null
+          telegram?: string | null
           updated_at?: string
         }
         Update: {
           contact_id?: string
+          contact_kind?: string
           contact_role?: string | null
           created_at?: string
           department_name?: string | null
@@ -226,10 +235,13 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           last_contact_date?: string | null
+          last_interaction_at?: string | null
+          linkedin?: string | null
           notes?: string | null
           partner_id?: string
           phone?: string | null
           relationship_status?: string | null
+          telegram?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1054,6 +1066,69 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      unit_contacts: {
+        Row: {
+          availability_notes: string | null
+          contact_role: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          is_primary: boolean
+          job_title: string | null
+          notes: string | null
+          phone: string | null
+          telegram: string | null
+          unit_contact_id: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          availability_notes?: string | null
+          contact_role?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          is_primary?: boolean
+          job_title?: string | null
+          notes?: string | null
+          phone?: string | null
+          telegram?: string | null
+          unit_contact_id?: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          availability_notes?: string | null
+          contact_role?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          is_primary?: boolean
+          job_title?: string | null
+          notes?: string | null
+          phone?: string | null
+          telegram?: string | null
+          unit_contact_id?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_contacts_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "unit_contacts_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
       }
       unit_portfolio_items: {
         Row: {
