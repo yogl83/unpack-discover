@@ -1,78 +1,56 @@
 
 
-# Упрощение навигации + встраивание Sources/Evidence + удаление LinkedIn
+# Контакты без привязки к компании + кнопки добавления
 
-## Что уже реализовано (не требует изменений)
+## Идея
 
-- Sidebar: раздел "Контакты" с подпунктами "Внешние" / "Внутренние" — уже есть
-- Глобальные реестры `ExternalContacts` и `InternalContacts` — уже есть
-- Маршруты `/contacts/external`, `/contacts/internal` — уже есть
-- `lead_contact_id` в `miem_units` — уже есть
-- `unit_contact_memberships` — уже есть
-- Выбор руководителя из `unit_contacts` в `UnitDetail` — уже есть
-- Состав коллектива через memberships — уже есть
-- Контакты в карточках партнёров и коллективов — уже есть
+Разрешить создание контактов без немедленной привязки к партнёру/коллективу. Партнёра или коллектив можно выбрать позже.
 
-## Что нужно сделать
+## Шаг 1. Миграция БД
 
-### 1. Убрать "Источники" и "Подтверждения" из sidebar
+- `ALTER TABLE contacts ALTER COLUMN partner_id DROP NOT NULL;` — внешний контакт может существовать без партнёра
+- `ALTER TABLE unit_contacts ALTER COLUMN unit_id DROP NOT NULL;` — внутренний контакт может существовать без коллектива
 
-**Файл:** `src/components/AppSidebar.tsx`
-- Удалить из `navItems` записи с `url: "/sources"` и `url: "/evidence"`
-- Страницы и маршруты остаются (служебный доступ по прямой ссылке)
+## Шаг 2. Новые маршруты
 
-### 2. Убрать LinkedIn из формы контакта партнёра
+В `App.tsx` добавить:
+- `/contacts/external/new` → `PartnerContactDetail` (без partnerId)
+- `/contacts/external/:contactId` → `PartnerContactDetail` (без partnerId, загрузка по contactId)
+- `/contacts/internal/new` → `UnitContactDetail` (без unitId)
+- `/contacts/internal/:contactId` → `UnitContactDetail` (без unitId, загрузка по contactId)
 
-**Файл:** `src/pages/PartnerContactDetail.tsx`
-- Убрать `linkedin` из `form` state (строка 68)
-- Убрать `linkedin` из `useEffect` при загрузке (строка 86)
-- Убрать блок `<Label>LinkedIn</Label>` + `<Input>` (строки 177-180)
-- В payload `linkedin` не передаётся (оно просто не будет в `form`)
+## Шаг 3. Доработка `PartnerContactDetail.tsx`
 
-Колонка `linkedin` в БД остаётся (nullable, не мешает).
+- Если `partnerId` отсутствует в params — работать в «standalone» режиме
+- Добавить `<Select>` для выбора партнёра (загрузка из `partners`), nullable
+- `partner_id` в payload берётся из формы, может быть `null`
+- После сохранения: навигация на `/contacts/external` (если standalone) или на `/partners/:id` (если из карточки)
+- Хлебные крошки адаптируются: «Внешние контакты → Новый контакт» или «Партнёр → Контакты → ...»
 
-### 3. Встроить "Источники" в карточку партнёра
+## Шаг 4. Доработка `UnitContactDetail.tsx`
 
-**Файл:** `src/pages/PartnerDetail.tsx`
-- Добавить новую вкладку "Источники" (иконка `FileText`) в tabs
-- Загрузка: `sources` WHERE `partner_id = id`
-- Таблица: Название, Тип, Издатель, Дата, Надёжность
-- Клик по строке → `/sources/:source_id`
-- Кнопка "Добавить" для analyst/admin
+- Аналогично: если `unitId` отсутствует — standalone режим
+- Добавить `<Select>` для выбора коллектива (из `miem_units`), nullable
+- Навигация после сохранения: `/contacts/internal` или `/units/:id`
 
-### 4. Встроить "Подтверждения" в карточку партнёра
+## Шаг 5. Кнопки «Добавить» на реестрах
 
-**Файл:** `src/pages/PartnerDetail.tsx`
-- Добавить вкладку "Подтверждения" (иконка `ShieldCheck`)
-- Загрузка: `evidence` WHERE `partner_id = id`
-- Таблица: Сущность, Поле, Значение, Уверенность, Метод
-- Клик → `/evidence/:evidence_id`
+**`ExternalContacts.tsx`**: кнопка «Добавить контакт» (для `canEdit`) → навигация на `/contacts/external/new`
 
-### 5. Встроить "Подтверждения" в карточку гипотезы
+**`InternalContacts.tsx`**: кнопка «Добавить контакт» (для `canEdit`) → навигация на `/contacts/internal/new`
 
-**Файл:** `src/pages/HypothesisDetail.tsx`
-- Добавить блок "Подтверждения" под основной формой (для существующих записей)
-- Загрузка: `evidence` WHERE `hypothesis_id = id`
-- Мини-таблица: Поле, Значение, Уверенность, Источник
-- Клик → `/evidence/:evidence_id`
+## Шаг 6. Отображение непривязанных контактов
+
+В таблицах реестров: если `partner_id` / `unit_id` = null, показывать «—» или бейдж «Не привязан».
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/AppSidebar.tsx` | Убрать Sources и Evidence из navItems |
-| `src/pages/PartnerContactDetail.tsx` | Убрать linkedin из формы |
-| `src/pages/PartnerDetail.tsx` | Добавить вкладки "Источники" и "Подтверждения" |
-| `src/pages/HypothesisDetail.tsx` | Добавить блок "Подтверждения" |
-
-## Без миграций
-
-Все таблицы и колонки уже существуют. Никаких SQL-изменений не требуется.
-
-## Phase 2
-
-- Quick stats по контактам
-- Быстрые действия (сделать primary и т.д.)
-- Связь контактов с next_steps / встречами
-- Provenance-слой для partner profiles (section-level evidence)
+| Миграция SQL | `partner_id DROP NOT NULL`, `unit_id DROP NOT NULL` |
+| `src/App.tsx` | 4 новых маршрута |
+| `src/pages/PartnerContactDetail.tsx` | Standalone режим + select партнёра |
+| `src/pages/UnitContactDetail.tsx` | Standalone режим + select коллектива |
+| `src/pages/ExternalContacts.tsx` | Кнопка «Добавить контакт» |
+| `src/pages/InternalContacts.tsx` | Кнопка «Добавить контакт» |
 
