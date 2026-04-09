@@ -34,9 +34,12 @@ const roleLabels: Record<string, string> = {
 export default function PartnerContactDetail() {
   const { partnerId, contactId } = useParams();
   const isNew = contactId === "new" || !contactId;
+  const standalone = !partnerId;
   const navigate = useNavigate();
   const { canEdit, isAdmin } = useAuth();
   const qc = useQueryClient();
+
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>("");
 
   const { data: partner } = useQuery({
     queryKey: ["partner", partnerId],
@@ -46,6 +49,16 @@ export default function PartnerContactDetail() {
       return data;
     },
     enabled: !!partnerId,
+  });
+
+  const { data: allPartners } = useQuery({
+    queryKey: ["partners-list-for-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("partners").select("partner_id, partner_name").order("partner_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: standalone,
   });
 
   const { data: item, isLoading } = useQuery({
@@ -89,25 +102,35 @@ export default function PartnerContactDetail() {
         is_primary: item.is_primary || false,
         notes: item.notes || "",
       });
+      if (standalone && item.partner_id) {
+        setSelectedPartnerId(item.partner_id);
+      }
     }
-  }, [item]);
+  }, [item, standalone]);
+
+  const effectivePartnerId = standalone ? (selectedPartnerId || null) : partnerId!;
 
   const save = useMutation({
     mutationFn: async () => {
       if (!form.full_name.trim()) { toast.error("Укажите ФИО"); throw new Error("required"); }
-      const payload = { ...form, partner_id: partnerId! };
+      const payload = { ...form, partner_id: effectivePartnerId } as any;
       if (isNew) {
-        const { error } = await supabase.from("contacts").insert(payload as any);
+        const { error } = await supabase.from("contacts").insert(payload);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("contacts").update(payload as any).eq("contact_id", contactId!);
+        const { error } = await supabase.from("contacts").update(payload).eq("contact_id", contactId!);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       toast.success(isNew ? "Контакт создан" : "Сохранено");
-      qc.invalidateQueries({ queryKey: ["partner-contacts", partnerId] });
-      navigate(`/partners/${partnerId}`);
+      if (standalone) {
+        qc.invalidateQueries({ queryKey: ["all-external-contacts"] });
+        navigate("/contacts/external");
+      } else {
+        qc.invalidateQueries({ queryKey: ["partner-contacts", partnerId] });
+        navigate(`/partners/${partnerId}`);
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -119,12 +142,18 @@ export default function PartnerContactDetail() {
     },
     onSuccess: () => {
       toast.success("Контакт удалён");
-      qc.invalidateQueries({ queryKey: ["partner-contacts", partnerId] });
-      navigate(`/partners/${partnerId}`);
+      if (standalone) {
+        qc.invalidateQueries({ queryKey: ["all-external-contacts"] });
+        navigate("/contacts/external");
+      } else {
+        qc.invalidateQueries({ queryKey: ["partner-contacts", partnerId] });
+        navigate(`/partners/${partnerId}`);
+      }
     },
   });
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const backLink = standalone ? "/contacts/external" : `/partners/${partnerId}`;
 
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
@@ -132,10 +161,12 @@ export default function PartnerContactDetail() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link to={`/partners/${partnerId}`}><ArrowLeft className="h-4 w-4" /></Link>
+          <Link to={backLink}><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
-          <p className="text-sm text-muted-foreground">{partner?.partner_name || "Партнёр"} → Контакты</p>
+          <p className="text-sm text-muted-foreground">
+            {standalone ? "Внешние контакты" : `${partner?.partner_name || "Партнёр"} → Контакты`}
+          </p>
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт" : form.full_name}</h1>
         </div>
         {!isNew && isAdmin && (
@@ -148,6 +179,19 @@ export default function PartnerContactDetail() {
       <Card>
         <CardHeader><CardTitle>Контактная информация</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          {standalone && (
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Партнёр</Label>
+              <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId} disabled={!canEdit}>
+                <SelectTrigger><SelectValue placeholder="Без привязки (можно выбрать позже)" /></SelectTrigger>
+                <SelectContent>
+                  {allPartners?.map(p => (
+                    <SelectItem key={p.partner_id} value={p.partner_id}>{p.partner_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2 sm:col-span-2">
             <Label>ФИО *</Label>
             <Input value={form.full_name} onChange={e => set("full_name", e.target.value)} disabled={!canEdit} />

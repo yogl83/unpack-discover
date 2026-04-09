@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const kindLabels: Record<string, string> = {
   official: "Официальный", warm: "Тёплый", operational: "Оперативный",
@@ -17,6 +18,7 @@ const kindLabels: Record<string, string> = {
 
 export default function ExternalContacts() {
   const { canEdit } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterPartner, setFilterPartner] = useState("all");
   const [filterKind, setFilterKind] = useState("all");
@@ -50,6 +52,11 @@ export default function ExternalContacts() {
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Внешние контакты</h1>
+        {canEdit && (
+          <Button onClick={() => navigate("/contacts/external/new")}>
+            <Plus className="mr-1 h-4 w-4" />Добавить контакт
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
