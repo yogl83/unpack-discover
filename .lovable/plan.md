@@ -1,125 +1,78 @@
 
 
-# Контакты как модуль + нормализация коллективов — План
+# Упрощение навигации + встраивание Sources/Evidence + удаление LinkedIn
 
-## Обзор
+## Что уже реализовано (не требует изменений)
 
-Три блока работ:
-1. Глобальный модуль "Контакты" в sidebar с двумя подпунктами и двумя страницами-реестрами
-2. Нормализация модели коллективов: `lead_contact_id`, таблица `unit_contact_memberships`
-3. Доработка UI коллектива: выбор руководителя из контактов, управление составом
+- Sidebar: раздел "Контакты" с подпунктами "Внешние" / "Внутренние" — уже есть
+- Глобальные реестры `ExternalContacts` и `InternalContacts` — уже есть
+- Маршруты `/contacts/external`, `/contacts/internal` — уже есть
+- `lead_contact_id` в `miem_units` — уже есть
+- `unit_contact_memberships` — уже есть
+- Выбор руководителя из `unit_contacts` в `UnitDetail` — уже есть
+- Состав коллектива через memberships — уже есть
+- Контакты в карточках партнёров и коллективов — уже есть
 
-## Шаг 1. Миграция БД
+## Что нужно сделать
 
-Одна SQL-миграция:
-
-**1a. ALTER `miem_units`** — добавить `lead_contact_id uuid` (nullable, FK → `unit_contacts.unit_contact_id`)
-
-**1b. CREATE `unit_contact_memberships`**:
-- `membership_id` uuid PK default gen_random_uuid()
-- `unit_id` uuid NOT NULL (FK → miem_units)
-- `unit_contact_id` uuid NOT NULL (FK → unit_contacts)
-- `member_role` text default 'other' (lead/deputy/researcher/engineer/pm/expert/other)
-- `is_lead` boolean default false
-- `is_primary` boolean default false
-- `sort_order` integer default 0
-- `notes` text
-- `created_at` / `updated_at` timestamptz
-- Unique constraint: `(unit_id, unit_contact_id)`
-- Индексы: `unit_id`, `unit_contact_id`
-
-**1c. RLS для `unit_contact_memberships`** — стандартная модель (SELECT: authenticated; INSERT/UPDATE: admin+analyst; DELETE: admin)
-
-**1d. Миграция `lead_name`**: для каждого `miem_units` с заполненным `lead_name`, найти `unit_contacts` с `unit_id` и `full_name = lead_name` → если найден, установить `lead_contact_id`; создать membership с `is_lead = true`. Если не найден — создать `unit_contact` из `lead_name` и связать.
-
-**1e. Trigger `set_updated_at`** на `unit_contact_memberships`.
-
-## Шаг 2. Sidebar — вложенная навигация
+### 1. Убрать "Источники" и "Подтверждения" из sidebar
 
 **Файл:** `src/components/AppSidebar.tsx`
+- Удалить из `navItems` записи с `url: "/sources"` и `url: "/evidence"`
+- Страницы и маршруты остаются (служебный доступ по прямой ссылке)
 
-Используем уже существующие `SidebarMenuSub`, `SidebarMenuSubItem`, `SidebarMenuSubButton` из `sidebar.tsx`.
+### 2. Убрать LinkedIn из формы контакта партнёра
 
-Вместо плоского списка — пункт "Контакты" (иконка `Contact`) с двумя подпунктами:
-- "Внешние контакты" → `/contacts/external`
-- "Внутренние контакты" → `/contacts/internal`
+**Файл:** `src/pages/PartnerContactDetail.tsx`
+- Убрать `linkedin` из `form` state (строка 68)
+- Убрать `linkedin` из `useEffect` при загрузке (строка 86)
+- Убрать блок `<Label>LinkedIn</Label>` + `<Input>` (строки 177-180)
+- В payload `linkedin` не передаётся (оно просто не будет в `form`)
 
-Реализация через `Collapsible` + `SidebarMenuSub`. В collapsed mode показываем только иконку (как остальные пункты). Остальные пункты меню остаются без изменений.
+Колонка `linkedin` в БД остаётся (nullable, не мешает).
 
-## Шаг 3. Страница "Внешние контакты"
+### 3. Встроить "Источники" в карточку партнёра
 
-**Новый файл:** `src/pages/ExternalContacts.tsx`
-**Маршрут:** `/contacts/external`
+**Файл:** `src/pages/PartnerDetail.tsx`
+- Добавить новую вкладку "Источники" (иконка `FileText`) в tabs
+- Загрузка: `sources` WHERE `partner_id = id`
+- Таблица: Название, Тип, Издатель, Дата, Надёжность
+- Клик по строке → `/sources/:source_id`
+- Кнопка "Добавить" для analyst/admin
 
-- Загрузка из `contacts` с join на `partners(partner_name)`
-- Колонки: ФИО, Партнёр, Должность, Тип, Email, Телефон, Primary
-- Поиск по ФИО/email
-- Фильтр по партнёру (select), по типу контакта, по primary
-- Клик по строке → `/partners/:partnerId/contacts/:contactId`
-- Клик по партнёру → `/partners/:partnerId`
-- Кнопка "Добавить" (для analyst/admin)
+### 4. Встроить "Подтверждения" в карточку партнёра
 
-## Шаг 4. Страница "Внутренние контакты"
+**Файл:** `src/pages/PartnerDetail.tsx`
+- Добавить вкладку "Подтверждения" (иконка `ShieldCheck`)
+- Загрузка: `evidence` WHERE `partner_id = id`
+- Таблица: Сущность, Поле, Значение, Уверенность, Метод
+- Клик → `/evidence/:evidence_id`
 
-**Новый файл:** `src/pages/InternalContacts.tsx`
-**Маршрут:** `/contacts/internal`
+### 5. Встроить "Подтверждения" в карточку гипотезы
 
-- Загрузка из `unit_contacts` с join на `miem_units(unit_name)`
-- Колонки: ФИО, Коллектив, Роль, Email, Телефон, Primary
-- Поиск по ФИО/email
-- Фильтр по коллективу, по роли
-- Клик по строке → `/units/:unitId/contacts/:contactId`
-- Клик по коллективу → `/units/:unitId`
-
-## Шаг 5. Маршруты
-
-**Файл:** `src/App.tsx` — добавить:
-- `/contacts/external` → ExternalContacts
-- `/contacts/internal` → InternalContacts
-
-## Шаг 6. Доработка UnitDetail.tsx
-
-**6a. Руководитель** — заменить `<Input>` на `<Select>` / Combobox:
-- Загружает `unit_contacts` для данного `unit_id`
-- Выбранный контакт записывается в `lead_contact_id`
-- Fallback: если `lead_contact_id` null, показывать `lead_name` как legacy текст
-- При сохранении пишем `lead_contact_id` в `miem_units`
-
-**6b. Блок "Состав коллектива"** — новая секция в табе "Контакты" или отдельный таб:
-- Загрузка из `unit_contact_memberships` JOIN `unit_contacts`
-- Таблица: ФИО, Роль, Руководитель, Primary
-- Кнопка "Добавить участника" → Combobox из `unit_contacts` с `unit_id` = текущий
-- Назначение роли через select
-- Удаление из состава
-- Отметка is_lead (переключает `lead_contact_id` в `miem_units`)
-
-## Шаг 7. Сохранение совместимости
-
-- Вкладки контактов в `PartnerDetail.tsx` и `UnitDetail.tsx` остаются без изменений
-- `lead_name` остаётся в таблице как legacy/fallback, но UI работает через `lead_contact_id`
-- `MiemContactsBlock` в `PartnerDetail` — без изменений
+**Файл:** `src/pages/HypothesisDetail.tsx`
+- Добавить блок "Подтверждения" под основной формой (для существующих записей)
+- Загрузка: `evidence` WHERE `hypothesis_id = id`
+- Мини-таблица: Поле, Значение, Уверенность, Источник
+- Клик → `/evidence/:evidence_id`
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| Миграция SQL | Создать — ALTER miem_units, CREATE unit_contact_memberships, RLS, data migration |
-| `src/components/AppSidebar.tsx` | Изменить — вложенная навигация "Контакты" |
-| `src/pages/ExternalContacts.tsx` | Создать — глобальный реестр внешних контактов |
-| `src/pages/InternalContacts.tsx` | Создать — глобальный реестр внутренних контактов |
-| `src/App.tsx` | Изменить — 2 новых маршрута |
-| `src/pages/UnitDetail.tsx` | Изменить — выбор руководителя из контактов, блок состава |
+| `src/components/AppSidebar.tsx` | Убрать Sources и Evidence из navItems |
+| `src/pages/PartnerContactDetail.tsx` | Убрать linkedin из формы |
+| `src/pages/PartnerDetail.tsx` | Добавить вкладки "Источники" и "Подтверждения" |
+| `src/pages/HypothesisDetail.tsx` | Добавить блок "Подтверждения" |
 
-## Phase 2 (не реализуется сейчас)
+## Без миграций
 
-- Quick stats по контактам (числовые карточки)
-- Быстрые действия (сделать primary, назначить руководителя из списка)
+Все таблицы и колонки уже существуют. Никаких SQL-изменений не требуется.
+
+## Phase 2
+
+- Quick stats по контактам
+- Быстрые действия (сделать primary и т.д.)
 - Связь контактов с next_steps / встречами
-- История взаимодействий
-
-## Что не меняется
-
-- Существующие формы создания/редактирования контактов (`PartnerContactDetail`, `UnitContactDetail`)
-- Google Sheets sync, auth, profiles, partner profiles
-- Все существующие маршруты
+- Provenance-слой для partner profiles (section-level evidence)
 
