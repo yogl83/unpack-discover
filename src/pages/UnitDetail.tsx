@@ -238,6 +238,37 @@ export default function UnitDetail() {
             )}
           </TabsContent>
         )}
+
+        {!isNew && (
+          <TabsContent value="contacts" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Контакты коллектива</h2>
+              {canEdit && <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
+            </div>
+            {!unitContacts?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>ФИО</TableHead><TableHead>Должность</TableHead><TableHead>Роль</TableHead><TableHead>Email</TableHead><TableHead>Основной</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {unitContacts.map(c => (
+                      <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
+                        <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
+                        <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
