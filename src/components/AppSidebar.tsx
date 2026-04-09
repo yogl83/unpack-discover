@@ -22,8 +22,6 @@ const navItems = [
   { title: "Следующие шаги", url: "/next-steps", icon: ArrowRight },
   { title: "Коллективы МИЭМ", url: "/units", icon: Users2 },
   { title: "Компетенции", url: "/competencies", icon: Brain },
-  { title: "Источники", url: "/sources", icon: FileText },
-  { title: "Подтверждения", url: "/evidence", icon: ShieldCheck },
 ];
 
 const contactSubItems = [
