@@ -1,6 +1,6 @@
 import {
   Building2, ClipboardList, Lightbulb, ArrowRight,
-  Users2, Brain, FileText, ShieldCheck, Settings, LayoutDashboard,
+  Users2, Brain, Settings, LayoutDashboard,
   Contact,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
