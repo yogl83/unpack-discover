@@ -17,12 +17,8 @@ import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadg
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-const statusLabels: Record<string, string> = {
-  new: "Новый", in_review: "На рассмотрении", in_progress: "В работе",
-  active: "Активный", on_hold: "На паузе", archived: "Архив",
-  hypothesis: "Гипотеза", confirmed: "Подтверждена", resolved: "Решена", rejected: "Отклонена",
-  testing: "Тестируется",
-};
+import { allStatusLabels } from "@/lib/labels";
+const statusLabels = allStatusLabels;
 
 export default function PartnerDetail() {
   const { id } = useParams();

@@ -15,14 +15,8 @@ import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, User
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-const statusLabels: Record<string, string> = {
-  new: "Новая", testing: "Тестируется", confirmed: "Подтверждена", rejected: "Отклонена",
-};
-
-const memberRoleLabels: Record<string, string> = {
-  lead: "Руководитель", deputy: "Заместитель", researcher: "Исследователь",
-  engineer: "Инженер", pm: "PM", expert: "Эксперт", other: "Другой",
-};
+import { hypothesisStatusLabels, memberRoleLabels } from "@/lib/labels";
+const statusLabels = hypothesisStatusLabels;
 
 export default function UnitDetail() {
   const { id } = useParams();
