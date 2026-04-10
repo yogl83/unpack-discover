@@ -27,7 +27,7 @@ export default function InternalContacts() {
   const { data: result, isLoading, isError, refetch } = useQuery({
     queryKey: ["all-internal-contacts", debouncedSearch, page],
     queryFn: async () => {
-      let q = supabase.from("unit_contacts").select("*, miem_units(unit_name)", { count: "exact" }).order("full_name");
+      let q = supabase.from("unit_contacts").select("*, miem_units!unit_contacts_unit_id_fkey(unit_name)", { count: "exact" }).order("full_name");
       if (debouncedSearch) q = q.or(`full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`);
       q = q.range(from, to);
       const { data, error, count } = await q;
