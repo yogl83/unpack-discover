@@ -1,104 +1,66 @@
 
 
-# Анализ проекта: что можно улучшить
+# Оценка: что из списка уже сделано, что реально нужно
 
-## 1. Дублирование констант (statusLabels, priorityLabels, kindLabels)
+## Уже закрыто (не требует работы)
 
-`statusLabels`, `priorityLabels`, `priorityColors`, `statusColors` и `kindLabels` определены отдельно в 7+ файлах (Partners.tsx, PartnerDetail.tsx, Needs.tsx, Hypotheses.tsx, UnitDetail.tsx, NextSteps.tsx, ExternalContacts.tsx). Изменение одного лейбла требует правок в нескольких местах.
-
-**Решение:** Вынести все словари в `src/lib/labels.ts` и импортировать оттуда.
-
----
-
-## 2. Нет пагинации в списках
-
-Partners, Needs, Hypotheses, Units, NextSteps, ExternalContacts, InternalContacts — все загружают все записи одним запросом. При росте данных (100+ записей) это ударит по производительности и UX.
-
-**Решение:** Добавить серверную пагинацию (`.range()` в Supabase) + компонент пагинации внизу таблиц.
-
----
-
-## 3. Нет подтверждения при удалении (кроме confirm)
-
-Удаление партнёров и других сущностей использует `window.confirm()` — не стилизовано, неинформативно, нет отмены.
-
-**Решение:** Заменить на `AlertDialog` из shadcn/ui с понятным описанием последствий.
-
----
-
-## 4. Нет обработки ошибок загрузки
-
-Все страницы-списки показывают только "Загрузка..." при `isLoading`, но не обрабатывают `isError`. Если запрос упал — пользователь видит пустую страницу без объяснения.
-
-**Решение:** Добавить обработку `error` состояния с кнопкой "Повторить" (`refetch`).
-
----
-
-## 5. Отсутствует мобильная адаптация таблиц
-
-Таблицы на всех страницах-списках — стандартные HTML tables. На экране 390px (текущий viewport) они обрезаются или требуют горизонтального скролла.
-
-**Решение:** На мобильных заменять таблицы на card-based layout или добавить responsive scroll wrapper с визуальной индикацией.
-
----
-
-## 6. Дашборд — карточки без ссылок
-
-KPI-карточки на дашборде (Партнёры: N, Потребности: N и т.д.) не кликабельны. Пользователь должен отдельно искать раздел в сайдбаре.
-
-**Решение:** Обернуть каждую карточку в `Link` на соответствующий раздел.
-
----
-
-## 7. Поиск только по одному полю
-
-Все списки ищут только по одному полю (partner_name, title, unit_name). Нельзя найти партнёра по отрасли или городу.
-
-**Решение:** Расширить ilike-поиск на несколько полей через `.or()`.
-
----
-
-## 8. AdminSettings — N+1 запросов
-
-`AdminSettings` делает последовательные запросы (`for...of`) к 9 таблицам. Это медленно.
-
-**Решение:** Заменить на `Promise.all()` как уже сделано в `Index.tsx`.
-
----
-
-## 9. Нет скелетонов загрузки
-
-Все страницы показывают текст "Загрузка..." вместо skeleton-компонентов. Это выглядит непрофессионально и вызывает layout shift.
-
-**Решение:** Использовать `Skeleton` из shadcn/ui для таблиц и карточек.
-
----
-
-## 10. Нет foreign keys в БД
-
-Все таблицы помечены как "No foreign keys" — связи существуют логически, но не на уровне constraints. Это риск целостности данных (orphaned records).
-
-**Решение:** Добавить FK constraints с `ON DELETE CASCADE` / `SET NULL` через миграцию.
-
----
-
-## Приоритеты (рекомендация)
-
-| Приоритет | Что | Почему |
+| # | Пункт | Статус |
 |---|---|---|
-| Высокий | FK constraints в БД | Целостность данных |
-| Высокий | Вынести дублированные labels | Поддерживаемость |
-| Средний | Пагинация | Масштабируемость |
-| Средний | AlertDialog вместо confirm | UX |
-| Средний | Обработка ошибок | Надёжность |
-| Низкий | Скелетоны, мобильная адаптация | Polish |
+| 1 | Sync-покрытие unit_contacts / unit_contact_memberships | **Закрыто.** TABLE_CONFIGS уже содержит оба (строки 116-126 sync-google-sheets). AdminSync.tsx тоже их перечисляет (строки 29-30). |
+| 3 | unit_overview с нормализованной моделью лидера | **Закрыто.** Миграция `20260410110558` уже пересоздала view с `LEFT JOIN unit_contacts uc ON uc.unit_contact_id = u.lead_contact_id`. Units.tsx читает `u.lead_name` из view — это вычисляемое поле, не deprecated column. |
+| 2 | Матрица покрытия синка в UI | **Частично закрыто.** AdminSync уже показывает `ModeBadge` (create+update / update only) для каждой таблицы. Можно улучшить, но функционально работает. |
 
-## Файлы для изменения
+## Стоит реализовать (по убыванию приоритета)
 
-- **Новый:** `src/lib/labels.ts` — общие словари
-- **7+ файлов списков** — пагинация, error handling, skeleton
-- **Миграция** — FK constraints
-- **AdminSettings.tsx** — Promise.all
-- **Index.tsx** — кликабельные карточки
-- **Detail-страницы** — AlertDialog
+### Chunk 1 — Атомарное назначение руководителя (пункт 4)
+
+**Проблема:** `setMemberLead` в UnitDetail.tsx (строки 133-147) делает 3 отдельных запроса без проверки ошибок. Сбой на шаге 2 оставляет данные inconsistent.
+
+**Решение:** Создать RPC-функцию `assign_unit_lead(p_unit_id uuid, p_membership_id uuid, p_contact_id uuid)` которая в одной транзакции:
+- сбрасывает `is_lead = false` для всех memberships юнита
+- ставит `is_lead = true, member_role = 'lead'` на целевой membership
+- обновляет `miem_units.lead_contact_id`
+
+Затем заменить 3 запроса на `supabase.rpc('assign_unit_lead', {...})`.
+
+**Файлы:** миграция (CREATE FUNCTION), `src/pages/UnitDetail.tsx`
+
+### Chunk 2 — Определить судьбу Sources/Evidence (пункт 8)
+
+**Проблема:** Роуты `/sources`, `/sources/:id`, `/evidence`, `/evidence/:id` открыты в App.tsx, но отсутствуют в sidebar. Пользователь может попасть туда только по прямой ссылке.
+
+**Решение (на выбор):**
+- **A)** Вернуть в sidebar в секцию «Партнёрства» (если используются)
+- **B)** Убрать роуты, оставить доступ только через контекст партнёра/гипотезы (inline-таблицы)
+
+### Chunk 3 — Обновить README (пункт 7)
+
+**Что обновить:**
+- Добавить UnitContacts и UnitMemberships в таблицу листов
+- Указать что `lead_name` в view вычисляется через JOIN
+- Убрать упоминание `lead_name` как deprecated column из основного текста
+
+**Файлы:** `README.md`
+
+### Chunk 4 — window.confirm → AlertDialog (из предыдущего плана)
+
+Все кнопки удаления всё ещё используют `window.confirm()`. Заменить на `AlertDialog` из shadcn/ui на всех detail-страницах.
+
+**Файлы:** PartnerDetail, NeedDetail, HypothesisDetail, NextStepDetail, SourceDetail, EvidenceDetail, UnitDetail, CompetencyDetail, PartnerContactDetail, UnitContactDetail
+
+## Рекомендую отложить (не критично для MVP/прода)
+
+| # | Пункт | Почему |
+|---|---|---|
+| 5 | Валидаторы качества данных | Полезно, но это отдельный модуль analytics — не блокер запуска |
+| 6 | Health-check cron / stale alerts | pg_cron — ручной шаг вне Lovable Cloud. UI-индикатор полезен, но sync_log уже логирует всё |
+| 9 | Audit trail для ролей | sync_log есть, роли меняются редко — можно добавить позже |
+| 10 | Object-level ownership (owner/reviewer) | Архитектурное изменение RBAC, требует продуктового решения |
+
+## Предлагаемый порядок
+
+1. **Chunk 1** — RPC `assign_unit_lead` + упрощение UnitDetail (самый высокий risk of data corruption)
+2. **Chunk 2** — Решение по Sources/Evidence
+3. **Chunk 3** — README
+4. **Chunk 4** — AlertDialog
 
