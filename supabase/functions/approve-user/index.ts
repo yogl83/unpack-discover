@@ -44,6 +44,28 @@ Deno.serve(async (req) => {
           .eq("user_id", userId);
       }
 
+      // Get user email and name to send notification
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", userId)
+        .single();
+
+      if (profile?.email) {
+        try {
+          await admin.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "access-approved",
+              recipientEmail: profile.email,
+              idempotencyKey: `access-approved-${userId}`,
+              templateData: { name: profile.full_name || undefined },
+            },
+          });
+        } catch (emailErr) {
+          console.error("Failed to send approval email", emailErr);
+        }
+      }
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
