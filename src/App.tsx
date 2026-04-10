@@ -27,6 +27,7 @@ import Admin from "@/pages/Admin";
 import ResetPassword from "@/pages/ResetPassword";
 import Bootstrap from "@/pages/Bootstrap";
 import NotFound from "@/pages/NotFound";
+import Unsubscribe from "@/pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/bootstrap" element={<Bootstrap />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/partners" element={<Partners />} />
