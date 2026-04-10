@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,7 +20,7 @@ export default function InternalContacts() {
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterRole, setFilterRole] = useState("all");
 
-  const { data: contacts, isLoading } = useQuery({
+  const { data: contacts, isLoading, isError, refetch } = useQuery({
     queryKey: ["all-internal-contacts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -73,8 +75,10 @@ export default function InternalContacts() {
         </Select>
       </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm py-6 text-center">Загрузка…</p>
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
+        <TableSkeleton columns={6} />
       ) : !filtered?.length ? (
         <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
       ) : (
