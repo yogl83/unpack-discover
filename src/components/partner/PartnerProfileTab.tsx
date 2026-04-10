@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
-import { Plus, Edit, Send, Check, Archive, History, Save } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const SECTIONS = [
