@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
-import { Plus, Edit, Send, Check, Archive, History, Save } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const SECTIONS = [
@@ -48,6 +48,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [editing, setEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -221,6 +222,34 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Generate with AI
+  const generateProfile = useMutation({
+    mutationFn: async () => {
+      setIsGenerating(true);
+      const { data, error } = await supabase.functions.invoke("generate-partner-profile", {
+        body: { partner_id: partnerId },
+      });
+      if (error) throw new Error(error.message || "Ошибка генерации");
+      if (data?.error) throw new Error(data.error);
+      return data.profile;
+    },
+    onSuccess: (profile) => {
+      invalidateAll();
+      const formData: Record<string, string> = {};
+      for (const s of SECTIONS) {
+        formData[s.key] = (profile as any)[s.key] || "";
+      }
+      setForm(formData);
+      setEditing(true);
+      setIsGenerating(false);
+      toast.success("Профайл сгенерирован AI. Проверьте и отредактируйте черновик.");
+    },
+    onError: (e: any) => {
+      setIsGenerating(false);
+      toast.error(e.message);
+    },
+  });
+
   // Start editing existing draft
   const startEditing = () => {
     if (draftProfile) {
@@ -260,10 +289,25 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {canEdit && !editing && !hasDraft && (
-            <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {currentProfile ? "Новая версия" : "Создать профайл"}
-            </Button>
+            <>
+              <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending || isGenerating}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {currentProfile ? "Новая версия" : "Создать профайл"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => generateProfile.mutate()}
+                disabled={generateProfile.isPending || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                )}
+                {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+              </Button>
+            </>
           )}
           {canEdit && !editing && hasDraft && (
             <Button size="sm" variant="outline" onClick={startEditing}>
@@ -390,9 +434,15 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
               </div>
             )}
             {canEdit && (
-              <Button size="sm" className="mt-2" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-                <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
+                  {isGenerating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
+                  {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -403,9 +453,15 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         <div className="text-center py-8">
           <p className="text-muted-foreground mb-4">Профайл ещё не создан</p>
           {canEdit && (
-            <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-              <Plus className="mr-1 h-4 w-4" />Создать профайл
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                <Plus className="mr-1 h-4 w-4" />Создать профайл
+              </Button>
+              <Button variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
+                {isGenerating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />}
+                {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+              </Button>
+            </div>
           )}
         </div>
       )}
