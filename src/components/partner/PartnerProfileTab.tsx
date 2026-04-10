@@ -222,6 +222,34 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Generate with AI
+  const generateProfile = useMutation({
+    mutationFn: async () => {
+      setIsGenerating(true);
+      const { data, error } = await supabase.functions.invoke("generate-partner-profile", {
+        body: { partner_id: partnerId },
+      });
+      if (error) throw new Error(error.message || "Ошибка генерации");
+      if (data?.error) throw new Error(data.error);
+      return data.profile;
+    },
+    onSuccess: (profile) => {
+      invalidateAll();
+      const formData: Record<string, string> = {};
+      for (const s of SECTIONS) {
+        formData[s.key] = (profile as any)[s.key] || "";
+      }
+      setForm(formData);
+      setEditing(true);
+      setIsGenerating(false);
+      toast.success("Профайл сгенерирован AI. Проверьте и отредактируйте черновик.");
+    },
+    onError: (e: any) => {
+      setIsGenerating(false);
+      toast.error(e.message);
+    },
+  });
+
   // Start editing existing draft
   const startEditing = () => {
     if (draftProfile) {
