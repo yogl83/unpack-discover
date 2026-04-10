@@ -1,11 +1,12 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users2, RefreshCw, Settings, Mail } from "lucide-react";
+import { Users2, RefreshCw, Settings, Mail, Sparkles } from "lucide-react";
 import AdminUsers from "@/components/AdminUsers";
 import AdminSync from "@/components/AdminSync";
 import AdminSettings from "@/components/AdminSettings";
 import AdminEmails from "@/components/AdminEmails";
+import AdminAISettings from "@/components/AdminAISettings";
 
 export default function Admin() {
   const { isAdmin, loading } = useAuth();
@@ -21,11 +22,13 @@ export default function Admin() {
           <TabsTrigger value="users" className="gap-1.5"><Users2 className="h-4 w-4" />Пользователи</TabsTrigger>
           <TabsTrigger value="sync" className="gap-1.5"><RefreshCw className="h-4 w-4" />Синхронизация</TabsTrigger>
           <TabsTrigger value="emails" className="gap-1.5"><Mail className="h-4 w-4" />Письма</TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5"><Sparkles className="h-4 w-4" />AI</TabsTrigger>
           <TabsTrigger value="settings" className="gap-1.5"><Settings className="h-4 w-4" />Настройки</TabsTrigger>
         </TabsList>
         <TabsContent value="users"><AdminUsers /></TabsContent>
         <TabsContent value="sync"><AdminSync /></TabsContent>
         <TabsContent value="emails"><AdminEmails /></TabsContent>
+        <TabsContent value="ai"><AdminAISettings /></TabsContent>
         <TabsContent value="settings"><AdminSettings /></TabsContent>
       </Tabs>
     </div>
