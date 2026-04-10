@@ -65,14 +65,25 @@ Deno.serve(async (req) => {
 
     // Send "registration received" email
     try {
-      await supabaseAdmin.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "registration-received",
-          recipientEmail: email,
-          idempotencyKey: `reg-received-${userData.user.id}`,
-          templateData: { name: full_name },
-        },
-      });
+      const emailRes = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            templateName: "registration-received",
+            recipientEmail: email,
+            idempotencyKey: `reg-received-${userData.user.id}`,
+            templateData: { name: full_name },
+          }),
+        }
+      );
+      if (!emailRes.ok) {
+        console.error("Failed to send registration email", emailRes.status, await emailRes.text());
+      }
     } catch (emailErr) {
       console.error("Failed to send registration email", emailErr);
     }
