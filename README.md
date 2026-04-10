@@ -76,6 +76,10 @@
 | Sources | `sources` | ❌ только обновление |
 | Evidence | `evidence` | ❌ только обновление |
 | NextSteps | `next_steps` | ❌ только обновление |
+| UnitContacts | `unit_contacts` | ❌ только обновление |
+| UnitMemberships | `unit_contact_memberships` | ❌ только обновление |
+
+> **Руководитель коллектива** определяется через связь `miem_units.lead_contact_id` → `unit_contacts`, а не через текстовое поле `lead_name` (deprecated). Для назначения руководителя используйте `unit_contact_memberships.is_lead = true`.
 
 ### Создание новых записей из Sheets (external_id)
 
