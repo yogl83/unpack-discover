@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-
 import { contactKindLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 
 const kindLabels = contactKindLabels;
 
@@ -21,33 +22,35 @@ export default function ExternalContacts() {
   const { canEdit } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
   const [filterPartner, setFilterPartner] = useState("all");
   const [filterKind, setFilterKind] = useState("all");
   const [filterPrimary, setFilterPrimary] = useState("all");
+  const { page, from, to, setPage, totalPages } = usePagination();
 
-  const { data: contacts, isLoading, isError, refetch } = useQuery({
-    queryKey: ["all-external-contacts"],
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["all-external-contacts", debouncedSearch, filterKind, filterPrimary, page],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contacts")
-        .select("*, partners(partner_name)")
-        .order("full_name");
+      let q = supabase.from("contacts").select("*, partners(partner_name)", { count: "exact" }).order("full_name");
+      if (debouncedSearch) q = q.or(`full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`);
+      if (filterKind !== "all") q = q.eq("contact_kind", filterKind);
+      if (filterPrimary === "yes") q = q.eq("is_primary", true);
+      if (filterPrimary === "no") q = q.eq("is_primary", false);
+      q = q.range(from, to);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { data: data || [], count: count || 0 };
     },
   });
 
+  const contacts = result?.data;
+  const pages = totalPages(result?.count || 0);
+
   const partners = Array.from(new Set(contacts?.map(c => (c.partners as any)?.partner_name).filter(Boolean))).sort();
 
-  const filtered = contacts?.filter(c => {
-    const q = search.toLowerCase();
-    if (q && !c.full_name.toLowerCase().includes(q) && !(c.email || "").toLowerCase().includes(q)) return false;
-    if (filterPartner !== "all" && (c.partners as any)?.partner_name !== filterPartner) return false;
-    if (filterKind !== "all" && c.contact_kind !== filterKind) return false;
-    if (filterPrimary === "yes" && !c.is_primary) return false;
-    if (filterPrimary === "no" && c.is_primary) return false;
-    return true;
-  });
+  const filtered = filterPartner === "all"
+    ? contacts
+    : contacts?.filter(c => (c.partners as any)?.partner_name === filterPartner);
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -63,7 +66,7 @@ export default function ExternalContacts() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Поиск по ФИО или email…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Поиск по ФИО или email…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
         </div>
         <Select value={filterPartner} onValueChange={setFilterPartner}>
           <SelectTrigger className="w-[200px]"><SelectValue placeholder="Партнёр" /></SelectTrigger>
@@ -72,14 +75,14 @@ export default function ExternalContacts() {
             {partners.map(p => <SelectItem key={p} value={p!}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterKind} onValueChange={setFilterKind}>
+        <Select value={filterKind} onValueChange={v => { setFilterKind(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Тип" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все типы</SelectItem>
             {Object.entries(kindLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterPrimary} onValueChange={setFilterPrimary}>
+        <Select value={filterPrimary} onValueChange={v => { setFilterPrimary(v); setPage(1); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Primary" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все</SelectItem>
@@ -96,42 +99,45 @@ export default function ExternalContacts() {
       ) : !filtered?.length ? (
         <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
       ) : (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ФИО</TableHead>
-                <TableHead>Партнёр</TableHead>
-                <TableHead>Должность</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Телефон</TableHead>
-                <TableHead>Основной</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(c => (
-                <TableRow key={c.contact_id}>
-                  <TableCell>
-                    <Link to={`/partners/${c.partner_id}/contacts/${c.contact_id}`} className="font-medium text-primary hover:underline">
-                      {c.full_name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link to={`/partners/${c.partner_id}`} className="text-muted-foreground hover:underline">
-                      {(c.partners as any)?.partner_name || "—"}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{kindLabels[c.contact_kind] || c.contact_kind}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
-                  <TableCell>{c.is_primary ? <Badge>Да</Badge> : "—"}</TableCell>
+        <>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ФИО</TableHead>
+                  <TableHead>Партнёр</TableHead>
+                  <TableHead className="hidden md:table-cell">Должность</TableHead>
+                  <TableHead className="hidden md:table-cell">Тип</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">Телефон</TableHead>
+                  <TableHead className="hidden md:table-cell">Основной</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filtered?.map(c => (
+                  <TableRow key={c.contact_id}>
+                    <TableCell>
+                      <Link to={`/partners/${c.partner_id}/contacts/${c.contact_id}`} className="font-medium text-primary hover:underline">
+                        {c.full_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link to={`/partners/${c.partner_id}`} className="text-muted-foreground hover:underline">
+                        {(c.partners as any)?.partner_name || "—"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{c.job_title || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline">{kindLabels[c.contact_kind] || c.contact_kind}</Badge></TableCell>
+                    <TableCell className="text-muted-foreground hidden lg:table-cell">{c.email || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden lg:table-cell">{c.phone || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{c.is_primary ? <Badge>Да</Badge> : "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <TablePagination page={page} totalPages={pages} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

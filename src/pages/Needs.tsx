@@ -11,21 +11,30 @@ import { Link } from "react-router-dom";
 import { needStatusLabels, priorityLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Needs() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
   const { canEdit } = useAuth();
+  const { page, from, to, setPage, totalPages } = usePagination();
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["needs", search],
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["needs", debouncedSearch, page],
     queryFn: async () => {
-      let q = supabase.from("partner_needs").select("*, partners(partner_name)").order("updated_at", { ascending: false });
-      if (search) q = q.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
-      const { data, error } = await q;
+      let q = supabase.from("partner_needs").select("*, partners(partner_name)", { count: "exact" }).order("updated_at", { ascending: false });
+      if (debouncedSearch) q = q.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
+      q = q.range(from, to);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { data: data || [], count: count || 0 };
     },
   });
+
+  const data = result?.data;
+  const pages = totalPages(result?.count || 0);
 
   return (
     <div className="space-y-4">
@@ -35,7 +44,7 @@ export default function Needs() {
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Поиск..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
       </div>
       {isError ? (
         <ErrorState onRetry={refetch} />
@@ -44,25 +53,28 @@ export default function Needs() {
       ) : !data?.length ? (
         <p className="text-muted-foreground py-8 text-center">Нет потребностей</p>
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead>Тип</TableHead>
-              <TableHead>Статус</TableHead><TableHead>Приоритет</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {data.map(n => (
-                <TableRow key={n.need_id}>
-                  <TableCell><Link to={`/needs/${n.need_id}`} className="font-medium text-primary hover:underline">{n.title}</Link></TableCell>
-                  <TableCell className="text-muted-foreground">{(n.partners as any)?.partner_name || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{n.need_type || "—"}</TableCell>
-                  <TableCell><Badge variant="secondary">{needStatusLabels[n.need_status || ""] || n.need_status || "—"}</Badge></TableCell>
-                  <TableCell><Badge variant="outline">{priorityLabels[n.priority_level || ""] || n.priority_level || "—"}</Badge></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead>
+                <TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Приоритет</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {data.map(n => (
+                  <TableRow key={n.need_id}>
+                    <TableCell><Link to={`/needs/${n.need_id}`} className="font-medium text-primary hover:underline">{n.title}</Link></TableCell>
+                    <TableCell className="text-muted-foreground">{(n.partners as any)?.partner_name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{n.need_type || "—"}</TableCell>
+                    <TableCell><Badge variant="secondary">{needStatusLabels[n.need_status || ""] || n.need_status || "—"}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline">{priorityLabels[n.priority_level || ""] || n.priority_level || "—"}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <TablePagination page={page} totalPages={pages} onPageChange={setPage} />
+        </>
       )}
     </div>
   );
