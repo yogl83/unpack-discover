@@ -65,7 +65,7 @@ export function AppSidebar() {
         {/* Дашборд */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span className="text-xs font-semibold tracking-wider uppercase">МИЭМ: УПРАВЛЕНИЕ ПАРТНЕРСТВАМИ</span>}
+            {!collapsed && <span className="text-xs font-semibold tracking-wider uppercase">УПРАВЛЕНИЕ ПАРТНЕРСТВАМИ</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={[dashboardItem]} collapsed={collapsed} />
