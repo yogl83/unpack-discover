@@ -14,8 +14,6 @@ const ENTITY_TABLES = [
   { key: "collaboration_hypotheses", label: "Гипотезы" },
   { key: "miem_units", label: "Коллективы МИЭМ" },
   { key: "competencies", label: "Компетенции" },
-  { key: "sources", label: "Источники" },
-  { key: "evidence", label: "Подтверждения" },
   { key: "next_steps", label: "Следующие шаги" },
 ];
 

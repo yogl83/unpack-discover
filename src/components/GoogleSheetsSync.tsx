@@ -18,8 +18,6 @@ const TABLES: { key: string; label: string; mode: SyncMode }[] = [
   { key: "collaboration_hypotheses", label: "Гипотезы", mode: "update-only" },
   { key: "miem_units", label: "Подразделения МИЭМ", mode: "create+update" },
   { key: "competencies", label: "Компетенции", mode: "update-only" },
-  { key: "sources", label: "Источники", mode: "update-only" },
-  { key: "evidence", label: "Подтверждения", mode: "update-only" },
   { key: "next_steps", label: "Следующие шаги", mode: "update-only" },
   { key: "unit_contacts", label: "Внутренние контакты", mode: "update-only" },
   { key: "unit_contact_memberships", label: "Состав коллективов", mode: "update-only" },

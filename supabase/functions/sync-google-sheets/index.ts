@@ -95,18 +95,6 @@ const TABLE_CONFIGS: TableConfig[] = [
     supportsExternalCreate: false,
   },
   {
-    table: "sources", sheetName: "Sources", idColumn: "source_id",
-    columns: ["source_id","partner_id","title","source_type","source_url","publisher","publication_date","checked_at","source_reliability","summary","notes"],
-    importableColumns: ["title","source_type","source_url","publisher","publication_date","checked_at","source_reliability","summary","notes"],
-    supportsExternalCreate: false,
-  },
-  {
-    table: "evidence", sheetName: "Evidence", idColumn: "evidence_id",
-    columns: ["evidence_id","entity_type","entity_id","partner_id","need_id","unit_id","competency_id","hypothesis_id","field_name","field_value","data_collection_method","source_id","confidence_level","requires_interview_validation","analyst_comment"],
-    importableColumns: ["entity_type","entity_id","source_id","partner_id","need_id","unit_id","competency_id","hypothesis_id","field_name","field_value","data_collection_method","confidence_level","requires_interview_validation","analyst_comment"],
-    supportsExternalCreate: false,
-  },
-  {
     table: "next_steps", sheetName: "NextSteps", idColumn: "next_step_id",
     columns: ["next_step_id","entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","owner_user_id","due_date","next_step_status","result","notes"],
     importableColumns: ["entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","due_date","next_step_status","result","notes"],

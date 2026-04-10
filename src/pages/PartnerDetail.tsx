@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb, FileText, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb } from "lucide-react";
 import { PartnerProfileTab } from "@/components/partner/PartnerProfileTab";
 import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
 import { toast } from "sonner";
@@ -69,25 +69,6 @@ export default function PartnerDetail() {
     enabled: !isNew,
   });
 
-  const { data: sources } = useQuery({
-    queryKey: ["partner-sources", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("sources").select("*").eq("partner_id", id!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !isNew,
-  });
-
-  const { data: evidence } = useQuery({
-    queryKey: ["partner-evidence", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("evidence").select("*, sources(title)").eq("partner_id", id!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !isNew,
-  });
 
   const [form, setForm] = useState({
     partner_name: "", legal_name: "", website_url: "", industry: "", subindustry: "",
@@ -162,14 +143,6 @@ export default function PartnerDetail() {
               <TabsTrigger value="hypotheses" className="gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5" />Гипотезы
                 {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="sources" className="gap-1.5">
-                <FileText className="h-3.5 w-3.5" />Источники
-                {sources?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{sources.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="evidence" className="gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5" />Подтверждения
-                {evidence?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{evidence.length}</Badge> : null}
               </TabsTrigger>
             </>
           )}
