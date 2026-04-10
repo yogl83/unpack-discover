@@ -10,6 +10,16 @@ export interface CallerInfo {
 }
 
 /**
+ * Decode JWT payload without verification (edge runtime handles signature check).
+ */
+function decodeJwtPayload(token: string): Record<string, any> {
+  const parts = token.split(".");
+  if (parts.length !== 3) throw { status: 401, message: "Malformed token" };
+  const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+  return payload;
+}
+
+/**
  * Validate that the request comes from an authenticated admin user.
  * Throws a structured error { status, message } on failure.
  */
@@ -18,30 +28,33 @@ export async function requireAdmin(authHeader: string | null): Promise<CallerInf
     throw { status: 401, message: "Authorization header missing or malformed" };
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const token = authHeader.replace("Bearer ", "");
+  
+  let claims: Record<string, any>;
+  try {
+    claims = decodeJwtPayload(token);
+  } catch {
+    throw { status: 401, message: "Invalid token format" };
+  }
 
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const userId = claims.sub;
+  const email = claims.email;
 
-  const {
-    data: { user },
-    error,
-  } = await userClient.auth.getUser();
-  if (error || !user) {
-    throw { status: 401, message: "Invalid or expired token" };
+  if (!userId) {
+    throw { status: 401, message: "Token missing user ID" };
+  }
+
+  // Check token expiration
+  if (claims.exp && claims.exp < Math.floor(Date.now() / 1000)) {
+    throw { status: 401, message: "Token expired" };
   }
 
   // Check admin role via service role client (bypasses RLS)
-  const adminClient = createClient(
-    supabaseUrl,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const adminClient = getServiceClient();
   const { data: roleData } = await adminClient
     .from("user_roles")
     .select("role")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("role", "admin")
     .single();
 
@@ -49,7 +62,7 @@ export async function requireAdmin(authHeader: string | null): Promise<CallerInf
     throw { status: 403, message: "Caller is not an admin" };
   }
 
-  return { userId: user.id, email: user.email };
+  return { userId, email };
 }
 
 /** Create a Supabase admin client with service role key. */
