@@ -155,7 +155,7 @@ export default function UnitContactDetail() {
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт МИЭМ" : form.full_name}</h1>
         </div>
         {!isNew && isAdmin && (
-          <Button variant="destructive" size="sm" className="ml-auto" onClick={() => { if (confirm("Удалить контакт?")) del.mutate(); }}>
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить контакт?")) del.mutate(); }}>
             <Trash2 className="mr-1 h-4 w-4" />Удалить
           </Button>
         )}

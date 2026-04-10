@@ -141,6 +141,11 @@ export default function PartnerDetail() {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/partners"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый партнер" : form.partner_name}</h1>
+        {!isNew && isAdmin && (
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить партнера и все связанные данные?")) del.mutate(); }}>
+            <Trash2 className="mr-1 h-4 w-4" />Удалить
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="info">
@@ -277,18 +282,11 @@ export default function PartnerDetail() {
               </div>
             </CardContent>
           </Card>
-          <div className="flex items-center gap-3">
-            {canEdit && (
-              <Button onClick={() => save.mutate()} disabled={!form.partner_name.trim() || save.isPending}>
-                <Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}
-              </Button>
-            )}
-            {!isNew && isAdmin && (
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { if (confirm("Удалить партнера и все связанные данные?")) del.mutate(); }}>
-                <Trash2 className="mr-1 h-4 w-4" />Удалить
-              </Button>
-            )}
-          </div>
+          {canEdit && (
+            <Button onClick={() => save.mutate()} disabled={!form.partner_name.trim() || save.isPending}>
+              <Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}
+            </Button>
+          )}
         </TabsContent>
 
         {/* === PROFILE TAB === */}
