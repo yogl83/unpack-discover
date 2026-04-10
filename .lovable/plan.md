@@ -1,56 +1,69 @@
 
 
-# Контакты без привязки к компании + кнопки добавления
+# Нормализация sync: убрать lead_name, добавить unit_contacts/memberships
 
-## Идея
+## Изменения
 
-Разрешить создание контактов без немедленной привязки к партнёру/коллективу. Партнёра или коллектив можно выбрать позже.
+### 1. `supabase/functions/sync-google-sheets/index.ts`
 
-## Шаг 1. Миграция БД
+**miem_units** — убрать `lead_name` из `columns` и `importableColumns` (строки 87-88). Добавить `lead_contact_id` в `columns` (read-only при экспорте, не в importableColumns).
 
-- `ALTER TABLE contacts ALTER COLUMN partner_id DROP NOT NULL;` — внешний контакт может существовать без партнёра
-- `ALTER TABLE unit_contacts ALTER COLUMN unit_id DROP NOT NULL;` — внутренний контакт может существовать без коллектива
+**Новые TABLE_CONFIGS** — добавить после `next_steps`:
 
-## Шаг 2. Новые маршруты
+```
+unit_contacts: sheetName "UnitContacts", idColumn "unit_contact_id",
+  columns: [unit_contact_id, unit_id, full_name, job_title, email, phone, telegram, contact_role, is_primary, availability_notes, notes],
+  importableColumns: [unit_id, full_name, job_title, email, phone, telegram, contact_role, is_primary, availability_notes, notes],
+  supportsExternalCreate: false
 
-В `App.tsx` добавить:
-- `/contacts/external/new` → `PartnerContactDetail` (без partnerId)
-- `/contacts/external/:contactId` → `PartnerContactDetail` (без partnerId, загрузка по contactId)
-- `/contacts/internal/new` → `UnitContactDetail` (без unitId)
-- `/contacts/internal/:contactId` → `UnitContactDetail` (без unitId, загрузка по contactId)
+unit_contact_memberships: sheetName "UnitMemberships", idColumn "membership_id",
+  columns: [membership_id, unit_id, unit_contact_id, member_role, is_lead, is_primary, sort_order, notes],
+  importableColumns: [unit_id, unit_contact_id, member_role, is_lead, is_primary, sort_order, notes],
+  supportsExternalCreate: false
+```
 
-## Шаг 3. Доработка `PartnerContactDetail.tsx`
+**parseValue** — добавить `is_lead` к булевым полям, `sort_order` к числовым.
 
-- Если `partnerId` отсутствует в params — работать в «standalone» режиме
-- Добавить `<Select>` для выбора партнёра (загрузка из `partners`), nullable
-- `partner_id` в payload берётся из формы, может быть `null`
-- После сохранения: навигация на `/contacts/external` (если standalone) или на `/partners/:id` (если из карточки)
-- Хлебные крошки адаптируются: «Внешние контакты → Новый контакт» или «Партнёр → Контакты → ...»
+### 2. `src/components/AdminSync.tsx` (строки 17-27)
 
-## Шаг 4. Доработка `UnitContactDetail.tsx`
+Добавить в `TABLES`:
+```
+{ key: "unit_contacts", label: "Внутренние контакты", external: false }
+{ key: "unit_contact_memberships", label: "Состав коллективов", external: false }
+```
 
-- Аналогично: если `unitId` отсутствует — standalone режим
-- Добавить `<Select>` для выбора коллектива (из `miem_units`), nullable
-- Навигация после сохранения: `/contacts/internal` или `/units/:id`
+### 3. `src/components/GoogleSheetsSync.tsx` (строки 14-22)
 
-## Шаг 5. Кнопки «Добавить» на реестрах
+Добавить в `TABLES`:
+```
+{ key: "unit_contacts", label: "Внутренние контакты" }
+{ key: "unit_contact_memberships", label: "Состав коллективов" }
+```
 
-**`ExternalContacts.tsx`**: кнопка «Добавить контакт» (для `canEdit`) → навигация на `/contacts/external/new`
+### 4. `README.md`
 
-**`InternalContacts.tsx`**: кнопка «Добавить контакт» (для `canEdit`) → навигация на `/contacts/internal/new`
+- Убрать `lead_name` из примеров и описания miem_units
+- Добавить строки в таблицу листов: `UnitContacts` → `unit_contacts` (update-only), `UnitMemberships` → `unit_contact_memberships` (update-only)
+- Обновить раздел "Обязательные колонки для создания" — убрать упоминание `lead_name`, добавить пояснение что руководитель назначается через `unit_contact_memberships.is_lead`
+- Добавить note: "Руководитель коллектива определяется через связь `lead_contact_id` → `unit_contacts`, а не через текстовое поле"
 
-## Шаг 6. Отображение непривязанных контактов
+## Backward compatibility
 
-В таблицах реестров: если `partner_id` / `unit_id` = null, показывать «—» или бейдж «Не привязан».
+- `lead_name` остаётся в БД как legacy-колонка, просто не участвует в sync
+- Если в Google Sheet остался столбец `lead_name`, он будет проигнорирован (не в columns → пропускается)
+- Существующие листы не ломаются — новые листы создаются автоматически при экспорте
+
+## Риски
+
+- Если у кого-то бот пишет `lead_name` в Sheet для импорта — поле перестанет обновляться. Смягчение: это ожидаемое поведение, `lead_name` — deprecated
+- Новые листы `UnitContacts`/`UnitMemberships` будут пустыми до первого экспорта
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| Миграция SQL | `partner_id DROP NOT NULL`, `unit_id DROP NOT NULL` |
-| `src/App.tsx` | 4 новых маршрута |
-| `src/pages/PartnerContactDetail.tsx` | Standalone режим + select партнёра |
-| `src/pages/UnitContactDetail.tsx` | Standalone режим + select коллектива |
-| `src/pages/ExternalContacts.tsx` | Кнопка «Добавить контакт» |
-| `src/pages/InternalContacts.tsx` | Кнопка «Добавить контакт» |
+| `supabase/functions/sync-google-sheets/index.ts` | Убрать lead_name, добавить 2 таблицы |
+| `src/components/AdminSync.tsx` | +2 записи в TABLES |
+| `src/components/GoogleSheetsSync.tsx` | +2 записи в TABLES |
+| `README.md` | Обновить документацию |
 
