@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ENTITY_TABLES = [
   { key: "partners", label: "Партнёры" },
@@ -24,12 +25,13 @@ export default function AdminSettings() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const results: Record<string, number> = {};
-      for (const t of ENTITY_TABLES) {
-        const { count } = await supabase.from(t.key as any).select("*", { count: "exact", head: true });
-        results[t.key] = count ?? 0;
-      }
-      return results;
+      const results = await Promise.all(
+        ENTITY_TABLES.map(async (t) => {
+          const { count } = await supabase.from(t.key as any).select("*", { count: "exact", head: true });
+          return [t.key, count ?? 0] as const;
+        })
+      );
+      return Object.fromEntries(results) as Record<string, number>;
     },
   });
 
@@ -45,7 +47,14 @@ export default function AdminSettings() {
         <CardHeader><CardTitle className="text-base">Статистика системы</CardTitle></CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Загрузка...</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {ENTITY_TABLES.map(t => (
+                <div key={t.key} className="rounded-lg border p-3 space-y-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-7 w-12" />
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {ENTITY_TABLES.map(t => (
