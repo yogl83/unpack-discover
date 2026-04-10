@@ -434,9 +434,15 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
               </div>
             )}
             {canEdit && (
-              <Button size="sm" className="mt-2" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-                <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
+                  {isGenerating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
+                  {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -447,9 +453,15 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         <div className="text-center py-8">
           <p className="text-muted-foreground mb-4">Профайл ещё не создан</p>
           {canEdit && (
-            <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-              <Plus className="mr-1 h-4 w-4" />Создать профайл
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                <Plus className="mr-1 h-4 w-4" />Создать профайл
+              </Button>
+              <Button variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
+                {isGenerating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />}
+                {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+              </Button>
+            </div>
           )}
         </div>
       )}
