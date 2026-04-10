@@ -78,19 +78,30 @@ Deno.serve(async (req) => {
 
       // Send "account created" email with credentials
       try {
-        await supabaseAdmin.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "account-created",
-            recipientEmail: u.email,
-            idempotencyKey: `account-created-${data.user.id}`,
-            templateData: {
-              name: u.full_name,
-              email: u.email,
-              password: u.password,
-              role: u.role,
+        const emailRes = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             },
-          },
-        });
+            body: JSON.stringify({
+              templateName: "account-created",
+              recipientEmail: u.email,
+              idempotencyKey: `account-created-${data.user.id}`,
+              templateData: {
+                name: u.full_name,
+                email: u.email,
+                password: u.password,
+                role: u.role,
+              },
+            }),
+          }
+        );
+        if (!emailRes.ok) {
+          console.error("Failed to send account created email", emailRes.status, await emailRes.text());
+        }
       } catch (emailErr) {
         console.error("Failed to send account created email", emailErr);
       }
