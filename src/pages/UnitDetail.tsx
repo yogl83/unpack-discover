@@ -76,7 +76,7 @@ export default function UnitDetail() {
   });
 
   const [form, setForm] = useState({
-    unit_name: "", unit_type: "", lead_name: "", team_summary: "", research_area: "",
+    unit_name: "", unit_type: "", team_summary: "", research_area: "",
     business_problem_focus: "", application_domain: "", industry_fit: "", end_customer_fit: "",
     value_chain_role: "", readiness_level: "", discussion_readiness: "", notes: "",
   });
@@ -218,7 +218,7 @@ export default function UnitDetail() {
                 <Label>Руководитель</Label>
                 {!isNew && unitContacts?.length ? (
                   <Select value={leadContactId || ""} onValueChange={v => setLeadContactId(v || null)} disabled={!canEdit}>
-                    <SelectTrigger><SelectValue placeholder={form.lead_name || "Выберите контакт"} /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Выберите контакт" /></SelectTrigger>
                     <SelectContent>
                       {unitContacts.map(uc => (
                         <SelectItem key={uc.unit_contact_id} value={uc.unit_contact_id}>
@@ -228,7 +228,7 @@ export default function UnitDetail() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input value={form.lead_name} onChange={e => set("lead_name", e.target.value)} disabled={!canEdit} placeholder={isNew ? "Введите ФИО" : "Нет контактов — добавьте во вкладке Контакты"} />
+                  <Input disabled placeholder={isNew ? "Сначала создайте коллектив, затем добавьте контакты" : "Нет контактов — добавьте во вкладке Контакты"} />
                 )}
               </div>
               <div className="space-y-2"><Label>Область исследований</Label><Input value={form.research_area} onChange={e => set("research_area", e.target.value)} disabled={!canEdit} /></div>
