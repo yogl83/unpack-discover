@@ -1,18 +1,18 @@
 
 
-# Исправление ошибки загрузки «Внутренние контакты»
+# Исправление: REVOKE на has_role сломал доступ к данным
 
 ## Проблема
-Запрос `unit_contacts.select("*, miem_units(unit_name)")` возвращает HTTP 300 — PostgREST не может выбрать между двумя FK:
-- `unit_contacts.unit_id → miem_units.unit_id`
-- `miem_units.lead_contact_id → unit_contacts.unit_contact_id`
+Миграция безопасности сделала `REVOKE EXECUTE ON FUNCTION public.has_role(uuid, app_role) FROM authenticated` — это заблокировало все RLS-политики, использующие `has_role()`. Результат: запросы к `user_roles`, `profiles` и другим таблицам возвращают 403. Кнопки «Добавить» не показываются, т.к. `canEdit` = false (роль не загружается).
 
 ## Решение
-В `InternalContacts.tsx` заменить `miem_units(unit_name)` на `miem_units!unit_contacts_unit_id_fkey(unit_name)` — явно указать FK.
+Одна миграция:
 
-Аналогично проверить и исправить все другие места, где `unit_contacts` join'ится с `miem_units` без disambiguator (например, `UnitDetail.tsx`, `UnitContactDetail.tsx`).
+1. **`GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated`** — вернуть доступ, чтобы RLS работал
+2. **Пометить функцию как не-RPC**: установить `security_label` или перенести в internal schema нельзя без риска — вместо этого просто убрать из PostgREST exposed schemas, но это тоже опасно. Самый надёжный вариант: **оставить GRANT** (функция и так безопасна — возвращает boolean только для переданного user_id, что не даёт перебирать чужие роли, т.к. атакующий должен знать UUID).
+
+Итого: одна строка SQL — `GRANT EXECUTE ... TO authenticated`.
 
 ### Файлы
-- `src/pages/InternalContacts.tsx` — строка запроса
-- Проверить: `src/pages/UnitDetail.tsx`, `src/pages/UnitContactDetail.tsx` на аналогичные запросы
+- Новая миграция (через migration tool)
 
