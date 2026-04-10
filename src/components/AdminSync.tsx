@@ -14,19 +14,34 @@ import {
   Clock, AlertTriangle, Settings2, History, Zap,
 } from "lucide-react";
 
-const TABLES = [
-  { key: "partners", label: "Партнёры", external: true },
-  { key: "contacts", label: "Контакты", external: false },
-  { key: "partner_needs", label: "Задачи партнёров", external: false },
-  { key: "collaboration_hypotheses", label: "Гипотезы", external: false },
-  { key: "miem_units", label: "Подразделения МИЭМ", external: true },
-  { key: "competencies", label: "Компетенции", external: false },
-  { key: "sources", label: "Источники", external: false },
-  { key: "evidence", label: "Подтверждения", external: false },
-  { key: "next_steps", label: "Следующие шаги", external: false },
-  { key: "unit_contacts", label: "Внутренние контакты", external: false },
-  { key: "unit_contact_memberships", label: "Состав коллективов", external: false },
+type SyncMode = "create+update" | "update-only";
+
+const TABLES: { key: string; label: string; mode: SyncMode }[] = [
+  { key: "partners", label: "Партнёры", mode: "create+update" },
+  { key: "contacts", label: "Контакты", mode: "update-only" },
+  { key: "partner_needs", label: "Задачи партнёров", mode: "update-only" },
+  { key: "collaboration_hypotheses", label: "Гипотезы", mode: "update-only" },
+  { key: "miem_units", label: "Подразделения МИЭМ", mode: "create+update" },
+  { key: "competencies", label: "Компетенции", mode: "update-only" },
+  { key: "sources", label: "Источники", mode: "update-only" },
+  { key: "evidence", label: "Подтверждения", mode: "update-only" },
+  { key: "next_steps", label: "Следующие шаги", mode: "update-only" },
+  { key: "unit_contacts", label: "Внутренние контакты", mode: "update-only" },
+  { key: "unit_contact_memberships", label: "Состав коллективов", mode: "update-only" },
 ];
+
+const ModeBadge = ({ mode }: { mode: SyncMode }) => (
+  <Badge
+    variant="outline"
+    className={`text-[10px] px-1 py-0 leading-tight ${
+      mode === "create+update"
+        ? "border-green-500/50 text-green-700 dark:text-green-400"
+        : "border-muted-foreground/30 text-muted-foreground"
+    }`}
+  >
+    {mode === "create+update" ? "create+update" : "update only"}
+  </Badge>
+);
 
 interface SyncSettings {
   id: string;
@@ -233,20 +248,20 @@ export default function AdminSync() {
 
           <div>
             <Label className="mb-2 block">Таблицы по умолчанию</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {TABLES.map(t => (
                 <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox
                     checked={editDefaultTables.includes(t.key)}
                     onCheckedChange={() => toggleDefaultTable(t.key)}
                   />
-                  {t.label}
-                  {t.external && <Badge variant="outline" className="text-[10px] px-1">ext</Badge>}
+                  <span className="flex-1">{t.label}</span>
+                  <ModeBadge mode={t.mode} />
                 </label>
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Если ничего не выбрано — все таблицы. <strong>ext</strong> — поддержка создания через external_id.
+              Если ничего не выбрано — все таблицы. <span className="text-green-700 dark:text-green-400 font-medium">create+update</span> — создание через external_id, <span className="text-muted-foreground font-medium">update only</span> — только обновление существующих.
             </p>
           </div>
 
@@ -346,14 +361,15 @@ export default function AdminSync() {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {TABLES.map(t => (
               <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
                 <Checkbox
                   checked={selectedTables.includes(t.key)}
                   onCheckedChange={() => toggleTable(t.key)}
                 />
-                {t.label}
+                <span className="flex-1">{t.label}</span>
+                <ModeBadge mode={t.mode} />
               </label>
             ))}
           </div>
