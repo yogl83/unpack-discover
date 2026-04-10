@@ -21,9 +21,7 @@ import Units from "@/pages/Units";
 import UnitDetail from "@/pages/UnitDetail";
 import Competencies from "@/pages/Competencies";
 import CompetencyDetail from "@/pages/CompetencyDetail";
-import Sources from "@/pages/Sources";
 import SourceDetail from "@/pages/SourceDetail";
-import EvidencePage from "@/pages/Evidence";
 import EvidenceDetail from "@/pages/EvidenceDetail";
 import ExternalContacts from "@/pages/ExternalContacts";
 import InternalContacts from "@/pages/InternalContacts";
@@ -63,9 +61,7 @@ const App = () => (
               <Route path="/units/:unitId/contacts/:contactId" element={<UnitContactDetail />} />
               <Route path="/competencies" element={<Competencies />} />
               <Route path="/competencies/:id" element={<CompetencyDetail />} />
-              <Route path="/sources" element={<Sources />} />
               <Route path="/sources/:id" element={<SourceDetail />} />
-              <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/evidence/:id" element={<EvidenceDetail />} />
               <Route path="/contacts/external" element={<ExternalContacts />} />
               <Route path="/contacts/external/new" element={<PartnerContactDetail />} />

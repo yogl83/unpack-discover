@@ -6,8 +6,6 @@ const titles: Record<string, string> = {
   "/next-steps": "Следующие шаги",
   "/units": "Коллективы МИЭМ",
   "/competencies": "Компетенции",
-  "/sources": "Источники",
-  "/evidence": "Подтверждения",
   "/users": "Пользователи",
 };
 
