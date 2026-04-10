@@ -53,14 +53,25 @@ Deno.serve(async (req) => {
 
       if (profile?.email) {
         try {
-          await admin.functions.invoke("send-transactional-email", {
-            body: {
-              templateName: "access-approved",
-              recipientEmail: profile.email,
-              idempotencyKey: `access-approved-${userId}`,
-              templateData: { name: profile.full_name || undefined },
-            },
-          });
+          const res = await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({
+                templateName: "access-approved",
+                recipientEmail: profile.email,
+                idempotencyKey: `access-approved-${userId}`,
+                templateData: { name: profile.full_name || undefined },
+              }),
+            }
+          );
+          if (!res.ok) {
+            console.error("Failed to send approval email", res.status, await res.text());
+          }
         } catch (emailErr) {
           console.error("Failed to send approval email", emailErr);
         }
