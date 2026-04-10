@@ -14,21 +14,30 @@ import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadg
 import { partnerStatusLabels, partnerStatusColors, priorityLabels, priorityColors } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Partners() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
   const { canEdit } = useAuth();
+  const { page, from, to, setPage, totalPages } = usePagination();
 
-  const { data: partners, isLoading, isError, refetch } = useQuery({
-    queryKey: ["partners", search],
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["partners", debouncedSearch, page],
     queryFn: async () => {
-      let q = supabase.from("partner_overview").select("*").order("updated_at", { ascending: false });
-      if (search) q = q.or(`partner_name.ilike.%${search}%,industry.ilike.%${search}%,city.ilike.%${search}%`);
-      const { data, error } = await q;
+      let q = supabase.from("partner_overview").select("*", { count: "exact" }).order("updated_at", { ascending: false });
+      if (debouncedSearch) q = q.or(`partner_name.ilike.%${debouncedSearch}%,industry.ilike.%${debouncedSearch}%,city.ilike.%${debouncedSearch}%`);
+      q = q.range(from, to);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { data: data || [], count: count || 0 };
     },
   });
+
+  const partners = result?.data;
+  const pages = totalPages(result?.count || 0);
 
   // Fetch current profiles for freshness indicators
   const partnerIds = partners?.map(p => p.partner_id).filter(Boolean) as string[] | undefined;
@@ -83,7 +92,7 @@ export default function Partners() {
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Поиск по названию, отрасли, городу..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Поиск по названию, отрасли, городу..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
       </div>
       {isError ? (
         <ErrorState onRetry={refetch} />
@@ -92,62 +101,65 @@ export default function Partners() {
       ) : !partners?.length ? (
         <p className="text-muted-foreground py-8 text-center">Нет партнеров</p>
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
-          <Table>
-            <TableHeader>
-             <TableRow>
-                 <TableHead>Название</TableHead>
-                 <TableHead>Профайл</TableHead>
-                 <TableHead>Отрасль</TableHead>
-                 <TableHead>Город</TableHead>
-                 <TableHead>Статус</TableHead>
-                 <TableHead>Приоритет</TableHead>
-                 <TableHead className="text-right">Контакты</TableHead>
-                 <TableHead className="text-right">Задачи</TableHead>
-                 <TableHead className="text-right">Гипотезы</TableHead>
-               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {partners.map((p) => (
-                <TableRow key={p.partner_id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <Link to={`/partners/${p.partner_id}`} className="font-medium text-primary hover:underline">
-                      {p.partner_name}
-                    </Link>
-                   </TableCell>
-                   <TableCell>
-                     <ProfileFreshnessBadge
-                       profile={(() => {
-                         const prof = getProfileForPartner(p.partner_id);
-                         return prof ? { status: prof.status, is_current: prof.is_current, updated_at: prof.updated_at } : null;
-                       })()}
-                       compact
-                     />
-                   </TableCell>
-                   <TableCell className="text-muted-foreground">{p.industry || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.city || "—"}</TableCell>
-                  <TableCell>
-                    {p.partner_status && (
-                      <Badge variant="secondary" className={partnerStatusColors[p.partner_status] || ""}>
-                        {partnerStatusLabels[p.partner_status] || p.partner_status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {p.priority_level && (
-                      <Badge variant="secondary" className={priorityColors[p.priority_level] || ""}>
-                        {priorityLabels[p.priority_level] || p.priority_level}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{p.contacts_count}</TableCell>
-                  <TableCell className="text-right">{p.needs_count}</TableCell>
-                  <TableCell className="text-right">{p.hypotheses_count}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+               <TableRow>
+                   <TableHead>Название</TableHead>
+                   <TableHead className="hidden md:table-cell">Профайл</TableHead>
+                   <TableHead className="hidden md:table-cell">Отрасль</TableHead>
+                   <TableHead className="hidden lg:table-cell">Город</TableHead>
+                   <TableHead>Статус</TableHead>
+                   <TableHead className="hidden md:table-cell">Приоритет</TableHead>
+                   <TableHead className="text-right hidden lg:table-cell">Контакты</TableHead>
+                   <TableHead className="text-right hidden lg:table-cell">Задачи</TableHead>
+                   <TableHead className="text-right hidden lg:table-cell">Гипотезы</TableHead>
+                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                {partners.map((p) => (
+                  <TableRow key={p.partner_id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <Link to={`/partners/${p.partner_id}`} className="font-medium text-primary hover:underline">
+                        {p.partner_name}
+                      </Link>
+                     </TableCell>
+                     <TableCell className="hidden md:table-cell">
+                       <ProfileFreshnessBadge
+                         profile={(() => {
+                           const prof = getProfileForPartner(p.partner_id);
+                           return prof ? { status: prof.status, is_current: prof.is_current, updated_at: prof.updated_at } : null;
+                         })()}
+                         compact
+                       />
+                     </TableCell>
+                     <TableCell className="text-muted-foreground hidden md:table-cell">{p.industry || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden lg:table-cell">{p.city || "—"}</TableCell>
+                    <TableCell>
+                      {p.partner_status && (
+                        <Badge variant="secondary" className={partnerStatusColors[p.partner_status] || ""}>
+                          {partnerStatusLabels[p.partner_status] || p.partner_status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {p.priority_level && (
+                        <Badge variant="secondary" className={priorityColors[p.priority_level] || ""}>
+                          {priorityLabels[p.priority_level] || p.priority_level}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right hidden lg:table-cell">{p.contacts_count}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell">{p.needs_count}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell">{p.hypotheses_count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <TablePagination page={page} totalPages={pages} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

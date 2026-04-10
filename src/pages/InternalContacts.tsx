@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -9,35 +9,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Search } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function InternalContacts() {
   const { canEdit } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterRole, setFilterRole] = useState("all");
+  const { page, from, to, setPage, totalPages } = usePagination();
 
-  const { data: contacts, isLoading, isError, refetch } = useQuery({
-    queryKey: ["all-internal-contacts"],
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["all-internal-contacts", debouncedSearch, page],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_contacts")
-        .select("*, miem_units(unit_name)")
-        .order("full_name");
+      let q = supabase.from("unit_contacts").select("*, miem_units(unit_name)", { count: "exact" }).order("full_name");
+      if (debouncedSearch) q = q.or(`full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`);
+      q = q.range(from, to);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { data: data || [], count: count || 0 };
     },
   });
+
+  const contacts = result?.data;
+  const pages = totalPages(result?.count || 0);
 
   const units = Array.from(new Set(contacts?.map(c => (c.miem_units as any)?.unit_name).filter(Boolean))).sort();
   const roles = Array.from(new Set(contacts?.map(c => c.contact_role).filter(Boolean))).sort();
 
   const filtered = contacts?.filter(c => {
-    const q = search.toLowerCase();
-    if (q && !c.full_name.toLowerCase().includes(q) && !(c.email || "").toLowerCase().includes(q)) return false;
     if (filterUnit !== "all" && (c.miem_units as any)?.unit_name !== filterUnit) return false;
     if (filterRole !== "all" && c.contact_role !== filterRole) return false;
     return true;
@@ -57,7 +62,7 @@ export default function InternalContacts() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Поиск по ФИО или email…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Поиск по ФИО или email…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
         </div>
         <Select value={filterUnit} onValueChange={setFilterUnit}>
           <SelectTrigger className="w-[200px]"><SelectValue placeholder="Коллектив" /></SelectTrigger>
@@ -82,40 +87,43 @@ export default function InternalContacts() {
       ) : !filtered?.length ? (
         <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
       ) : (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ФИО</TableHead>
-                <TableHead>Коллектив</TableHead>
-                <TableHead>Роль</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Телефон</TableHead>
-                <TableHead>Основной</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(c => (
-                <TableRow key={c.unit_contact_id}>
-                  <TableCell>
-                    <Link to={`/units/${c.unit_id}/contacts/${c.unit_contact_id}`} className="font-medium text-primary hover:underline">
-                      {c.full_name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link to={`/units/${c.unit_id}`} className="text-muted-foreground hover:underline">
-                      {(c.miem_units as any)?.unit_name || "—"}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
-                  <TableCell>{c.is_primary ? <Badge>Да</Badge> : "—"}</TableCell>
+        <>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ФИО</TableHead>
+                  <TableHead>Коллектив</TableHead>
+                  <TableHead className="hidden md:table-cell">Роль</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">Телефон</TableHead>
+                  <TableHead className="hidden md:table-cell">Основной</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filtered?.map(c => (
+                  <TableRow key={c.unit_contact_id}>
+                    <TableCell>
+                      <Link to={`/units/${c.unit_id}/contacts/${c.unit_contact_id}`} className="font-medium text-primary hover:underline">
+                        {c.full_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link to={`/units/${c.unit_id}`} className="text-muted-foreground hover:underline">
+                        {(c.miem_units as any)?.unit_name || "—"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{c.contact_role || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{c.email || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden lg:table-cell">{c.phone || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{c.is_primary ? <Badge>Да</Badge> : "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <TablePagination page={page} totalPages={pages} onPageChange={setPage} />
+        </>
       )}
     </div>
   );
