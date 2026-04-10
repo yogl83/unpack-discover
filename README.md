@@ -79,7 +79,7 @@
 | UnitContacts | `unit_contacts` | ❌ только обновление |
 | UnitMemberships | `unit_contact_memberships` | ❌ только обновление |
 
-> **Руководитель коллектива** определяется через связь `miem_units.lead_contact_id` → `unit_contacts`, а не через текстовое поле `lead_name` (deprecated). Для назначения руководителя используйте `unit_contact_memberships.is_lead = true`.
+> **Руководитель коллектива** определяется через связь `miem_units.lead_contact_id` → `unit_contacts`. Поле `lead_name` в таблице `miem_units` deprecated и не используется — view `unit_overview` вычисляет имя руководителя через JOIN на `unit_contacts`. При импорте из Sheets можно задать `lead_contact_id` (UUID контакта) для назначения руководителя.
 
 ### Создание новых записей из Sheets (external_id)
 

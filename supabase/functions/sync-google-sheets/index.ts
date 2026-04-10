@@ -85,7 +85,7 @@ const TABLE_CONFIGS: TableConfig[] = [
   {
     table: "miem_units", sheetName: "Units", idColumn: "unit_id",
     columns: ["unit_id","unit_name","lead_contact_id","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
-    importableColumns: ["unit_name","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
+    importableColumns: ["unit_name","lead_contact_id","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
     supportsExternalCreate: true,
   },
   {
