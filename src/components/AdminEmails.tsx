@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Mail, CheckCircle2, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import TablePagination from "@/components/TablePagination";
+import { TablePagination } from "@/components/TablePagination";
 
 const TIME_RANGES = [
   { label: "24 часа", value: "24h", hours: 24 },
