@@ -1,72 +1,40 @@
+# Chunk 1 — повторная фиксация `miem_units` sync в рабочей ревизии
 
+Что я уже проверил по текущему snapshot:
 
-# План: переход от lead_name к lead_contact_id — production-ready
+- В `supabase/functions/sync-google-sheets/index.ts` блок `miem_units` сейчас выглядит так:
+  - `columns`: содержит `lead_contact_id`
+  - `importableColumns`: содержит `lead_contact_id`
+  - `lead_name` в этом конфиге не видно
+- По поиску по файлу есть только:
+  - `table: "miem_units"` и строки с `lead_contact_id`
+  - упоминание `miem_units` в валидации `unit_name`
+  - `lead_name` по этому snapshot не найден
 
-## 1. Текущее состояние
+Но ваш критерий приёмки требует факт именно из текущей рабочей ревизии/HEAD, плюс точный diff и вывод `rg`. В read-only режиме я не могу ни зафиксировать изменение, ни отдать реальный commit hash, ни выполнить команду.
 
-Sync edge function (`sync-google-sheets/index.ts`) уже содержит `unit_contacts` и `unit_contact_memberships` в TABLE_CONFIGS, и `lead_name` уже убран из columns/importableColumns для `miem_units` (заменён на `lead_contact_id` в columns, но не в importableColumns). AdminSync и GoogleSheetsSync UI уже показывают эти таблицы. Т.е. часть работы сделана в предыдущих итерациях.
+## Что сделаю после переключения в режим правок
 
-**Остающиеся проблемы:**
+1. Открою `supabase/functions/sync-google-sheets/index.ts` именно в рабочей ревизии HEAD.
+2. Если в `miem_units` там ещё есть `lead_name`:
+  - удалю `lead_name` из `columns`
+  - удалю `lead_name` из `importableColumns`
+  - добавлю `lead_contact_id` в `columns`
+  - добавлю `lead_contact_id` в `importableColumns`
+3. Не буду трогать другие `TABLE_CONFIGS` и не менять архитектуру функции.
+4. Сразу после этого сниму факт:
+  - commit hash
+  - точный diff только по `supabase/functions/sync-google-sheets/index.ts`
+  - вывод команды  
+  `rg -n "miem_units|lead_name|lead_contact_id" supabase/functions/sync-google-sheets/index.ts`
+5. Если окажется, что рабочая ревизия уже совпадает с требованием:
+  - честно верну no-op diff
+  - приложу фактический `rg`
+  - отдельно отмечу, что Chunk 1 уже закрыт в HEAD без дополнительной правки
 
-1. **unit_overview view** — всё ещё использует `u.lead_name` вместо join на `unit_contacts` через `lead_contact_id`
-2. **Units.tsx** — отображает `u.lead_name` из view
-3. **UnitDetail.tsx** — форма содержит `lead_name` в state, fallback на `form.lead_name` в placeholder Select и в Input для нового коллектива
-4. **README.md** — таблица листов не включает UnitContacts/UnitMemberships, упоминает `lead_name` в описании
-5. **GoogleSheetsSync.tsx** — уже содержит новые таблицы, OK
-6. **AdminSync.tsx** — уже содержит новые таблицы, OK
-7. **Sync edge function** — `lead_contact_id` есть в columns (экспорт), но нет в importableColumns (нельзя импортировать назначение руководителя) — это может быть намеренно или нет
+## Ожидаемый критерий результата
 
-## 2. Plan (пошагово)
-
-### Step 1: Migration — обновить view `unit_overview`
-Новая миграция: drop + recreate `unit_overview` с JOIN на `unit_contacts` через `lead_contact_id`, выводя `uc.full_name as lead_name` для обратной совместимости с UI.
-
-```sql
-DROP VIEW IF EXISTS public.unit_overview;
-CREATE VIEW public.unit_overview WITH (security_invoker = on) AS
-SELECT
-  u.unit_id, u.unit_name, u.unit_type,
-  u.research_area, u.readiness_level,
-  uc.full_name AS lead_name,
-  COUNT(DISTINCT c.competency_id) AS competencies_count,
-  COUNT(DISTINCT h.hypothesis_id) AS linked_hypotheses_count
-FROM public.miem_units u
-LEFT JOIN public.unit_contacts uc ON uc.unit_contact_id = u.lead_contact_id
-LEFT JOIN public.competencies c ON c.unit_id = u.unit_id
-LEFT JOIN public.collaboration_hypotheses h ON h.unit_id = u.unit_id
-GROUP BY u.unit_id, uc.full_name;
-```
-
-Это сохраняет колонку `lead_name` в view (вычисляемую из контакта), поэтому Units.tsx продолжает работать без изменений. Types перегенерируются автоматически.
-
-### Step 2: UnitDetail.tsx — убрать lead_name из формы
-- Убрать `lead_name` из объекта `form` state
-- Убрать `lead_name` из payload при save (оно deprecated в таблице)
-- В fallback для новых коллективов (когда нет контактов) показывать disabled placeholder вместо input для `lead_name`
-- Убрать `form.lead_name` из placeholder Select
-
-### Step 3: sync-google-sheets — добавить lead_contact_id в importableColumns
-Добавить `lead_contact_id` в importableColumns для `miem_units`, чтобы через импорт можно было назначить руководителя (если UUID контакта известен).
-
-### Step 4: README.md — актуализировать
-- Добавить UnitContacts и UnitMemberships в таблицу листов
-- Убрать упоминание `lead_name` как рабочего поля
-- Описать что руководитель задаётся через `lead_contact_id`
-
-### Step 5: Lint/Build проверка
-
-## 3. Файлы и изменения
-
-| Файл | Что |
-|------|-----|
-| `supabase/migrations/new.sql` | Пересоздать `unit_overview` view с JOIN на unit_contacts |
-| `src/pages/UnitDetail.tsx` | Убрать `lead_name` из form state и save payload |
-| `supabase/functions/sync-google-sheets/index.ts` | Добавить `lead_contact_id` в importableColumns для miem_units |
-| `README.md` | Актуализировать раздел Google Sheets |
-
-## 4. Риски
-
-- **View recreation**: может потребовать пересборку типов. Lovable Cloud делает это автоматически.
-- **lead_name column в miem_units**: остаётся в таблице (deprecated), не удаляем для обратной совместимости. View теперь вычисляет его из join.
-- **Импорт lead_contact_id**: требует знания UUID контакта. Это корректно для machine-to-machine синка.
-
+- Для `miem_units` в файле не будет `lead_name` в `columns/importableColumns`
+- Для `miem_units` будет `lead_contact_id` в `columns/importableColumns`
+- Остальные `TABLE_CONFIGS` останутся без функциональных изменений
+- В ответе будут именно те артефакты, которые вы запросили: hash, diff, `rg`
