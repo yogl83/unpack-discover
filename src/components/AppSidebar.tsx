@@ -65,7 +65,7 @@ export function AppSidebar() {
         {/* Дашборд */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span className="text-xs font-semibold tracking-wider uppercase">МИЭМ Партнерства</span>}
+            {!collapsed && <span className="text-xs font-semibold tracking-wider uppercase">МИЭМ: УПРАВЛЕНИЕ ПАРТНЕРСТВАМИ</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={[dashboardItem]} collapsed={collapsed} />
@@ -75,7 +75,7 @@ export function AppSidebar() {
         {/* Партнёрства */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span>ПАРТНЕРСТВА</span>}
+            {!collapsed && <span>ПАРТНЕРЫ</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={partnershipItems} collapsed={collapsed} />
@@ -95,7 +95,7 @@ export function AppSidebar() {
         {/* Работа */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span>Совместная деятельность</span>}
+            {!collapsed && <span>СОВМЕСТНАЯ ДЕЯТЕЛЬНОСТЬ</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={workItems} collapsed={collapsed} />
