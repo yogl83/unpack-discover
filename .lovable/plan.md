@@ -1,34 +1,33 @@
 
 
-# Настройка отправки писем при регистрации, одобрении и создании пользователей
+# Исправление отправки писем при одобрении пользователя
 
-## Шаг 1: Настройка почтового домена (обязательный)
-Для отправки любых писем нужен настроенный домен. Нажмите кнопку ниже, чтобы настроить домен отправки через интерфейс Cloud. Вы сможете указать свой домен (например, `notify.yourdomain.com`).
+## Проблема
+Функция `approve-user` успешно одобряет пользователя, но письмо не отправляется. Причина: вызов `admin.functions.invoke("send-transactional-email")` из service-role клиента не проходит проверку JWT на gateway (`verify_jwt = true`). Ошибка проглатывается в `catch` блоке.
 
-## Шаг 2: Настройка email-инфраструктуры
-После настройки домена — создание очередей, таблиц и фоновых процессов для надёжной доставки писем.
+## Решение
+Изменить `approve-user` (и аналогично `create-admin`), чтобы вызывать `send-transactional-email` напрямую через HTTP с service role key в заголовке Authorization — это корректно проходит gateway-проверку.
 
-## Шаг 3: Создание шаблонов писем
-Три транзакционных шаблона на русском языке:
+### Изменения
 
-1. **Заявка принята** (`register-request`) — «Ваша заявка на доступ принята, ожидайте подтверждения администратора»
-2. **Доступ одобрен** (`approve-user`) — «Ваш доступ подтверждён, вы можете войти в систему» (с кнопкой-ссылкой на вход)
-3. **Аккаунт создан** (`create-admin`) — «Для вас создана учётная запись» с логином и временным паролем
+1. **`supabase/functions/approve-user/index.ts`** — заменить `admin.functions.invoke(...)` на прямой `fetch()` вызов с `Authorization: Bearer <service_role_key>`:
+   ```ts
+   const res = await fetch(
+     `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+     {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+         "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+       },
+       body: JSON.stringify({ ... }),
+     }
+   );
+   ```
 
-## Шаг 4: Интеграция в Edge Functions
-Добавить вызов `send-transactional-email` в три существующие функции:
-- `register-request` — после успешного создания пользователя
-- `approve-user` — после одобрения заявки
-- `create-admin` — после создания каждого пользователя
+2. **`supabase/functions/create-admin/index.ts`** — аналогичное изменение, если там тоже используется `admin.functions.invoke`.
 
-## Шаг 5: Страница отписки
-Создание страницы `/unsubscribe` в приложении для обработки отписок.
+3. **Передеплой** обеих функций.
 
-### Файлы (будут созданы/изменены)
-- `supabase/functions/_shared/transactional-email-templates/` — 3 шаблона + реестр
-- `supabase/functions/register-request/index.ts` — добавить отправку письма
-- `supabase/functions/approve-user/index.ts` — добавить отправку письма
-- `supabase/functions/create-admin/index.ts` — добавить отправку письма
-- `src/pages/Unsubscribe.tsx` — страница отписки
-- `src/App.tsx` — маршрут `/unsubscribe`
+4. **Повторный тест** — вызвать `approve-user` и проверить что запись появилась в `email_send_log`.
 
