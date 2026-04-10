@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb, FileText, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb } from "lucide-react";
 import { PartnerProfileTab } from "@/components/partner/PartnerProfileTab";
 import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
 import { toast } from "sonner";
@@ -69,25 +69,6 @@ export default function PartnerDetail() {
     enabled: !isNew,
   });
 
-  const { data: sources } = useQuery({
-    queryKey: ["partner-sources", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("sources").select("*").eq("partner_id", id!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !isNew,
-  });
-
-  const { data: evidence } = useQuery({
-    queryKey: ["partner-evidence", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("evidence").select("*, sources(title)").eq("partner_id", id!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !isNew,
-  });
 
   const [form, setForm] = useState({
     partner_name: "", legal_name: "", website_url: "", industry: "", subindustry: "",
@@ -149,7 +130,7 @@ export default function PartnerDetail() {
           {!isNew && (
             <>
               <TabsTrigger value="profile" className="gap-1.5">
-                <FileText className="h-3.5 w-3.5" />Профайл
+                Профайл
               </TabsTrigger>
               <TabsTrigger value="contacts" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" />Контакты
@@ -162,14 +143,6 @@ export default function PartnerDetail() {
               <TabsTrigger value="hypotheses" className="gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5" />Гипотезы
                 {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="sources" className="gap-1.5">
-                <FileText className="h-3.5 w-3.5" />Источники
-                {sources?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{sources.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="evidence" className="gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5" />Подтверждения
-                {evidence?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{evidence.length}</Badge> : null}
               </TabsTrigger>
             </>
           )}
@@ -441,97 +414,6 @@ export default function PartnerDetail() {
           </TabsContent>
         )}
 
-        {/* === SOURCES TAB === */}
-        {!isNew && (
-          <TabsContent value="sources" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Источники</h2>
-              {canEdit && (
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/sources/new"><Plus className="mr-1 h-4 w-4" />Добавить</Link>
-                </Button>
-              )}
-            </div>
-            {!sources?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет источников</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Название</TableHead>
-                      <TableHead>Тип</TableHead>
-                      <TableHead>Издатель</TableHead>
-                      <TableHead>Дата</TableHead>
-                      <TableHead>Надёжность</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sources.map(s => (
-                      <TableRow key={s.source_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/sources/${s.source_id}`)}>
-                        <TableCell className="font-medium text-primary">{s.title}</TableCell>
-                        <TableCell className="text-muted-foreground">{s.source_type || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{s.publisher || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{s.publication_date || "—"}</TableCell>
-                        <TableCell>
-                          {s.source_reliability ? (
-                            <Badge variant="outline">{s.source_reliability}</Badge>
-                          ) : "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-        )}
-
-        {/* === EVIDENCE TAB === */}
-        {!isNew && (
-          <TabsContent value="evidence" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Подтверждения</h2>
-              {canEdit && (
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/evidence/new"><Plus className="mr-1 h-4 w-4" />Добавить</Link>
-                </Button>
-              )}
-            </div>
-            {!evidence?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет подтверждений</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Сущность</TableHead>
-                      <TableHead>Поле</TableHead>
-                      <TableHead>Значение</TableHead>
-                      <TableHead>Уверенность</TableHead>
-                      <TableHead>Метод</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {evidence.map(e => (
-                      <TableRow key={e.evidence_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/evidence/${e.evidence_id}`)}>
-                        <TableCell className="text-muted-foreground">{e.entity_type}</TableCell>
-                        <TableCell className="font-medium">{e.field_name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground max-w-[200px] truncate">{e.field_value || "—"}</TableCell>
-                        <TableCell>
-                          {e.confidence_level ? (
-                            <Badge variant="outline">{e.confidence_level}</Badge>
-                          ) : "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{e.data_collection_method || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );

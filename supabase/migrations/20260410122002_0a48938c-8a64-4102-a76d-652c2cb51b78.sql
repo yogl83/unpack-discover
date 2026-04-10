@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS public.evidence CASCADE;
+DROP TABLE IF EXISTS public.sources CASCADE;
