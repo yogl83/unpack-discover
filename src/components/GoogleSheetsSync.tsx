@@ -5,21 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileSpreadsheet, Upload, Download, Loader2 } from "lucide-react";
 
-const TABLES = [
-  { key: "partners", label: "Партнёры" },
-  { key: "contacts", label: "Контакты" },
-  { key: "partner_needs", label: "Задачи партнёров" },
-  { key: "collaboration_hypotheses", label: "Гипотезы" },
-  { key: "miem_units", label: "Подразделения МИЭМ" },
-  { key: "competencies", label: "Компетенции" },
-  { key: "sources", label: "Источники" },
-  { key: "evidence", label: "Подтверждения" },
-  { key: "next_steps", label: "Следующие шаги" },
-  { key: "unit_contacts", label: "Внутренние контакты" },
-  { key: "unit_contact_memberships", label: "Состав коллективов" },
+type SyncMode = "create+update" | "update-only";
+
+const TABLES: { key: string; label: string; mode: SyncMode }[] = [
+  { key: "partners", label: "Партнёры", mode: "create+update" },
+  { key: "contacts", label: "Контакты", mode: "update-only" },
+  { key: "partner_needs", label: "Задачи партнёров", mode: "update-only" },
+  { key: "collaboration_hypotheses", label: "Гипотезы", mode: "update-only" },
+  { key: "miem_units", label: "Подразделения МИЭМ", mode: "create+update" },
+  { key: "competencies", label: "Компетенции", mode: "update-only" },
+  { key: "sources", label: "Источники", mode: "update-only" },
+  { key: "evidence", label: "Подтверждения", mode: "update-only" },
+  { key: "next_steps", label: "Следующие шаги", mode: "update-only" },
+  { key: "unit_contacts", label: "Внутренние контакты", mode: "update-only" },
+  { key: "unit_contact_memberships", label: "Состав коллективов", mode: "update-only" },
 ];
 
 export default function GoogleSheetsSync() {
@@ -113,20 +116,33 @@ export default function GoogleSheetsSync() {
                 {selectedTables.length === TABLES.length ? "Снять все" : "Выбрать все"}
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {TABLES.map(t => (
                 <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox
                     checked={selectedTables.includes(t.key)}
                     onCheckedChange={() => toggleTable(t.key)}
                   />
-                  {t.label}
+                  <span className="flex-1">{t.label}</span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-1 py-0 leading-tight ${
+                      t.mode === "create+update"
+                        ? "border-green-500/50 text-green-700 dark:text-green-400"
+                        : "border-muted-foreground/30 text-muted-foreground"
+                    }`}
+                  >
+                    {t.mode === "create+update" ? "create+update" : "update only"}
+                  </Badge>
                 </label>
               ))}
             </div>
-            {selectedTables.length === 0 && (
-              <p className="text-xs text-muted-foreground mt-1">Если ничего не выбрано — синхронизируются все таблицы</p>
-            )}
+            <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+              {selectedTables.length === 0 && (
+                <p>Если ничего не выбрано — синхронизируются все таблицы</p>
+              )}
+              <p><span className="text-green-700 dark:text-green-400">create+update</span> — создание через external_id · <span className="text-muted-foreground">update only</span> — только обновление</p>
+            </div>
           </div>
 
           <div className="flex gap-2">
