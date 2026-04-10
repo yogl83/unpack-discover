@@ -1315,6 +1315,14 @@ export type Database = {
       }
     }
     Functions: {
+      assign_unit_lead: {
+        Args: {
+          p_contact_id: string
+          p_membership_id: string
+          p_unit_id: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
