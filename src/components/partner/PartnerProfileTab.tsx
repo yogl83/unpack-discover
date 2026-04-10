@@ -289,10 +289,25 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {canEdit && !editing && !hasDraft && (
-            <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {currentProfile ? "Новая версия" : "Создать профайл"}
-            </Button>
+            <>
+              <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending || isGenerating}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {currentProfile ? "Новая версия" : "Создать профайл"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => generateProfile.mutate()}
+                disabled={generateProfile.isPending || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                )}
+                {isGenerating ? "Генерация..." : "Сгенерировать с AI"}
+              </Button>
+            </>
           )}
           {canEdit && !editing && hasDraft && (
             <Button size="sm" variant="outline" onClick={startEditing}>
