@@ -48,6 +48,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [editing, setEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
