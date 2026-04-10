@@ -14,15 +14,15 @@ import {
 const dashboardItem = { title: "Дашборд", url: "/", icon: LayoutDashboard };
 
 const partnershipItems = [
-  { title: "Партнеры", url: "/partners", icon: Building2 },
-  { title: "Задачи партнеров", url: "/needs", icon: ClipboardList },
-  { title: "Внешние контакты", url: "/contacts/external", icon: Contact },
+  { title: "Организации", url: "/partners", icon: Building2 },
+  { title: "Задачи", url: "/needs", icon: ClipboardList },
+  { title: "Контакты", url: "/contacts/external", icon: Contact },
 ];
 
 const miemItems = [
-  { title: "Коллективы МИЭМ", url: "/units", icon: Users2 },
+  { title: "Коллективы", url: "/units", icon: Users2 },
   { title: "Компетенции", url: "/competencies", icon: Brain },
-  { title: "Внутренние контакты", url: "/contacts/internal", icon: Contact },
+  { title: "Контакты", url: "/contacts/internal", icon: Contact },
 ];
 
 const workItems = [
@@ -75,7 +75,7 @@ export function AppSidebar() {
         {/* Партнёрства */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span>Партнёрства</span>}
+            {!collapsed && <span>ПАРТНЕРСТВА</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={partnershipItems} collapsed={collapsed} />
@@ -95,7 +95,7 @@ export function AppSidebar() {
         {/* Работа */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span>Работа</span>}
+            {!collapsed && <span>Совместная деятельность</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={workItems} collapsed={collapsed} />
