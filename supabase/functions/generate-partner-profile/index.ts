@@ -24,54 +24,76 @@ const SECTION_KEYS = [
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
-const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрствам МИЭМ НИУ ВШЭ (Московский институт электроники и математики, часть Высшей школы экономики).
+const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрствам МИЭМ НИУ ВШЭ. Твоя задача — составить детальный аналитический профайл компании-партнёра.
 
-МИЭМ — ведущий российский институт в области электроники, компьютерных наук, прикладной математики и информатики. МИЭМ предлагает партнёрам:
-- Совместные R&D-проекты и прикладные исследования
-- Проектное обучение (студенческие команды решают реальные задачи бизнеса)
-- Стажировки, практики и целевой набор кадров
-- Экспертные консультации и совместные лаборатории
-- Хакатоны, митапы и совместные мероприятия
+Контекст МИЭМ:
+МИЭМ — институт НИУ ВШЭ в области электроники, CS, прикладной математики. Форматы сотрудничества: R&D-проекты, проектное обучение, стажировки, совместные лаборатории, хакатоны.
 
-Твоя задача — на основе информации о компании заполнить 13 секций профайла партнёра. Пиши на русском языке. Будь конкретен, опирайся на факты. Если информации недостаточно — укажи "Данные не найдены" для этой секции.
+ПРАВИЛА ФОРМАТИРОВАНИЯ:
+- Пиши на русском языке
+- Используй markdown: заголовки, таблицы, нумерованные и маркированные списки
+- Каждый факт сопровождай ссылкой на источник в формате [N]
+- В конце КАЖДОЙ секции добавь блок "Источники:" со списком использованных ссылок
 
-Описание секций:
-1. summary_short — Краткое описание компании (2-3 предложения)
-2. company_overview — Общие сведения: история, миссия, основная деятельность
-3. business_scale — Масштаб: выручка, количество сотрудников, офисы, рыночная позиция
-4. technology_focus — Технологический и продуктовый фокус: ключевые технологии, продукты, платформы
-5. strategic_priorities — Стратегические направления развития компании
-6. talent_needs — Кадровые потребности: востребованные специальности, навыки, программы найма
-7. collaboration_opportunities — Потенциальный запрос к МИЭМ: какие форматы сотрудничества могут быть интересны
-8. current_relationship_with_miem — Текущее взаимодействие с МИЭМ (если есть информация)
-9. relationship_with_other_universities — Взаимодействие с другими университетами
-10. recent_news_and_plans — Последние новости и планы развития
-11. key_events_and_touchpoints — Ключевые мероприятия компании (конференции, хакатоны и т.д.)
-12. risks_and_constraints — Риски и ограничения для сотрудничества
-13. recommended_next_steps — Рекомендуемые следующие шаги для установления партнёрства`;
+ПРАВИЛА КАЧЕСТВА:
+- Будь конкретен: цифры, даты, названия продуктов, процентные доли
+- НЕ ПОВТОРЯЙ факты между секциями — каждый факт упоминается только один раз
+- Если данных недостаточно — пиши "Данные не найдены", НЕ выдумывай
+- Избегай общих слов и клише ("динамично развивающаяся компания", "широкий спектр")
+- Для business_scale используй табличный формат
+- Для collaboration_opportunities — обосновывай каждый формат конкретными фактами о компании
+
+СТРУКТУРА ССЫЛОК:
+В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
+
+interface SectionConfig {
+  key: string;
+  title: string;
+  prompt: string;
+}
+
+const DEFAULT_SECTIONS: SectionConfig[] = [
+  { key: "summary_short", title: "Краткое описание", prompt: "Напиши 2-3 предложения." },
+  { key: "company_overview", title: "Общие сведения о компании", prompt: "История, миссия, основная деятельность." },
+  { key: "business_scale", title: "Масштаб и показатели", prompt: "Табличный формат." },
+  { key: "technology_focus", title: "Технологический фокус", prompt: "Конкретные технологии и продукты." },
+  { key: "strategic_priorities", title: "Стратегические направления", prompt: "3-5 направлений." },
+  { key: "talent_needs", title: "Кадровые потребности", prompt: "Конкретные специальности." },
+  { key: "collaboration_opportunities", title: "Запрос к МИЭМ", prompt: "Обоснованные форматы." },
+  { key: "current_relationship_with_miem", title: "Взаимодействие с МИЭМ", prompt: "Конкретные факты или 'Данные не найдены'." },
+  { key: "relationship_with_other_universities", title: "Другие университеты", prompt: "Конкретные вузы-партнёры." },
+  { key: "recent_news_and_plans", title: "Новости и планы", prompt: "За последние 12-18 месяцев." },
+  { key: "key_events_and_touchpoints", title: "Мероприятия", prompt: "Конференции, хакатоны." },
+  { key: "risks_and_constraints", title: "Риски", prompt: "С уровнем и митигациями." },
+  { key: "recommended_next_steps", title: "Рекомендуемые шаги", prompt: "3-5 конкретных действий." },
+];
 
 async function loadAISettings(supabase: ReturnType<typeof createClient>) {
   let model = DEFAULT_MODEL;
   let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+  let sections: SectionConfig[] = DEFAULT_SECTIONS;
 
   try {
     const { data } = await supabase
       .from("app_settings")
       .select("key, value")
-      .in("key", ["ai_profile_model", "ai_profile_prompt"]);
+      .in("key", ["ai_profile_model", "ai_profile_system_prompt", "ai_profile_sections"]);
 
     if (data) {
       for (const row of data) {
-        const val = row.value as Record<string, string>;
+        const val = row.value as Record<string, any>;
         if (row.key === "ai_profile_model" && val.model) model = val.model;
-        if (row.key === "ai_profile_prompt" && val.prompt) systemPrompt = val.prompt;
+        if (row.key === "ai_profile_system_prompt" && val.prompt) systemPrompt = val.prompt;
+        if (row.key === "ai_profile_sections" && Array.isArray(val.sections)) {
+          sections = val.sections;
+        }
       }
     }
   } catch (e) {
     console.warn("Failed to load AI settings, using defaults:", e);
   }
 
-  return { model, systemPrompt };
+  return { model, systemPrompt, sections };
 }
 
 Deno.serve(async (req) => {
@@ -110,8 +132,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Load AI settings from DB
-    const { model: aiModel, systemPrompt } = await loadAISettings(supabase);
-    console.log("Using model:", aiModel);
+    const { model: aiModel, systemPrompt, sections } = await loadAISettings(supabase);
+    console.log("Using model:", aiModel, "sections:", sections.length);
 
     // Load partner data
     const { data: partner, error: partnerError } = await supabase
@@ -139,6 +161,7 @@ Deno.serve(async (req) => {
 
     // Step 1: Scrape website if available
     let websiteContent = "";
+    let scrapedUrl = "";
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     if (partner.website_url && firecrawlKey) {
       try {
@@ -146,6 +169,7 @@ Deno.serve(async (req) => {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
           url = `https://${url}`;
         }
+        scrapedUrl = url;
         console.log("Scraping:", url);
         const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
           method: "POST",
@@ -172,7 +196,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 2: Build user prompt
+    // Step 2: Build composite system prompt from sections
+    const sectionInstructions = sections.map((s, i) =>
+      `${i + 1}. ${s.key} — «${s.title}»\nИнструкция: ${s.prompt}`
+    ).join("\n\n");
+
+    const compositeSystemPrompt = `${systemPrompt}
+
+--- ИНСТРУКЦИИ ПО СЕКЦИЯМ ---
+
+${sectionInstructions}`;
+
+    // Build user prompt
     const cardInfo = [
       `Название: ${partner.partner_name}`,
       partner.legal_name ? `Юр. лицо: ${partner.legal_name}` : null,
@@ -192,35 +227,27 @@ Deno.serve(async (req) => {
     if (websiteContent) {
       userPrompt += `\n\n--- СОДЕРЖИМОЕ САЙТА КОМПАНИИ ---\n${websiteContent}`;
     }
-    userPrompt += "\n\nЗаполни все 13 секций профайла, вызвав функцию fill_profile.";
+    userPrompt += "\n\nЗаполни все 13 секций профайла и список источников (references), вызвав функцию fill_profile.";
 
-    // Step 3: Call Lovable AI with tool calling
+    // Step 3: Build tool schema from sections
+    const sectionProperties: Record<string, { type: string; description: string }> = {};
+    for (const s of sections) {
+      sectionProperties[s.key] = { type: "string", description: `${s.title}: ${s.prompt}` };
+    }
+    // Add references field
+    sectionProperties["references"] = {
+      type: "string",
+      description: "JSON-массив источников в формате: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}]. Включи ВСЕ источники, на которые ссылаешься через [N].",
+    };
+
+    const requiredKeys = [...sections.map(s => s.key), "references"];
+
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    const sectionProperties: Record<string, { type: string; description: string }> = {};
-    const sectionLabels: Record<string, string> = {
-      summary_short: "Краткое описание (2-3 предложения)",
-      company_overview: "Общие сведения о компании",
-      business_scale: "Масштаб и показатели деятельности",
-      technology_focus: "Технологический и продуктовый фокус",
-      strategic_priorities: "Стратегические направления",
-      talent_needs: "Кадровые потребности",
-      collaboration_opportunities: "Потенциальный запрос к МИЭМ",
-      current_relationship_with_miem: "Текущее взаимодействие с МИЭМ",
-      relationship_with_other_universities: "Взаимодействие с другими университетами",
-      recent_news_and_plans: "Последние новости и планы развития",
-      key_events_and_touchpoints: "Ключевые мероприятия",
-      risks_and_constraints: "Риски и ограничения",
-      recommended_next_steps: "Рекомендуемые шаги",
-    };
-    for (const key of SECTION_KEYS) {
-      sectionProperties[key] = { type: "string", description: sectionLabels[key] };
     }
 
     console.log("Calling AI...");
@@ -233,7 +260,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: aiModel,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: compositeSystemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [
@@ -241,11 +268,11 @@ Deno.serve(async (req) => {
             type: "function",
             function: {
               name: "fill_profile",
-              description: "Заполняет все 13 секций профайла партнёра",
+              description: "Заполняет все секции профайла партнёра и список источников",
               parameters: {
                 type: "object",
                 properties: sectionProperties,
-                required: [...SECTION_KEYS],
+                required: requiredKeys,
                 additionalProperties: false,
               },
             },
@@ -286,9 +313,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    let sections: Record<string, string>;
+    let parsed: Record<string, string>;
     try {
-      sections = JSON.parse(toolCall.function.arguments);
+      parsed = JSON.parse(toolCall.function.arguments);
     } catch {
       console.error("Failed to parse tool call args:", toolCall.function.arguments.slice(0, 500));
       return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
@@ -296,7 +323,25 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    console.log("AI sections received:", Object.keys(sections).length);
+    console.log("AI sections received:", Object.keys(parsed).length);
+
+    // Parse references
+    let references: any[] = [];
+    try {
+      if (parsed.references) {
+        references = JSON.parse(parsed.references);
+        if (!Array.isArray(references)) references = [];
+      }
+    } catch {
+      // If references is already text, try to keep it
+      console.warn("Could not parse references as JSON array");
+    }
+    // Add scraped URL as source if used
+    if (scrapedUrl && !references.some((r: any) => r.url === scrapedUrl)) {
+      references.unshift({ number: 0, text: "Сайт компании", url: scrapedUrl });
+      // Re-number
+      references = references.map((r: any, i: number) => ({ ...r, number: i + 1 }));
+    }
 
     // Step 4: Save as draft
     const profileData: Record<string, unknown> = {
@@ -310,6 +355,8 @@ Deno.serve(async (req) => {
       generation_status: "completed",
       last_generated_at: new Date().toISOString(),
       needs_human_review: true,
+      references_json: references,
+      generated_from_prompt: compositeSystemPrompt.slice(0, 10000),
       generated_from_sources_json: {
         website_url: partner.website_url || null,
         website_content_length: websiteContent.length,
@@ -317,7 +364,7 @@ Deno.serve(async (req) => {
       },
     };
     for (const key of SECTION_KEYS) {
-      profileData[key] = sections[key] || null;
+      profileData[key] = parsed[key] || null;
     }
 
     const { data: profile, error: insertError } = await supabase
