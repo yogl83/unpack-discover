@@ -58,11 +58,24 @@ Deno.serve(async (req) => {
     }
 
     // Profile is created by trigger with approved=false by default
-    // Update profile with full_name (trigger may already do this)
     await supabaseAdmin
       .from("profiles")
       .update({ full_name, email })
       .eq("id", userData.user.id);
+
+    // Send "registration received" email
+    try {
+      await supabaseAdmin.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "registration-received",
+          recipientEmail: email,
+          idempotencyKey: `reg-received-${userData.user.id}`,
+          templateData: { name: full_name },
+        },
+      });
+    } catch (emailErr) {
+      console.error("Failed to send registration email", emailErr);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
