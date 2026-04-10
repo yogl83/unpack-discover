@@ -165,7 +165,11 @@ export default function UnitDetail() {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/units"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый коллектив" : form.unit_name}</h1>
-        
+        {!isNew && isAdmin && (
+          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить?")) del.mutate(); }}>
+            <Trash2 className="mr-1 h-4 w-4" />Удалить
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="info">
@@ -239,14 +243,7 @@ export default function UnitDetail() {
               <div className="space-y-2 sm:col-span-2"><Label>Заметки</Label><Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={2} /></div>
             </CardContent>
           </Card>
-          <div className="flex items-center gap-3">
-            {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
-            {!isNew && isAdmin && (
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { if (confirm("Удалить?")) del.mutate(); }}>
-                <Trash2 className="mr-1 h-4 w-4" />Удалить
-              </Button>
-            )}
-          </div>
+          {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
         </TabsContent>
 
         {/* Competencies tab */}
