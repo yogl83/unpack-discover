@@ -18,6 +18,8 @@ const TABLES = [
   { key: "sources", label: "Источники" },
   { key: "evidence", label: "Подтверждения" },
   { key: "next_steps", label: "Следующие шаги" },
+  { key: "unit_contacts", label: "Внутренние контакты" },
+  { key: "unit_contact_memberships", label: "Состав коллективов" },
 ];
 
 export default function GoogleSheetsSync() {

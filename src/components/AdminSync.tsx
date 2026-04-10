@@ -24,6 +24,8 @@ const TABLES = [
   { key: "sources", label: "Источники", external: false },
   { key: "evidence", label: "Подтверждения", external: false },
   { key: "next_steps", label: "Следующие шаги", external: false },
+  { key: "unit_contacts", label: "Внутренние контакты", external: false },
+  { key: "unit_contact_memberships", label: "Состав коллективов", external: false },
 ];
 
 interface SyncSettings {

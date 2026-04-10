@@ -84,8 +84,8 @@ const TABLE_CONFIGS: TableConfig[] = [
   },
   {
     table: "miem_units", sheetName: "Units", idColumn: "unit_id",
-    columns: ["unit_id","unit_name","lead_name","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
-    importableColumns: ["unit_name","lead_name","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
+    columns: ["unit_id","unit_name","lead_contact_id","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
+    importableColumns: ["unit_name","unit_type","team_summary","research_area","application_domain","business_problem_focus","industry_fit","end_customer_fit","collaboration_formats","value_chain_role","readiness_level","discussion_readiness","notes","external_source","external_id"],
     supportsExternalCreate: true,
   },
   {
@@ -110,6 +110,18 @@ const TABLE_CONFIGS: TableConfig[] = [
     table: "next_steps", sheetName: "NextSteps", idColumn: "next_step_id",
     columns: ["next_step_id","entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","owner_user_id","due_date","next_step_status","result","notes"],
     importableColumns: ["entity_type","entity_id","partner_id","need_id","hypothesis_id","action_title","action_description","due_date","next_step_status","result","notes"],
+    supportsExternalCreate: false,
+  },
+  {
+    table: "unit_contacts", sheetName: "UnitContacts", idColumn: "unit_contact_id",
+    columns: ["unit_contact_id","unit_id","full_name","job_title","email","phone","telegram","contact_role","is_primary","availability_notes","notes"],
+    importableColumns: ["unit_id","full_name","job_title","email","phone","telegram","contact_role","is_primary","availability_notes","notes"],
+    supportsExternalCreate: false,
+  },
+  {
+    table: "unit_contact_memberships", sheetName: "UnitMemberships", idColumn: "membership_id",
+    columns: ["membership_id","unit_id","unit_contact_id","member_role","is_lead","is_primary","sort_order","notes"],
+    importableColumns: ["unit_id","unit_contact_id","member_role","is_lead","is_primary","sort_order","notes"],
     supportsExternalCreate: false,
   },
 ];
@@ -203,11 +215,12 @@ function parseValue(col: string, val: unknown): unknown {
   if (col === "keywords" || col === "collaboration_formats") {
     return (val as string).split(",").map(s => s.trim()).filter(Boolean);
   }
-  if (col === "is_primary" || col === "requires_interview_validation") {
+  if (col === "is_primary" || col === "requires_interview_validation" || col === "is_lead") {
     return val === "true" || val === "TRUE" || val === "1";
   }
-  if (col === "relevance_score") {
-    return parseFloat(val as string) || null;
+  if (col === "relevance_score" || col === "sort_order") {
+    const n = parseFloat(val as string);
+    return isNaN(n) ? null : col === "sort_order" ? Math.floor(n) : n;
   }
   return val;
 }
