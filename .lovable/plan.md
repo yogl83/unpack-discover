@@ -1,61 +1,64 @@
 
 
-# AI-генерация профайла партнёра через веб-скрапинг
+# Настройки AI-генерации в админке
 
 ## Что получит пользователь
 
-На вкладке «Профайл» появится кнопка **«Сгенерировать с AI»**. При нажатии:
-1. AI скрапит сайт компании (website_url из карточки) через Firecrawl
-2. Передаёт данные карточки + контент сайта в AI (Gemini 3 Flash)
-3. AI заполняет все 13 секций профайла по структурированному промту
-4. Результат сохраняется как **черновик** (draft) для ручной проверки
+В админке на вкладке «Настройки» появится секция **«AI-генерация профайлов»** с:
+- **Выбор модели** — dropdown с доступными моделями (gemini-3-flash, gemini-2.5-flash, gemini-2.5-pro, gpt-5-mini)
+- **Системный промт** — textarea с текущим промтом, редактируемый админом
+- **Кнопка «Сохранить»** и **«Сбросить к умолчанию»**
 
-Если website_url не указан — AI генерирует по данным карточки (название, индустрия, размер и т.д.).
-
-## Архитектура
-
-```text
-[Кнопка "Сгенерировать с AI"]
-        │
-        ▼
-[Edge Function: generate-partner-profile]
-   ├─ 1. Скрапинг сайта через Firecrawl API
-   ├─ 2. Сборка промта (карточка + контент сайта)
-   ├─ 3. Вызов Lovable AI (tool calling → 13 секций JSON)
-   └─ 4. Сохранение черновика в partner_profiles
-        │
-        ▼
-[Фронтенд: показ результата в режиме редактирования]
-```
+Настройки хранятся в БД и читаются edge function при каждой генерации.
 
 ## Что будет сделано
 
-### 1. Edge Function `generate-partner-profile`
-- Принимает `partner_id`
-- Загружает карточку партнёра из БД
-- Если есть `website_url` — скрапит сайт через Firecrawl (`formats: ['markdown']`)
-- Формирует системный промт с описанием 13 секций и контекстом МИЭМ
-- Вызывает Lovable AI с tool calling для получения структурированного JSON с 13 полями
-- Создаёт запись в `partner_profiles` со статусом `draft`, `profile_type: 'ai_generated'`, `source_type: 'ai_web'`
-- Возвращает созданный профайл
+### 1. Таблица `app_settings` (миграция)
 
-### 2. Обновление `PartnerProfileTab.tsx`
-- Добавить кнопку «Сгенерировать с AI» (иконка Sparkles) рядом с «Создать профайл»
-- При нажатии — вызов edge function через `supabase.functions.invoke`
-- Показ состояния загрузки (генерация может занять 10-20 секунд)
-- После генерации — открытие черновика в режиме редактирования
+```sql
+CREATE TABLE public.app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by UUID REFERENCES auth.users(id)
+);
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+-- Чтение для всех аутентифицированных
+CREATE POLICY "authenticated read" ON public.app_settings FOR SELECT TO authenticated USING (true);
+-- Запись только для админов
+CREATE POLICY "admin write" ON public.app_settings FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+```
 
-### 3. Промт для AI
-Русскоязычный системный промт, объясняющий контекст МИЭМ НИУ ВШЭ и требования к каждой из 13 секций. AI получает:
-- Данные карточки (название, индустрия, география, размер, сайт)
-- Контент сайта (markdown) если доступен
-- Инструкции по заполнению каждой секции
+Две записи с ключами:
+- `ai_profile_model` → `{"model": "google/gemini-3-flash-preview"}`
+- `ai_profile_prompt` → `{"prompt": "<текущий SYSTEM_PROMPT>"}`
 
-## Технические детали
+### 2. Компонент `AdminAISettings.tsx`
 
-- **Модель**: `google/gemini-3-flash-preview` (быстрая, достаточная для задачи)
-- **Firecrawl**: скрапинг с `onlyMainContent: true`, лимит контента ~30K символов
-- **Tool calling**: structured output для гарантии получения всех 13 полей
-- **Поля `partner_profiles`**: `generation_status`, `generated_from_prompt`, `last_generated_at` уже есть в схеме — будут заполняться
-- **Без изменений в БД**: все нужные колонки уже существуют
+- Загружает настройки из `app_settings` по ключам `ai_profile_model` и `ai_profile_prompt`
+- Dropdown для выбора модели
+- Textarea для редактирования промта (с подсветкой количества символов)
+- Кнопки «Сохранить» и «Сбросить к умолчанию»
+- Upsert в `app_settings` при сохранении
+
+### 3. Новая вкладка в `Admin.tsx`
+
+Добавить вкладку «AI» (иконка Sparkles) между «Письма» и «Настройки».
+
+### 4. Обновление edge function `generate-partner-profile`
+
+Вместо хардкода `SYSTEM_PROMPT` и модели:
+- Читать из `app_settings` при каждом вызове
+- Если записей нет — использовать дефолтные значения (текущий промт и модель)
+
+## Файлы
+
+| Файл | Действие |
+|------|----------|
+| миграция SQL | Создать таблицу `app_settings` + seed |
+| `src/components/AdminAISettings.tsx` | Новый компонент |
+| `src/pages/Admin.tsx` | Добавить вкладку «AI» |
+| `supabase/functions/generate-partner-profile/index.ts` | Читать промт и модель из БД |
 
