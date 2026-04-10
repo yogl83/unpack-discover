@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { Loader2, RotateCcw, Save } from "lucide-react";
 
@@ -19,35 +20,54 @@ const AVAILABLE_MODELS = [
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
-const DEFAULT_PROMPT = `Ты — аналитик по партнёрствам МИЭМ НИУ ВШЭ (Московский институт электроники и математики, часть Высшей школы экономики).
+const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрствам МИЭМ НИУ ВШЭ. Твоя задача — составить детальный аналитический профайл компании-партнёра.
 
-МИЭМ — ведущий российский институт в области электроники, компьютерных наук, прикладной математики и информатики. МИЭМ предлагает партнёрам:
-- Совместные R&D-проекты и прикладные исследования
-- Проектное обучение (студенческие команды решают реальные задачи бизнеса)
-- Стажировки, практики и целевой набор кадров
-- Экспертные консультации и совместные лаборатории
-- Хакатоны, митапы и совместные мероприятия
+Контекст МИЭМ:
+МИЭМ — институт НИУ ВШЭ в области электроники, CS, прикладной математики. Форматы сотрудничества: R&D-проекты, проектное обучение, стажировки, совместные лаборатории, хакатоны.
 
-Твоя задача — на основе информации о компании заполнить 13 секций профайла партнёра. Пиши на русском языке. Будь конкретен, опирайся на факты. Если информации недостаточно — укажи "Данные не найдены" для этой секции.
+ПРАВИЛА ФОРМАТИРОВАНИЯ:
+- Пиши на русском языке
+- Используй markdown: заголовки, таблицы, нумерованные и маркированные списки
+- Каждый факт сопровождай ссылкой на источник в формате [N]
+- В конце КАЖДОЙ секции добавь блок "Источники:" со списком использованных ссылок
 
-Описание секций:
-1. summary_short — Краткое описание компании (2-3 предложения)
-2. company_overview — Общие сведения: история, миссия, основная деятельность
-3. business_scale — Масштаб: выручка, количество сотрудников, офисы, рыночная позиция
-4. technology_focus — Технологический и продуктовый фокус: ключевые технологии, продукты, платформы
-5. strategic_priorities — Стратегические направления развития компании
-6. talent_needs — Кадровые потребности: востребованные специальности, навыки, программы найма
-7. collaboration_opportunities — Потенциальный запрос к МИЭМ: какие форматы сотрудничества могут быть интересны
-8. current_relationship_with_miem — Текущее взаимодействие с МИЭМ (если есть информация)
-9. relationship_with_other_universities — Взаимодействие с другими университетами
-10. recent_news_and_plans — Последние новости и планы развития
-11. key_events_and_touchpoints — Ключевые мероприятия компании (конференции, хакатоны и т.д.)
-12. risks_and_constraints — Риски и ограничения для сотрудничества
-13. recommended_next_steps — Рекомендуемые следующие шаги для установления партнёрства`;
+ПРАВИЛА КАЧЕСТВА:
+- Будь конкретен: цифры, даты, названия продуктов, процентные доли
+- НЕ ПОВТОРЯЙ факты между секциями — каждый факт упоминается только один раз
+- Если данных недостаточно — пиши "Данные не найдены", НЕ выдумывай
+- Избегай общих слов и клише ("динамично развивающаяся компания", "широкий спектр")
+- Для business_scale используй табличный формат
+- Для collaboration_opportunities — обосновывай каждый формат конкретными фактами о компании
+
+СТРУКТУРА ССЫЛОК:
+В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
+
+interface SectionConfig {
+  key: string;
+  title: string;
+  prompt: string;
+}
+
+const DEFAULT_SECTIONS: SectionConfig[] = [
+  { key: "summary_short", title: "Краткое описание", prompt: "Напиши 2-3 предложения: основная деятельность, масштаб (выручка/сотрудники), уникальное ценностное предложение. Не повторяй информацию из других секций. Каждый факт — со ссылкой [N]." },
+  { key: "company_overview", title: "Общие сведения о компании", prompt: "История создания (год, основатели), миссия, основная деятельность, ключевые продукты/услуги. Укажи организационную структуру если известна. Факты со ссылками [N]." },
+  { key: "business_scale", title: "Масштаб и показатели", prompt: "ОБЯЗАТЕЛЬНО используй формат таблицы:\n| Показатель | Значение | Источник |\n|---|---|---|\n\nВключи: выручка (в динамике за 3+ лет если есть), количество сотрудников, география присутствия, доля рынка, рейтинги. Укажи структуру бизнеса по сегментам с процентами. Если точных данных нет — \"Данные не найдены\"." },
+  { key: "technology_focus", title: "Технологический и продуктовый фокус", prompt: "Перечисли конкретные технологии, платформы, продукты с названиями и версиями. Группируй по направлениям. Укажи технологический стек, используемые языки/фреймворки, собственные разработки vs лицензированные. Ссылки [N]." },
+  { key: "strategic_priorities", title: "Стратегические направления", prompt: "Выдели 3-5 ключевых стратегических направлений. Для каждого укажи: конкретные шаги, сроки, инвестиции если известны. Отдельно выдели направления, релевантные для академического партнёрства. Ссылки [N]." },
+  { key: "talent_needs", title: "Кадровые потребности", prompt: "Конкретные специальности и навыки (не общие \"IT-специалисты\"). Укажи: открытые вакансии если есть, программы стажировок, требования к уровню (junior/middle/senior), предпочтительные вузы-партнёры. Ссылки [N]." },
+  { key: "collaboration_opportunities", title: "Потенциальный запрос к МИЭМ", prompt: "Для каждого формата сотрудничества:\n1. Название формата\n2. Обоснование: ПОЧЕМУ это релевантно именно для этой компании (со ссылкой на конкретный факт из профайла)\n3. Конкретная тема/направление\n4. Потенциальное подразделение МИЭМ\n\nНе предлагай общие форматы без привязки к специфике компании." },
+  { key: "current_relationship_with_miem", title: "Текущее взаимодействие с МИЭМ", prompt: "Если есть данные — опиши конкретно: проекты, мероприятия, контакты, даты. Если нет информации — напиши \"Данные о текущем взаимодействии с МИЭМ не найдены.\" Не выдумывай." },
+  { key: "relationship_with_other_universities", title: "Взаимодействие с другими университетами", prompt: "Перечисли конкретные университеты-партнёры, форматы (лаборатории, кафедры, гранты, стипендии), даты начала. Укажи масштаб программ. Это важно для понимания конкурентного ландшафта. Ссылки [N]." },
+  { key: "recent_news_and_plans", title: "Последние новости и планы", prompt: "Только за последние 12-18 месяцев. Структурируй хронологически. Укажи: дата, суть новости, влияние на бизнес. Выдели новости, релевантные для академического сотрудничества. Ссылки [N]." },
+  { key: "key_events_and_touchpoints", title: "Ключевые мероприятия", prompt: "Конференции, хакатоны, митапы, дни открытых дверей, которые проводит или спонсирует компания. Укажи: название, периодичность, масштаб, тематику. Отметь мероприятия, где МИЭМ мог бы участвовать. Ссылки [N]." },
+  { key: "risks_and_constraints", title: "Риски и ограничения", prompt: "Конкретные риски для сотрудничества: санкции, закрытость, бюрократия, конкуренция с другими вузами, отраслевые ограничения. Для каждого риска укажи уровень (высокий/средний/низкий) и возможные митигации. Не пиши общие фразы." },
+  { key: "recommended_next_steps", title: "Рекомендуемые шаги", prompt: "Пронумерованный список из 3-5 конкретных действий. Каждый шаг: что сделать, кто ответственный (МИЭМ/партнёр), ожидаемый срок, ожидаемый результат. Привяжи к конкретным фактам из профайла." },
+];
 
 export default function AdminAISettings() {
   const [model, setModel] = useState(DEFAULT_MODEL);
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [sections, setSections] = useState<SectionConfig[]>(DEFAULT_SECTIONS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -60,29 +80,37 @@ export default function AdminAISettings() {
     const { data } = await supabase
       .from("app_settings")
       .select("key, value")
-      .in("key", ["ai_profile_model", "ai_profile_prompt"]);
+      .in("key", ["ai_profile_model", "ai_profile_system_prompt", "ai_profile_sections"]);
 
     if (data) {
       for (const row of data) {
-        const val = row.value as Record<string, string>;
+        const val = row.value as Record<string, any>;
         if (row.key === "ai_profile_model" && val.model) setModel(val.model);
-        if (row.key === "ai_profile_prompt" && val.prompt) setPrompt(val.prompt);
+        if (row.key === "ai_profile_system_prompt" && val.prompt) setSystemPrompt(val.prompt);
+        if (row.key === "ai_profile_sections" && Array.isArray(val.sections)) {
+          setSections(val.sections);
+        }
       }
     }
     setLoading(false);
   }
 
+  function updateSectionPrompt(key: string, newPrompt: string) {
+    setSections(prev => prev.map(s => s.key === key ? { ...s, prompt: newPrompt } : s));
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
-      const { error: e1 } = await supabase
-        .from("app_settings")
-        .upsert({ key: "ai_profile_model", value: { model } as any, updated_at: new Date().toISOString() }, { onConflict: "key" });
-      const { error: e2 } = await supabase
-        .from("app_settings")
-        .upsert({ key: "ai_profile_prompt", value: { prompt } as any, updated_at: new Date().toISOString() }, { onConflict: "key" });
-
-      if (e1 || e2) throw e1 || e2;
+      const now = new Date().toISOString();
+      const upserts = [
+        supabase.from("app_settings").upsert({ key: "ai_profile_model", value: { model } as any, updated_at: now }, { onConflict: "key" }),
+        supabase.from("app_settings").upsert({ key: "ai_profile_system_prompt", value: { prompt: systemPrompt } as any, updated_at: now }, { onConflict: "key" }),
+        supabase.from("app_settings").upsert({ key: "ai_profile_sections", value: { sections } as any, updated_at: now }, { onConflict: "key" }),
+      ];
+      const results = await Promise.all(upserts);
+      const err = results.find(r => r.error)?.error;
+      if (err) throw err;
       toast.success("Настройки AI сохранены");
     } catch (e: any) {
       toast.error(e.message || "Ошибка сохранения");
@@ -93,7 +121,8 @@ export default function AdminAISettings() {
 
   function handleReset() {
     setModel(DEFAULT_MODEL);
-    setPrompt(DEFAULT_PROMPT);
+    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+    setSections(DEFAULT_SECTIONS);
     toast.info("Настройки сброшены к значениям по умолчанию. Не забудьте сохранить.");
   }
 
@@ -101,51 +130,94 @@ export default function AdminAISettings() {
 
   return (
     <div className="space-y-6 mt-4">
+      {/* Model */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">AI-генерация профайлов</CardTitle>
-          <CardDescription>Модель и системный промт для генерации профайлов партнёров</CardDescription>
+          <CardTitle className="text-lg">Модель</CardTitle>
+          <CardDescription>AI-модель для генерации профайлов</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Модель</Label>
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AVAILABLE_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Системный промт</Label>
-              <span className="text-xs text-muted-foreground">{prompt.length} символов</span>
-            </div>
-            <Textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              rows={16}
-              className="font-mono text-xs leading-relaxed"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Сохранить
-            </Button>
-            <Button variant="outline" onClick={handleReset} className="gap-1.5">
-              <RotateCcw className="h-4 w-4" />
-              Сбросить к умолчанию
-            </Button>
-          </div>
+        <CardContent>
+          <Select value={model} onValueChange={setModel}>
+            <SelectTrigger className="w-full max-w-md">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AVAILABLE_MODELS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
+
+      {/* System Prompt */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Системный промт</CardTitle>
+          <CardDescription>Общие инструкции: контекст МИЭМ, правила форматирования, требования к ссылкам и качеству</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-2">
+            <Label>Промт</Label>
+            <span className="text-xs text-muted-foreground">{systemPrompt.length} символов</span>
+          </div>
+          <Textarea
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            rows={12}
+            className="font-mono text-xs leading-relaxed"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section Prompts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Схема секций профайла</CardTitle>
+          <CardDescription>Индивидуальный промт для каждой из 13 секций. Определяет формат и содержание каждого раздела.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="multiple" className="w-full">
+            {sections.map((section, idx) => (
+              <AccordionItem key={section.key} value={section.key}>
+                <AccordionTrigger className="text-sm hover:no-underline">
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-mono w-5 text-right">{idx + 1}.</span>
+                    <span>{section.title}</span>
+                    <span className="text-xs text-muted-foreground font-mono">({section.key})</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs">Промт для секции</Label>
+                      <span className="text-xs text-muted-foreground">{section.prompt.length} симв.</span>
+                    </div>
+                    <Textarea
+                      value={section.prompt}
+                      onChange={(e) => updateSectionPrompt(section.key, e.target.value)}
+                      rows={5}
+                      className="font-mono text-xs leading-relaxed"
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Сохранить всё
+        </Button>
+        <Button variant="outline" onClick={handleReset} className="gap-1.5">
+          <RotateCcw className="h-4 w-4" />
+          Сбросить к умолчанию
+        </Button>
+      </div>
     </div>
   );
 }
