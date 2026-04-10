@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -160,9 +161,7 @@ export default function UnitDetail() {
         <Button variant="ghost" size="icon" asChild><Link to="/units"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый коллектив" : form.unit_name}</h1>
         {!isNew && isAdmin && (
-          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить?")) del.mutate(); }}>
-            <Trash2 className="mr-1 h-4 w-4" />Удалить
-          </Button>
+          <ConfirmDialog title="Удалить коллектив?" description="Коллектив и все связанные данные будут удалены безвозвратно." onConfirm={() => del.mutate()} />
         )}
       </div>
 
@@ -373,9 +372,7 @@ export default function UnitDetail() {
                                 </Button>
                               )}
                               {isAdmin && (
-                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("Убрать из состава?")) removeMembership.mutate(m.membership_id); }}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <ConfirmDialog title="Убрать из состава?" description="Участник будет убран из коллектива." onConfirm={() => removeMembership.mutate(m.membership_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive" variant="default" />
                               )}
                             </TableCell>
                           </TableRow>
