@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -155,9 +156,7 @@ export default function UnitContactDetail() {
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт МИЭМ" : form.full_name}</h1>
         </div>
         {!isNew && isAdmin && (
-          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить контакт?")) del.mutate(); }}>
-            <Trash2 className="mr-1 h-4 w-4" />Удалить
-          </Button>
+          <ConfirmDialog title="Удалить контакт?" description="Контакт будет удалён безвозвратно." onConfirm={() => del.mutate()} />
         )}
       </div>
 

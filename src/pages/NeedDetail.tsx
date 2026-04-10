@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -64,7 +65,7 @@ export default function NeedDetail() {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/needs"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новая потребность" : form.title}</h1>
-        {!isNew && isAdmin && <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить?")) del.mutate(); }}><Trash2 className="mr-1 h-4 w-4" />Удалить</Button>}
+        {!isNew && isAdmin && <ConfirmDialog title="Удалить потребность?" description="Потребность будет удалена безвозвратно." onConfirm={() => del.mutate()} />}
       </div>
       <Card>
         <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>

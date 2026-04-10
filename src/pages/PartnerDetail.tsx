@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -138,9 +139,7 @@ export default function PartnerDetail() {
         <Button variant="ghost" size="icon" asChild><Link to="/partners"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold">{isNew ? "Новый партнер" : form.partner_name}</h1>
         {!isNew && isAdmin && (
-          <Button variant="destructive" size="sm" onClick={() => { if (confirm("Удалить партнера и все связанные данные?")) del.mutate(); }}>
-            <Trash2 className="mr-1 h-4 w-4" />Удалить
-          </Button>
+          <ConfirmDialog title="Удалить партнёра?" description="Партнёр и все связанные данные (контакты, потребности, гипотезы) будут удалены безвозвратно." onConfirm={() => del.mutate()} />
         )}
       </div>
 
