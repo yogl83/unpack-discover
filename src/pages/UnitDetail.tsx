@@ -132,12 +132,12 @@ export default function UnitDetail() {
 
   const setMemberLead = useMutation({
     mutationFn: async ({ membershipId, contactId }: { membershipId: string; contactId: string }) => {
-      // Reset all is_lead for this unit
-      await supabase.from("unit_contact_memberships").update({ is_lead: false } as any).eq("unit_id", id!);
-      // Set this one
-      await supabase.from("unit_contact_memberships").update({ is_lead: true, member_role: "lead" } as any).eq("membership_id", membershipId);
-      // Update miem_units.lead_contact_id
-      await supabase.from("miem_units").update({ lead_contact_id: contactId } as any).eq("unit_id", id!);
+      const { error } = await supabase.rpc("assign_unit_lead", {
+        p_unit_id: id!,
+        p_membership_id: membershipId,
+        p_contact_id: contactId,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Руководитель назначен");
