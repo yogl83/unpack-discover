@@ -5,9 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardSankey } from "@/components/dashboard/DashboardSankey";
 import { DashboardMatrix } from "@/components/dashboard/DashboardMatrix";
 import { UnitSankey } from "@/components/dashboard/UnitSankey";
+import { Link } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Index() {
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const [partners, needs, hypotheses, steps, units, competencies] = await Promise.all([
@@ -30,12 +32,12 @@ export default function Index() {
   });
 
   const cards = [
-    { title: "Партнёры", value: stats?.partners ?? "—", icon: Building2, color: "text-primary" },
-    { title: "Потребности", value: stats?.needs ?? "—", icon: ClipboardList, color: "text-amber-500" },
-    { title: "Гипотезы", value: stats?.hypotheses ?? "—", icon: Lightbulb, color: "text-emerald-500" },
-    { title: "Шаги", value: stats?.steps ?? "—", icon: ArrowRight, color: "text-violet-500" },
-    { title: "Подразделения", value: stats?.units ?? "—", icon: Users2, color: "text-sky-500" },
-    { title: "Компетенции", value: stats?.competencies ?? "—", icon: Brain, color: "text-rose-500" },
+    { title: "Партнёры", value: stats?.partners ?? "—", icon: Building2, color: "text-primary", href: "/partners" },
+    { title: "Потребности", value: stats?.needs ?? "—", icon: ClipboardList, color: "text-amber-500", href: "/needs" },
+    { title: "Гипотезы", value: stats?.hypotheses ?? "—", icon: Lightbulb, color: "text-emerald-500", href: "/hypotheses" },
+    { title: "Шаги", value: stats?.steps ?? "—", icon: ArrowRight, color: "text-violet-500", href: "/next-steps" },
+    { title: "Подразделения", value: stats?.units ?? "—", icon: Users2, color: "text-sky-500", href: "/units" },
+    { title: "Компетенции", value: stats?.competencies ?? "—", icon: Brain, color: "text-rose-500", href: "/competencies" },
   ];
 
   return (
@@ -45,15 +47,21 @@ export default function Index() {
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {cards.map((c) => (
-          <Card key={c.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{c.title}</CardTitle>
-              <c.icon className={`h-4 w-4 ${c.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{c.value}</div>
-            </CardContent>
-          </Card>
+          <Link key={c.title} to={c.href} className="group">
+            <Card className="transition-shadow group-hover:shadow-md group-hover:border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">{c.title}</CardTitle>
+                <c.icon className={`h-4 w-4 ${c.color}`} />
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Skeleton className="h-7 w-10" />
+                ) : (
+                  <div className="text-2xl font-bold">{c.value}</div>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

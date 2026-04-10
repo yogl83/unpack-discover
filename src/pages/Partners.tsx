@@ -11,33 +11,19 @@ import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
-
-const statusLabels: Record<string, string> = {
-  new: "Новый", in_review: "На рассмотрении", in_progress: "В работе",
-  active: "Активный", on_hold: "На паузе", archived: "Архив",
-};
-const statusColors: Record<string, string> = {
-  new: "bg-blue-100 text-blue-800", in_review: "bg-yellow-100 text-yellow-800",
-  in_progress: "bg-indigo-100 text-indigo-800", active: "bg-green-100 text-green-800",
-  on_hold: "bg-orange-100 text-orange-800", archived: "bg-gray-100 text-gray-600",
-};
-const priorityLabels: Record<string, string> = {
-  low: "Низкий", medium: "Средний", high: "Высокий", critical: "Критический",
-};
-const priorityColors: Record<string, string> = {
-  low: "bg-green-100 text-green-800", medium: "bg-yellow-100 text-yellow-800",
-  high: "bg-orange-100 text-orange-800", critical: "bg-red-100 text-red-800",
-};
+import { partnerStatusLabels, partnerStatusColors, priorityLabels, priorityColors } from "@/lib/labels";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function Partners() {
   const [search, setSearch] = useState("");
   const { canEdit } = useAuth();
 
-  const { data: partners, isLoading } = useQuery({
+  const { data: partners, isLoading, isError, refetch } = useQuery({
     queryKey: ["partners", search],
     queryFn: async () => {
       let q = supabase.from("partner_overview").select("*").order("updated_at", { ascending: false });
-      if (search) q = q.ilike("partner_name", `%${search}%`);
+      if (search) q = q.or(`partner_name.ilike.%${search}%,industry.ilike.%${search}%,city.ilike.%${search}%`);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -62,7 +48,6 @@ export default function Partners() {
     enabled: !!partnerIds?.length,
   });
 
-  // Also fetch drafts (not is_current) for partners without current profile
   const { data: drafts } = useQuery({
     queryKey: ["partner-profiles-drafts", partnerIds],
     queryFn: async () => {
@@ -98,14 +83,16 @@ export default function Partners() {
       </div>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Поиск по названию..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Поиск по названию, отрасли, городу..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
-      {isLoading ? (
-        <p className="text-muted-foreground">Загрузка...</p>
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
+        <TableSkeleton columns={9} rows={6} />
       ) : !partners?.length ? (
         <p className="text-muted-foreground py-8 text-center">Нет партнеров</p>
       ) : (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
              <TableRow>
@@ -141,8 +128,8 @@ export default function Partners() {
                   <TableCell className="text-muted-foreground">{p.city || "—"}</TableCell>
                   <TableCell>
                     {p.partner_status && (
-                      <Badge variant="secondary" className={statusColors[p.partner_status] || ""}>
-                        {statusLabels[p.partner_status] || p.partner_status}
+                      <Badge variant="secondary" className={partnerStatusColors[p.partner_status] || ""}>
+                        {partnerStatusLabels[p.partner_status] || p.partner_status}
                       </Badge>
                     )}
                   </TableCell>

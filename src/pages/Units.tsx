@@ -8,16 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function Units() {
   const [search, setSearch] = useState("");
   const { canEdit } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["units", search],
     queryFn: async () => {
       let q = supabase.from("unit_overview").select("*").order("unit_name");
-      if (search) q = q.ilike("unit_name", `%${search}%`);
+      if (search) q = q.or(`unit_name.ilike.%${search}%,research_area.ilike.%${search}%`);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -34,10 +36,14 @@ export default function Units() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
-      {isLoading ? <p className="text-muted-foreground">Загрузка...</p> : !data?.length ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
+        <TableSkeleton columns={6} />
+      ) : !data?.length ? (
         <p className="text-muted-foreground py-8 text-center">Нет коллективов</p>
       ) : (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader><TableRow>
               <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Руководитель</TableHead>

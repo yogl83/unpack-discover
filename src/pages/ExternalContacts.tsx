@@ -11,10 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const kindLabels: Record<string, string> = {
-  official: "Официальный", warm: "Тёплый", operational: "Оперативный",
-  decision_maker: "ЛПР", technical: "Технический", other: "Другой",
-};
+import { contactKindLabels } from "@/lib/labels";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+
+const kindLabels = contactKindLabels;
 
 export default function ExternalContacts() {
   const { canEdit } = useAuth();
@@ -24,7 +25,7 @@ export default function ExternalContacts() {
   const [filterKind, setFilterKind] = useState("all");
   const [filterPrimary, setFilterPrimary] = useState("all");
 
-  const { data: contacts, isLoading } = useQuery({
+  const { data: contacts, isLoading, isError, refetch } = useQuery({
     queryKey: ["all-external-contacts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -88,8 +89,10 @@ export default function ExternalContacts() {
         </Select>
       </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm py-6 text-center">Загрузка…</p>
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
+        <TableSkeleton columns={7} />
       ) : !filtered?.length ? (
         <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
       ) : (
