@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
-import { hypothesisStatusLabels } from "@/lib/labels";
+import { hypothesisStatusLabels, confidenceLevelLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -57,7 +57,7 @@ export default function Hypotheses() {
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead>
+                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead>
                 <TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Уверенность</TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -67,7 +67,7 @@ export default function Hypotheses() {
                     <TableCell className="text-muted-foreground">{(h.partners as any)?.partner_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden md:table-cell">{(h.partner_needs as any)?.title || "—"}</TableCell>
                     <TableCell><Badge variant="secondary">{hypothesisStatusLabels[h.hypothesis_status || ""] || h.hypothesis_status || "—"}</Badge></TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{h.confidence_level || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{confidenceLevelLabels[h.confidence_level || ""] || h.confidence_level || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

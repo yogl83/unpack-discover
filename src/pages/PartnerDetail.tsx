@@ -18,7 +18,7 @@ import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadg
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-import { allStatusLabels } from "@/lib/labels";
+import { allStatusLabels, confidenceLevelLabels } from "@/lib/labels";
 const statusLabels = allStatusLabels;
 
 export default function PartnerDetail() {
@@ -443,7 +443,7 @@ export default function PartnerDetail() {
                         <TableCell className="text-muted-foreground">{(h.partner_needs as any)?.title || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{(h.miem_units as any)?.unit_name || "—"}</TableCell>
                         <TableCell><Badge variant="secondary">{statusLabels[h.hypothesis_status || ""] || h.hypothesis_status || "—"}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground">{h.confidence_level || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{confidenceLevelLabels[h.confidence_level || ""] || h.confidence_level || "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
