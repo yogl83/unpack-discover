@@ -60,6 +60,13 @@ interface VerificationSummary {
   confirmed: number;
   unconfirmed: number;
   contradicted: number;
+  repair_applied?: boolean;
+  repair_stats?: {
+    original_unconfirmed: number;
+    original_contradicted: number;
+    fixed_unconfirmed: number;
+    fixed_contradicted: number;
+  };
 }
 
 interface Props {
