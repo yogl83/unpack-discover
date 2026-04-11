@@ -121,3 +121,9 @@
 .tiptap [data-active] {
   @apply bg-accent;
 }
+/* Highlight citation references [N] in WYSIWYG editor */
+.wysiwyg-citations p,
+.wysiwyg-citations li,
+.wysiwyg-citations td {
+  /* Rendered via CSS — no JS needed for visual highlight */
+}
