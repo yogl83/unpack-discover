@@ -45,7 +45,9 @@ const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрст
 - Если факт не подтверждён ни одним источником — НЕ включай его
 
 СТРУКТУРА ССЫЛОК:
-В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
+В поле references верни JSON-массив источников. Для КАЖДОГО источника укажи цитаты — дословные фрагменты из текста источника, подтверждающие факты в профайле:
+[{"number": 1, "text": "Название источника", "url": "https://...", "quotes": [{"fact_text": "краткое описание факта в профайле", "source_quote": "дословная цитата из источника (1-2 предложения)"}]}]
+Если из источника использовано несколько фактов — добавь несколько элементов в quotes. Если цитату найти не удалось — оставь quotes пустым массивом.`;
 
 interface SectionConfig {
   key: string;
@@ -359,7 +361,34 @@ function buildReferencesFromSources(sources: NumberedSource[]): any[] {
       number: s.number,
       text: s.title,
       url: s.url || null,
+      quotes: [],
     }));
+}
+
+/** Merge AI-returned references (with quotes) into the base references list */
+function mergeReferencesWithQuotes(baseRefs: any[], aiParsed: Record<string, string>): any[] {
+  try {
+    const aiRefsRaw = aiParsed.references;
+    if (!aiRefsRaw) return baseRefs;
+    const aiRefs: any[] = typeof aiRefsRaw === "string" ? JSON.parse(aiRefsRaw) : aiRefsRaw;
+    if (!Array.isArray(aiRefs)) return baseRefs;
+
+    // Build a map of AI quotes by source number
+    const quotesMap = new Map<number, any[]>();
+    for (const r of aiRefs) {
+      if (r.number && Array.isArray(r.quotes) && r.quotes.length > 0) {
+        quotesMap.set(r.number, r.quotes);
+      }
+    }
+
+    // Merge quotes into base refs
+    return baseRefs.map(ref => ({
+      ...ref,
+      quotes: quotesMap.get(ref.number) || ref.quotes || [],
+    }));
+  } catch {
+    return baseRefs;
+  }
 }
 
 async function runFactCheck(
@@ -573,7 +602,7 @@ Deno.serve(async (req) => {
         [section_key]: { type: "string", description: `${sectionConfig.title}: ${sectionConfig.prompt}` },
         references: {
           type: "string",
-          description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}]",
+          description: 'JSON-массив источников с цитатами: [{"number": 1, "text": "Название", "url": "https://...", "quotes": [{"fact_text": "факт из профайла", "source_quote": "дословная цитата из источника"}]}]',
         },
       };
 
@@ -592,7 +621,7 @@ Deno.serve(async (req) => {
       if (!parsed) return errorResponse("AI did not return structured data", 500);
 
       let sectionContent = parsed[section_key] || "";
-      const references = buildReferencesFromSources(numberedSources);
+      const references = mergeReferencesWithQuotes(buildReferencesFromSources(numberedSources), parsed);
 
       // ============ FACT-CHECK THE REGENERATED SECTION ============
       console.log("Running fact-check on regenerated section:", section_key);
@@ -742,7 +771,7 @@ ${repairIssues}
     }
     sectionProperties["references"] = {
       type: "string",
-      description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}].",
+      description: 'JSON-массив источников с цитатами: [{"number": 1, "text": "Название", "url": "https://...", "quotes": [{"fact_text": "факт из профайла", "source_quote": "дословная цитата из источника"}]}]',
     };
     const requiredKeys = [...sections.map(s => s.key), "references"];
 
@@ -765,7 +794,7 @@ ${repairIssues}
     }
     console.log("AI sections received:", Object.keys(parsed).length);
 
-    const references = buildReferencesFromSources(numberedSources);
+    const references = mergeReferencesWithQuotes(buildReferencesFromSources(numberedSources), parsed);
 
     // ============ FACT-CHECK SECOND PASS ============
     console.log("Running fact-check...");

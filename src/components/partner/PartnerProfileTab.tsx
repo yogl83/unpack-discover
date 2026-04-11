@@ -14,6 +14,7 @@ import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -35,10 +36,16 @@ const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
 };
 
+interface ReferenceQuote {
+  fact_text: string;
+  source_quote: string;
+}
+
 interface ReferenceItem {
   number: number;
   text: string;
   url?: string;
+  quotes?: ReferenceQuote[];
 }
 
 interface FactCheck {
@@ -75,8 +82,59 @@ interface Props {
   legacyProfile?: { company_profile?: string; technology_profile?: string; strategic_priorities?: string };
 }
 
+// Citation popover for [N] references
+function CitationPopover({ num, references }: { num: string; references: ReferenceItem[] }) {
+  const refNum = parseInt(num, 10);
+  const ref = references.find(r => r.number === refNum);
+  const hasQuotes = ref?.quotes && ref.quotes.length > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="text-primary hover:underline text-xs align-super cursor-pointer font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {num}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-80 p-3 text-xs" align="start">
+        {ref ? (
+          <div className="space-y-2">
+            <div className="flex items-start gap-1.5">
+              <ExternalLink className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium">{ref.text}</p>
+                {ref.url && (
+                  <a href={ref.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                    {ref.url.length > 60 ? ref.url.slice(0, 60) + "…" : ref.url}
+                  </a>
+                )}
+              </div>
+            </div>
+            {hasQuotes ? (
+              <div className="border-t pt-2 space-y-1.5">
+                {ref.quotes!.map((q, i) => (
+                  <div key={i} className="bg-muted/50 rounded p-1.5">
+                    <p className="text-muted-foreground italic">«{q.source_quote}»</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">→ {q.fact_text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground italic border-t pt-2">Прямая цитата не найдена</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">Источник [{num}] не найден</p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // Shared markdown components for both view and edit preview
-const makeMarkdownComponents = () => ({
+const makeMarkdownComponents = (references: ReferenceItem[]) => ({
   a: ({ href, children, ...props }: any) => (
     <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props}>{children}</a>
   ),
@@ -96,16 +154,7 @@ const makeMarkdownComponents = () => ({
                     {nums.map((num: string, ni: number) => (
                       <span key={ni}>
                         {ni > 0 && ", "}
-                        <a
-                          href="#references"
-                          className="text-primary hover:underline text-xs align-super cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
-                          }}
-                        >
-                          {num}
-                        </a>
+                        <CitationPopover num={num} references={references} />
                       </span>
                     ))}
                     ]
@@ -135,8 +184,6 @@ const makeMarkdownComponents = () => ({
     <td className="border border-border px-3 py-2 text-xs">{children}</td>
   ),
 });
-
-const markdownComponents = makeMarkdownComponents();
 
 function VerificationBadge({ verification }: { verification?: SectionVerification }) {
   if (!verification) return null;
@@ -277,23 +324,35 @@ function VerificationSummaryBanner({ summary, sourcesCount }: { summary: Verific
 function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; sticky?: boolean }) {
   if (references.length === 0) return null;
   return (
-    <div className={`border rounded-lg p-4 space-y-2 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
+    <div className={`border rounded-lg p-4 space-y-3 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
       <h3 className="text-sm font-semibold">Источники</h3>
-      <ol className="list-decimal list-inside space-y-1 text-sm">
+      <ol className="list-decimal list-inside space-y-3 text-sm">
         {references.map((ref, i) => (
           <li key={i} className="text-muted-foreground">
-            {ref.url ? (
-              <a
-                href={ref.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {ref.text || ref.url}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : (
-              <span>{ref.text}</span>
+            <div className="inline">
+              {ref.url ? (
+                <a
+                  href={ref.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {ref.text || ref.url}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <span>{ref.text}</span>
+              )}
+            </div>
+            {ref.quotes && ref.quotes.length > 0 && (
+              <div className="mt-1 ml-4 space-y-1">
+                {ref.quotes.map((q, qi) => (
+                  <div key={qi} className="text-xs bg-muted/40 rounded px-2 py-1">
+                    <p className="italic text-muted-foreground">«{q.source_quote}»</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">→ {q.fact_text}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </li>
         ))}
@@ -873,7 +932,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={makeMarkdownComponents(activeReferences)}>
                         {val}
                       </ReactMarkdown>
                     </div>
