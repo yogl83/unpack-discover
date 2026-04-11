@@ -17,7 +17,7 @@ interface ConfirmDialogProps {
   title?: string;
   description?: string;
   onConfirm: () => void;
-  variant?: "destructive" | "default";
+  variant?: "destructive" | "default" | "ghost" | "outline" | "secondary" | "link";
   triggerLabel?: React.ReactNode;
   triggerSize?: "sm" | "default" | "lg" | "icon";
   triggerClassName?: string;
