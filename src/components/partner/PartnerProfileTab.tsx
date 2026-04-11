@@ -378,6 +378,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [verificationSummaryOverride, setVerificationSummaryOverride] = useState<VerificationSummary | null>(null);
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -442,6 +443,22 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       return data;
     },
     enabled: showHistory,
+  });
+
+  // Load a specific version for viewing
+  const { data: viewingProfile } = useQuery({
+    queryKey: ["partner-profile-view", viewingProfileId],
+    queryFn: async () => {
+      if (!viewingProfileId) return null;
+      const { data, error } = await supabase
+        .from("partner_profiles")
+        .select("*")
+        .eq("profile_id", viewingProfileId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!viewingProfileId,
   });
 
   const invalidateAll = () => {
