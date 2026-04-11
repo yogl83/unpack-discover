@@ -45,7 +45,9 @@ const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрст
 - Если факт не подтверждён ни одним источником — НЕ включай его
 
 СТРУКТУРА ССЫЛОК:
-В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
+В поле references верни JSON-массив источников. Для КАЖДОГО источника укажи цитаты — дословные фрагменты из текста источника, подтверждающие факты в профайле:
+[{"number": 1, "text": "Название источника", "url": "https://...", "quotes": [{"fact_text": "краткое описание факта в профайле", "source_quote": "дословная цитата из источника (1-2 предложения)"}]}]
+Если из источника использовано несколько фактов — добавь несколько элементов в quotes. Если цитату найти не удалось — оставь quotes пустым массивом.`;
 
 interface SectionConfig {
   key: string;
@@ -573,7 +575,7 @@ Deno.serve(async (req) => {
         [section_key]: { type: "string", description: `${sectionConfig.title}: ${sectionConfig.prompt}` },
         references: {
           type: "string",
-          description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}]",
+          description: 'JSON-массив источников с цитатами: [{"number": 1, "text": "Название", "url": "https://...", "quotes": [{"fact_text": "факт из профайла", "source_quote": "дословная цитата из источника"}]}]',
         },
       };
 
@@ -742,7 +744,7 @@ ${repairIssues}
     }
     sectionProperties["references"] = {
       type: "string",
-      description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}].",
+      description: 'JSON-массив источников с цитатами: [{"number": 1, "text": "Название", "url": "https://...", "quotes": [{"fact_text": "факт из профайла", "source_quote": "дословная цитата из источника"}]}]',
     };
     const requiredKeys = [...sections.map(s => s.key), "references"];
 
