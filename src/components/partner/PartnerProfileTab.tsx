@@ -288,6 +288,8 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const hasDraft = !!draftProfile;
   const hasLegacy = !currentProfile && !draftProfile && (legacyProfile?.company_profile || legacyProfile?.technology_profile || legacyProfile?.strategic_priorities);
   const references = displayProfile ? parseReferences(displayProfile) : [];
+  const draftReferences = draftProfile ? parseReferences(draftProfile) : [];
+  const activeReferences = editing ? draftReferences : references;
 
   return (
     <div className="space-y-6">
@@ -349,7 +351,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             <ProfilePdfExport
               profile={displayProfile}
               partnerName={partnerName}
-              references={references}
+              references={activeReferences.length > 0 ? activeReferences : references}
             />
           )}
           <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)}>
@@ -394,6 +396,32 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             editable
           />
 
+          {/* References in edit mode (read-only) */}
+          {draftReferences.length > 0 && (
+            <div className="border rounded-lg p-4 space-y-2" id="references">
+              <h3 className="text-sm font-semibold">Источники</h3>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                {draftReferences.map((ref, i) => (
+                  <li key={i} className="text-muted-foreground">
+                    {ref.url ? (
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {ref.text || ref.url}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span>{ref.text}</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending}>
               <Save className="mr-1 h-3.5 w-3.5" />Сохранить черновик
@@ -426,25 +454,34 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                           ),
                           p: ({ children, ...props }) => {
                             if (typeof children === "string") {
-                              const parts = children.split(/(\[\d+\])/g);
+                              const parts = children.split(/(\[\d+(?:,\s*\d+)*\])/g);
                               if (parts.length > 1) {
                                 return (
                                   <p {...props}>
                                     {parts.map((part, i) => {
-                                      const match = part.match(/^\[(\d+)\]$/);
+                                      const match = part.match(/^\[(\d+(?:,\s*\d+)*)\]$/);
                                       if (match) {
+                                        const nums = match[1].split(/,\s*/).map(n => n.trim());
                                         return (
-                                          <a
-                                            key={i}
-                                            href="#references"
-                                            className="text-primary hover:underline text-xs align-super cursor-pointer"
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
-                                            }}
-                                          >
-                                            {part}
-                                          </a>
+                                          <span key={i}>
+                                            [
+                                            {nums.map((num, ni) => (
+                                              <span key={ni}>
+                                                {ni > 0 && ", "}
+                                                <a
+                                                  href="#references"
+                                                  className="text-primary hover:underline text-xs align-super cursor-pointer"
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
+                                                  }}
+                                                >
+                                                  {num}
+                                                </a>
+                                              </span>
+                                            ))}
+                                            ]
+                                          </span>
                                         );
                                       }
                                       return part;
