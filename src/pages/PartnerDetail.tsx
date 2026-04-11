@@ -109,7 +109,7 @@ export default function PartnerDetail() {
       const { error } = await supabase.from("partners").delete().eq("partner_id", id!);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Партнер удален"); qc.invalidateQueries({ queryKey: ["partners"] }); navigate("/partners"); },
+    onSuccess: () => { onSuccess: () => { toast.success("Организация удалена"); qc.invalidateQueries({ queryKey: ["partners"] }); navigate("/partners"); },; qc.invalidateQueries({ queryKey: ["partners"] }); navigate("/partners"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -153,9 +153,9 @@ export default function PartnerDetail() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild><Link to="/partners"><ArrowLeft className="h-4 w-4" /></Link></Button>
-        <h1 className="text-2xl font-bold">{isNew ? "Новый партнер" : form.partner_name}</h1>
+        <h1 className="text-2xl font-bold">{isNew ? <h1 className="text-2xl font-bold">{isNew ? "Новая организация" : form.partner_name}</h1> : form.partner_name}</h1>
         {!isNew && isAdmin && (
-          <ConfirmDialog title="Удалить партнёра?" description="Партнёр и все связанные данные (контакты, потребности, гипотезы) будут удалены безвозвратно." onConfirm={() => del.mutate()} />
+          <ConfirmDialog title="<ConfirmDialog title="Удалить организацию?" description="Организация и все связанные данные (контакты, потребности, гипотезы) будут удалены безвозвратно." onConfirm={() => del.mutate()} />" description="Партнёр и все связанные данные (контакты, потребности, гипотезы) будут удалены безвозвратно." onConfirm={() => del.mutate()} />
         )}
       </div>
 
