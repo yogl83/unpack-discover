@@ -200,19 +200,42 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         doc.setFont("Roboto", "normal");
         for (const ref of references) {
           addPageIfNeeded(5);
-          const refText = `[${ref.number}] ${ref.text || ""}${ref.url ? " — " + ref.url : ""}`;
-          const lines = doc.splitTextToSize(refText, contentW);
-          for (const line of lines) {
+          const prefix = `[${ref.number}] ${ref.text || ""}`;
+          const url = ref.url || "";
+          if (url) {
+            const prefixWithDash = prefix + " — ";
+            const prefixLines = doc.splitTextToSize(prefixWithDash, contentW);
+            for (let li = 0; li < prefixLines.length; li++) {
+              addPageIfNeeded(4);
+              doc.text(prefixLines[li], margin, y);
+              y += 3.8;
+            }
+            // Add clickable URL on next line
             addPageIfNeeded(4);
-            doc.text(line, margin, y);
-            y += 3.8;
+            doc.setTextColor(26, 95, 180);
+            const urlLines = doc.splitTextToSize(url, contentW);
+            for (const uLine of urlLines) {
+              addPageIfNeeded(4);
+              const lineW = doc.getTextWidth(uLine);
+              doc.textWithLink(uLine, margin, y, { url });
+              doc.link(margin, y - 3, lineW, 4, { url });
+              y += 3.8;
+            }
+            doc.setTextColor(0, 0, 0);
+          } else {
+            const lines = doc.splitTextToSize(prefix, contentW);
+            for (const line of lines) {
+              addPageIfNeeded(4);
+              doc.text(line, margin, y);
+              y += 3.8;
+            }
           }
           y += 1;
         }
       }
 
       const safeName = partnerName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s-]/g, "").replace(/\s+/g, "_");
-      doc.save(`${safeName}_profail.pdf`);
+      doc.save(`${safeName}_profile.pdf`);
       toast.success("PDF скачан");
     } catch (e: any) {
       console.error("PDF export error:", e);
