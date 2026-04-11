@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownWysiwyg } from "./MarkdownWysiwyg";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -540,28 +540,15 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                             {isRegenerating ? "Генерация..." : "Перегенерировать"}
                           </Button>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                          {/* Left: textarea */}
-                          <Textarea
-                            value={form[s.key] || ""}
-                            onChange={(e) => {
-                              setForm((prev) => ({ ...prev, [s.key]: e.target.value }));
-                              setAiGeneratedSections((prev) => { const next = new Set(prev); next.delete(s.key); return next; });
-                            }}
-                            rows={s.key === "summary_short" ? 4 : 8}
-                            className={`font-mono text-xs resize-y ${aiGeneratedSections.has(s.key) ? "text-blue-600 border-blue-300" : ""}`}
-                          />
-                          {/* Right: live preview */}
-                          <div className="prose prose-sm max-w-none dark:prose-invert border rounded-md p-3 bg-muted/30 overflow-auto max-h-[400px]">
-                            {(form[s.key] || "").trim() ? (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                {form[s.key]}
-                              </ReactMarkdown>
-                            ) : (
-                              <p className="text-muted-foreground italic text-xs">Предпросмотр появится при вводе текста</p>
-                            )}
-                          </div>
-                        </div>
+                        <MarkdownWysiwyg
+                          value={form[s.key] || ""}
+                          onChange={(md) => {
+                            setForm((prev) => ({ ...prev, [s.key]: md }));
+                            setAiGeneratedSections((prev) => { const next = new Set(prev); next.delete(s.key); return next; });
+                          }}
+                          className={aiGeneratedSections.has(s.key) ? "border-blue-300" : ""}
+                          minHeight={s.key === "summary_short" ? "120px" : "200px"}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   );
