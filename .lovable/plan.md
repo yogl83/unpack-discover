@@ -1,51 +1,37 @@
 
 
-# Русификация всех необработанных английских значений из БД
+# Просмотр и редактирование версий из истории профайла
 
-## Проблема
+## Текущее поведение
+- Таблица истории версий — только просмотр метаданных (версия, статус, дата), без действий
+- Кнопка «Редактировать черновик» открывает существующий черновик как есть, без синхронизации с текущей утверждённой версией
+- Нет возможности просмотреть содержимое старых версий
 
-В нескольких местах UI английские значения из БД отображаются «как есть» без перевода. Маппинги уже существуют в `src/lib/labels.ts`, но не используются.
+## Новое поведение
 
-## Все найденные нестыковки
+### 1. Просмотр любой версии из истории
+- В таблицу истории добавить кнопку «Просмотр» (иконка Eye) на каждую строку
+- При клике загружается полный профайл этой версии и отображается в режиме только для чтения (вместо текущего `displayProfile`)
+- Кнопка «Назад к текущей» для возврата
 
-| Файл | Поле | Что видит пользователь | Маппинг |
-|------|------|----------------------|---------|
-| `InternalContacts.tsx:116` | `contact_role` | "lead", "researcher" | `memberRoleLabels` из labels.ts |
-| `InternalContacts.tsx:78` | фильтр ролей | английские значения в dropdown | `memberRoleLabels` |
-| `UnitDetail.tsx:436` | `contact_role` | "lead", "researcher" | `memberRoleLabels` |
-| `PartnerDetail.tsx:527` | `contact_role` (unit_contacts) | "lead" | `memberRoleLabels` |
-| `PartnerDetail.tsx:398` | `need_type` | "research", "development" | нужен новый `needTypeLabels` |
-| `PartnerDetail.tsx:400` | `priority_level` | "low", "medium", "high" | `priorityLabels` из labels.ts |
-| `Needs.tsx:68` | `need_type` | "research", "development" | нужен `needTypeLabels` |
+### 2. Создание черновика на основе любой версии
+- В таблицу истории добавить кнопку «Новая версия на основе» (иконка Copy) для утверждённых/архивных версий
+- Создаётся новый черновик с содержимым выбранной версии (аналог `createDraft`, но `base` — выбранная версия, а не текущая)
+- Кнопка не показывается если уже есть черновик
 
-## Решение
+### 3. Кнопка «Редактировать черновик» → создаёт новый черновик из текущей
+- Если есть черновик — поведение не меняется (редактирует существующий)
+- Если черновика нет — кнопка «Новая версия» уже создаёт черновик на основе текущей (это уже работает)
 
-### 1. Добавить `needTypeLabels` в `src/lib/labels.ts`
+## Технические изменения
 
-```ts
-export const needTypeLabels: Record<string, string> = {
-  research: "Исследование", development: "Разработка",
-  consulting: "Консалтинг", education: "Обучение", other: "Другое",
-};
-```
+**Файл: `src/components/partner/PartnerProfileTab.tsx`**
 
-### 2. `src/pages/InternalContacts.tsx`
-- Импортировать `memberRoleLabels`
-- Строка 116: `{memberRoleLabels[c.contact_role] || c.contact_role || "—"}`
-- Строка 78 (фильтр ролей): показывать русские названия в dropdown, фильтровать по ключу
-
-### 3. `src/pages/UnitDetail.tsx`
-- Строка 436: `{memberRoleLabels[c.contact_role] || c.contact_role || "—"}`
-
-### 4. `src/pages/PartnerDetail.tsx`
-- Импортировать `memberRoleLabels`, `needTypeLabels`, `priorityLabels`
-- Строка 398: `{needTypeLabels[n.need_type] || n.need_type || "—"}`
-- Строка 400: `{priorityLabels[n.priority_level] || n.priority_level || "—"}`
-- Строка 527: `{memberRoleLabels[c.contact_role] || c.contact_role || "—"}`
-
-### 5. `src/pages/Needs.tsx`
-- Импортировать `needTypeLabels`
-- Строка 68: `{needTypeLabels[n.need_type] || n.need_type || "—"}`
-
-**Файлы для изменения:** `labels.ts`, `InternalContacts.tsx`, `UnitDetail.tsx`, `PartnerDetail.tsx`, `Needs.tsx`
+1. Добавить состояние `viewingProfileId` для просмотра конкретной версии из истории
+2. Добавить запрос для загрузки выбранной версии по `profile_id`
+3. В таблицу истории добавить колонку «Действия» с кнопками:
+   - **Просмотр** (Eye) — устанавливает `viewingProfileId`, показывает содержимое в read-only
+   - **На основе этой версии** (Copy) — вызывает `createDraft` с `base` = выбранная версия (только если нет черновика)
+4. Расширить `createDraft` — принимать опциональный `baseProfile` вместо всегда использовать `currentProfile`
+5. Над секциями при просмотре старой версии показывать баннер «Просмотр версии vN» с кнопкой возврата
 
