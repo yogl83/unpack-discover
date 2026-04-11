@@ -540,10 +540,11 @@ Deno.serve(async (req) => {
       const sectionConfig = sections.find((s) => s.key === section_key);
       if (!sectionConfig) return errorResponse(`Unknown section: ${section_key}`, 400);
 
-      // Build enhanced prompt with current content, fact-check results, and user comment
+      // Build enhanced prompt with strict fact-removal rules
       const promptParts: string[] = [
         sourceContext,
         `\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}`,
+        `\n\nКРИТИЧЕСКОЕ ПРАВИЛО: Если факт нельзя подтвердить по источникам из списка — НЕ включай его в текст. Не перефразируй непроверенные факты в "мягкой" форме. Лучше написать "Данные не найдены", чем оставить неподтверждённый факт.`,
       ];
 
       if (current_content) {
@@ -553,15 +554,15 @@ Deno.serve(async (req) => {
       if (fact_check_results && Array.isArray(fact_check_results) && fact_check_results.length > 0) {
         const issues = fact_check_results
           .filter((f: any) => f.status === "unconfirmed" || f.status === "contradicted")
-          .map((f: any) => `${f.status === "contradicted" ? "❌" : "⚠️"} ${f.fact}${f.explanation ? ` (${f.explanation})` : ""}`)
+          .map((f: any) => `${f.status === "contradicted" ? "❌ ПРОТИВОРЕЧИЕ" : "⚠️ НЕ ПОДТВЕРЖДЕНО"}: "${f.fact}"${f.explanation ? ` — ${f.explanation}` : ""}`)
           .join("\n");
         if (issues) {
-          promptParts.push(`\n\n--- РЕЗУЛЬТАТЫ ПРОВЕРКИ ФАКТОВ ---\nСледующие факты требуют исправления или удаления:\n${issues}\n\nИсправь неподтверждённые факты (найди подтверждение в источниках или удали). Удали или исправь противоречащие факты.\n--- КОНЕЦ РЕЗУЛЬТАТОВ ---`);
+          promptParts.push(`\n\n--- РЕЗУЛЬТАТЫ ПРОВЕРКИ ФАКТОВ ---\nСледующие факты ОБЯЗАТЕЛЬНО должны быть УДАЛЕНЫ из текста (не перефразированы, не смягчены — именно удалены):\n${issues}\n\nЕсли после удаления этих фактов секция остаётся пустой — напиши "Данные не найдены".\n--- КОНЕЦ РЕЗУЛЬТАТОВ ---`);
         }
       }
 
       if (user_comment && typeof user_comment === "string" && user_comment.trim()) {
-        promptParts.push(`\n\n--- УКАЗАНИЯ АНАЛИТИКА ---\n${user_comment.trim()}\n--- КОНЕЦ УКАЗАНИЙ ---`);
+        promptParts.push(`\n\n--- УКАЗАНИЯ АНАЛИТИКА (ПРИОРИТЕТНАЯ ИНСТРУКЦИЯ) ---\n${user_comment.trim()}\n--- КОНЕЦ УКАЗАНИЙ ---`);
       }
 
       promptParts.push(`\nИспользуй ТОЛЬКО источники из списка выше. Также обнови список источников (references).`);
@@ -590,15 +591,93 @@ Deno.serve(async (req) => {
       const parsed = parseAIResponse(aiData);
       if (!parsed) return errorResponse("AI did not return structured data", 500);
 
-      const sectionContent = parsed[section_key] || "";
+      let sectionContent = parsed[section_key] || "";
       const references = buildReferencesFromSources(numberedSources);
 
-      // Update the specific section in the existing profile
+      // ============ FACT-CHECK THE REGENERATED SECTION ============
+      console.log("Running fact-check on regenerated section:", section_key);
+      const sectionForCheck: Record<string, string> = { [section_key]: sectionContent };
+      let sectionVerification = await runFactCheck(lovableKey, aiModel, [sectionConfig], sectionForCheck, numberedSources);
+
+      // Check if there are still unconfirmed/contradicted facts
+      const sv = sectionVerification.find(v => v.section_key === section_key);
+      const badFacts = sv ? sv.unconfirmed + sv.contradicted : 0;
+
+      // ============ REPAIR PASS if issues remain ============
+      if (badFacts > 0 && sv) {
+        console.log(`Repair pass needed: ${sv.unconfirmed} unconfirmed, ${sv.contradicted} contradicted`);
+        const repairIssues = sv.facts
+          .filter(f => f.status === "unconfirmed" || f.status === "contradicted")
+          .map(f => `${f.status === "contradicted" ? "❌" : "⚠️"} "${f.fact}"${f.explanation ? ` — ${f.explanation}` : ""}`)
+          .join("\n");
+
+        const repairPrompt = `${sourceContext}
+
+--- ТЕКУЩИЙ ТЕКСТ СЕКЦИИ "${sectionConfig.title}" ---
+${sectionContent}
+--- КОНЕЦ ТЕКСТА ---
+
+--- ФАКТЫ, КОТОРЫЕ НЕОБХОДИМО УДАЛИТЬ ---
+${repairIssues}
+--- КОНЕЦ СПИСКА ---
+
+ЗАДАЧА: Перепиши секцию, УДАЛИВ все перечисленные выше факты. НЕ перефразируй их, НЕ смягчай — полностью убери из текста.
+Оставь только подтверждённые факты со ссылками на источники [N].
+Если после удаления секция пуста — верни "Данные не найдены".
+Обнови references.`;
+
+        const repairRes = await callAI(lovableKey, aiModel, systemPrompt, repairPrompt, toolProps, [section_key, "references"]);
+        if (repairRes.ok) {
+          const repairData = await repairRes.json();
+          const repairParsed = parseAIResponse(repairData);
+          if (repairParsed && repairParsed[section_key]) {
+            sectionContent = repairParsed[section_key];
+            console.log("Repair pass complete, re-verifying...");
+            // Re-verify after repair
+            const recheck = await runFactCheck(lovableKey, aiModel, [sectionConfig], { [section_key]: sectionContent }, numberedSources);
+            if (recheck.length > 0) sectionVerification = recheck;
+          }
+        }
+      }
+
+      // Get final verification for this section
+      const finalSV = sectionVerification.find(v => v.section_key === section_key) || { section_key, facts: [], confirmed: 0, unconfirmed: 0, contradicted: 0 };
+
+      // ============ UPDATE DB: section + verification ============
+      // Load existing generated_from_sources_json to merge verification
+      const { data: existingProfile } = await supabase
+        .from("partner_profiles")
+        .select("generated_from_sources_json")
+        .eq("profile_id", profile_id)
+        .single();
+
+      let sourcesJson: any = {};
+      try {
+        const raw = existingProfile?.generated_from_sources_json;
+        sourcesJson = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
+      } catch { sourcesJson = {}; }
+
+      // Replace verification for this section
+      const existingVerification: SectionVerification[] = Array.isArray(sourcesJson.verification) ? sourcesJson.verification : [];
+      const updatedVerification = existingVerification.filter(v => v.section_key !== section_key);
+      updatedVerification.push(finalSV);
+
+      // Recalculate summary
+      const newSummary = {
+        confirmed: updatedVerification.reduce((s, v) => s + v.confirmed, 0),
+        unconfirmed: updatedVerification.reduce((s, v) => s + v.unconfirmed, 0),
+        contradicted: updatedVerification.reduce((s, v) => s + v.contradicted, 0),
+      };
+
+      sourcesJson.verification = updatedVerification;
+      sourcesJson.verification_summary = newSummary;
+
       const { error: updateError } = await supabase
         .from("partner_profiles")
         .update({
           [section_key]: sectionContent,
           references_json: references,
+          generated_from_sources_json: sourcesJson,
           updated_by: user.id,
           last_generated_at: new Date().toISOString(),
         })
@@ -606,7 +685,17 @@ Deno.serve(async (req) => {
 
       if (updateError) return errorResponse(updateError.message, 500);
 
-      return new Response(JSON.stringify({ success: true, section_content: sectionContent, references }), {
+      const remainingIssues = finalSV.unconfirmed + finalSV.contradicted;
+      console.log(`Section ${section_key} done. Remaining issues: ${remainingIssues}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        section_content: sectionContent,
+        references,
+        section_verification: finalSV,
+        verification_summary: newSummary,
+        remaining_issues: remainingIssues,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

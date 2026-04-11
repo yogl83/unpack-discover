@@ -535,13 +535,29 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       const newVal = data.section_content || "";
       setForm((prev) => ({ ...prev, [sectionKey]: newVal }));
       setAiGeneratedSections((prev) => new Set(prev).add(sectionKey));
+
+      // Update verification data with fresh results from backend
+      if (data.section_verification) {
+        setVerificationData((prev) => {
+          const filtered = prev.filter(v => v.section_key !== sectionKey);
+          filtered.push(data.section_verification);
+          return filtered;
+        });
+      }
+
       if (data.references) {
         invalidateAll();
       }
       // Clear comment after successful regeneration
       setSectionComments(prev => ({ ...prev, [sectionKey]: "" }));
       setShowCommentFor(null);
-      toast.success("Секция перегенерирована");
+
+      const remaining = data.remaining_issues || 0;
+      if (remaining > 0) {
+        toast.warning(`Секция обновлена, но осталось ${remaining} неподтв. утверждений`);
+      } else {
+        toast.success("Секция перегенерирована ✅");
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
