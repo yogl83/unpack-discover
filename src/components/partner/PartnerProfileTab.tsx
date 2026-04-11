@@ -483,10 +483,10 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     }
   };
 
-  // Create new draft
+  // Create new draft (optionally from a specific base version)
   const createDraft = useMutation({
-    mutationFn: async () => {
-      const base = currentProfile;
+    mutationFn: async (baseOverride?: any) => {
+      const base = baseOverride || currentProfile;
       const nextVersion = (base?.version_number || 0) + 1;
       const sectionData: Record<string, string | null> = {};
       for (const s of SECTIONS) {
@@ -514,6 +514,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       }
       setForm(formData);
       setEditing(true);
+      setViewingProfileId(null);
       toast.success("Черновик создан");
     },
     onError: (e: any) => toast.error(e.message),
