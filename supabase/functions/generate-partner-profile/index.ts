@@ -12,14 +12,9 @@ const SECTION_KEYS = [
   "business_scale",
   "technology_focus",
   "strategic_priorities",
-  "talent_needs",
-  "collaboration_opportunities",
-  "current_relationship_with_miem",
   "relationship_with_other_universities",
   "recent_news_and_plans",
   "key_events_and_touchpoints",
-  "risks_and_constraints",
-  "recommended_next_steps",
 ] as const;
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
@@ -58,14 +53,9 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
   { key: "business_scale", title: "Масштаб и показатели", prompt: "Табличный формат." },
   { key: "technology_focus", title: "Технологический фокус", prompt: "Конкретные технологии и продукты." },
   { key: "strategic_priorities", title: "Стратегические направления", prompt: "3-5 направлений." },
-  { key: "talent_needs", title: "Кадровые потребности", prompt: "Конкретные специальности." },
-  { key: "collaboration_opportunities", title: "Запрос к МИЭМ", prompt: "Обоснованные форматы." },
-  { key: "current_relationship_with_miem", title: "Взаимодействие с МИЭМ", prompt: "Конкретные факты или 'Данные не найдены'." },
   { key: "relationship_with_other_universities", title: "Другие университеты", prompt: "Конкретные вузы-партнёры." },
   { key: "recent_news_and_plans", title: "Новости и планы", prompt: "За последние 12-18 месяцев." },
   { key: "key_events_and_touchpoints", title: "Мероприятия", prompt: "Конференции, хакатоны." },
-  { key: "risks_and_constraints", title: "Риски", prompt: "С уровнем и митигациями." },
-  { key: "recommended_next_steps", title: "Рекомендуемые шаги", prompt: "3-5 конкретных действий." },
 ];
 
 async function loadAISettings(supabase: ReturnType<typeof createClient>) {

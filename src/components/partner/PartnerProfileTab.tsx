@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const SECTIONS = [
   { key: "summary_short", label: "Краткое описание" },
@@ -20,14 +22,9 @@ const SECTIONS = [
   { key: "business_scale", label: "Масштаб и показатели деятельности" },
   { key: "technology_focus", label: "Технологический и продуктовый фокус" },
   { key: "strategic_priorities", label: "Стратегические направления" },
-  { key: "talent_needs", label: "Кадровые потребности" },
-  { key: "collaboration_opportunities", label: "Потенциальный запрос к МИЭМ" },
-  { key: "current_relationship_with_miem", label: "Текущее взаимодействие с МИЭМ" },
   { key: "relationship_with_other_universities", label: "Взаимодействие с другими университетами" },
   { key: "recent_news_and_plans", label: "Последние новости и планы развития" },
   { key: "key_events_and_touchpoints", label: "Ключевые мероприятия" },
-  { key: "risks_and_constraints", label: "Риски и ограничения" },
-  { key: "recommended_next_steps", label: "Рекомендуемые шаги" },
 ] as const;
 
 type SectionKey = typeof SECTIONS[number]["key"];
@@ -35,6 +32,12 @@ type SectionKey = typeof SECTIONS[number]["key"];
 const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
 };
+
+interface ReferenceItem {
+  number: number;
+  text: string;
+  url?: string;
+}
 
 interface Props {
   partnerId: string;
@@ -188,7 +191,6 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     mutationFn: async () => {
       const profileToApprove = draftProfile;
       if (!profileToApprove) throw new Error("Нет профайла для утверждения");
-      // Unset current from old profile
       if (currentProfile) {
         await supabase.from("partner_profiles")
           .update({ is_current: false })
@@ -262,11 +264,24 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     }
   };
 
+  // Parse references
+  const parseReferences = (profile: any): ReferenceItem[] => {
+    if (!profile?.references_json) return [];
+    try {
+      const refs = typeof profile.references_json === "string"
+        ? JSON.parse(profile.references_json)
+        : profile.references_json;
+      if (Array.isArray(refs)) return refs;
+    } catch { /* ignore */ }
+    return [];
+  };
+
   if (isLoading) return <p className="text-muted-foreground py-4">Загрузка профайла...</p>;
 
   const displayProfile = currentProfile;
   const hasDraft = !!draftProfile;
   const hasLegacy = !currentProfile && !draftProfile && (legacyProfile?.company_profile || legacyProfile?.technology_profile || legacyProfile?.strategic_priorities);
+  const references = displayProfile ? parseReferences(displayProfile) : [];
 
   return (
     <div className="space-y-6">
@@ -341,47 +356,44 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
 
       {/* Edit mode */}
       {editing && draftProfile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Редактирование — v{draftProfile.version_number}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {SECTIONS.map((s) => (
-              <div key={s.key} className="space-y-1.5">
-                <Label className="text-sm">{s.label}</Label>
-                <Textarea
-                  value={form[s.key] || ""}
-                  onChange={(e) => setForm((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                  rows={s.key === "summary_short" ? 2 : 3}
-                />
-              </div>
-            ))}
-
-            {/* File upload in edit mode */}
-            <ProfileFileUpload
-              profileId={draftProfile.profile_id}
-              partnerId={partnerId}
-              files={(profileFiles as any) || []}
-              editable
-            />
-
-            <div className="flex gap-2 pt-2">
-              <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending}>
-                <Save className="mr-1 h-3.5 w-3.5" />Сохранить черновик
-              </Button>
-              <Button variant="secondary" onClick={() => sendToReview.mutate()} disabled={sendToReview.isPending}>
-                <Send className="mr-1 h-3.5 w-3.5" />На рассмотрение
-              </Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold">Редактирование — v{draftProfile.version_number}</h3>
+          {SECTIONS.map((s) => (
+            <div key={s.key} className="space-y-1.5">
+              <Label className="text-sm">{s.label}</Label>
+              <Textarea
+                value={form[s.key] || ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                rows={s.key === "summary_short" ? 2 : 4}
+                className="font-mono text-xs"
+              />
             </div>
-          </CardContent>
-        </Card>
+          ))}
+
+          {/* File upload in edit mode */}
+          <ProfileFileUpload
+            profileId={draftProfile.profile_id}
+            partnerId={partnerId}
+            files={(profileFiles as any) || []}
+            editable
+          />
+
+          <div className="flex gap-2 pt-2">
+            <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending}>
+              <Save className="mr-1 h-3.5 w-3.5" />Сохранить черновик
+            </Button>
+            <Button variant="secondary" onClick={() => sendToReview.mutate()} disabled={sendToReview.isPending}>
+              <Send className="mr-1 h-3.5 w-3.5" />На рассмотрение
+            </Button>
+            <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+          </div>
+        </div>
       )}
 
       {/* View mode — current profile */}
       {!editing && displayProfile && (
         <>
-          <Accordion type="multiple" defaultValue={SECTIONS.filter((s) => (displayProfile as any)[s.key]).map((s) => s.key)}>
+          <Accordion type="multiple" defaultValue={["summary_short"]}>
             {SECTIONS.map((s) => {
               const val = (displayProfile as any)[s.key];
               if (!val) return null;
@@ -389,12 +401,40 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                 <AccordionItem key={s.key} value={s.key}>
                   <AccordionTrigger className="text-sm font-medium">{s.label}</AccordionTrigger>
                   <AccordionContent>
-                    <p className="whitespace-pre-wrap text-sm">{val}</p>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{val}</ReactMarkdown>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               );
             })}
           </Accordion>
+
+          {/* References block */}
+          {references.length > 0 && (
+            <div className="border rounded-lg p-4 space-y-2" id="references">
+              <h3 className="text-sm font-semibold">Источники</h3>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                {references.map((ref, i) => (
+                  <li key={i} className="text-muted-foreground">
+                    {ref.url ? (
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {ref.text || ref.url}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span>{ref.text}</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           {/* Files */}
           {activeProfileId && (
