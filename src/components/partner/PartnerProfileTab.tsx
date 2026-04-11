@@ -53,6 +53,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -170,7 +171,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         .eq("profile_id", draftProfile.profile_id);
       if (error) throw error;
     },
-    onSuccess: () => { invalidateAll(); toast.success("Черновик сохранён"); },
+    onSuccess: () => { invalidateAll(); setAiGeneratedSections(new Set()); toast.success("Черновик сохранён"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -239,10 +240,14 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     onSuccess: (profile) => {
       invalidateAll();
       const formData: Record<string, string> = {};
+      const aiSections = new Set<string>();
       for (const s of SECTIONS) {
-        formData[s.key] = (profile as any)[s.key] || "";
+        const val = (profile as any)[s.key] || "";
+        formData[s.key] = val;
+        if (val) aiSections.add(s.key);
       }
       setForm(formData);
+      setAiGeneratedSections(aiSections);
       setEditing(true);
       setIsGenerating(false);
       toast.success("Профайл сгенерирован AI. Проверьте и отредактируйте черновик.");
@@ -371,9 +376,12 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
               <Label className="text-sm">{s.label}</Label>
               <Textarea
                 value={form[s.key] || ""}
-                onChange={(e) => setForm((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, [s.key]: e.target.value }));
+                  setAiGeneratedSections((prev) => { const next = new Set(prev); next.delete(s.key); return next; });
+                }}
                 rows={s.key === "summary_short" ? 2 : 4}
-                className="font-mono text-xs"
+                className={`font-mono text-xs ${aiGeneratedSections.has(s.key) ? "text-blue-600 border-blue-300" : ""}`}
               />
             </div>
           ))}
@@ -410,7 +418,47 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   <AccordionTrigger className="text-sm font-medium">{s.label}</AccordionTrigger>
                   <AccordionContent>
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{val}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ href, children, ...props }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props}>{children}</a>
+                          ),
+                          p: ({ children, ...props }) => {
+                            if (typeof children === "string") {
+                              const parts = children.split(/(\[\d+\])/g);
+                              if (parts.length > 1) {
+                                return (
+                                  <p {...props}>
+                                    {parts.map((part, i) => {
+                                      const match = part.match(/^\[(\d+)\]$/);
+                                      if (match) {
+                                        return (
+                                          <a
+                                            key={i}
+                                            href="#references"
+                                            className="text-primary hover:underline text-xs align-super cursor-pointer"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
+                                            }}
+                                          >
+                                            {part}
+                                          </a>
+                                        );
+                                      }
+                                      return part;
+                                    })}
+                                  </p>
+                                );
+                              }
+                            }
+                            return <p {...props}>{children}</p>;
+                          },
+                        }}
+                      >
+                        {val}
+                      </ReactMarkdown>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
