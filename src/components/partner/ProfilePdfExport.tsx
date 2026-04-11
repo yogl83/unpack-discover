@@ -251,6 +251,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             cx = startX;
           }
 
+          // Fallback: if single token wider than maxW, draw it anyway to avoid infinite hang
           doc.text(token.text, cx, y);
           cx += w;
         }
@@ -282,13 +283,14 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             let cx = indentX + prefixW;
             const rightEdge = indentX + lineMaxW;
 
+            const textStartX = indentX + prefixW;
             for (const token of bodyTokens) {
               doc.setFont("Roboto", token.bold ? "bold" : "normal");
               const w = doc.getTextWidth(token.text);
-              if (cx + w > rightEdge && cx > indentX + prefixW) {
+              if (cx + w > rightEdge && cx > textStartX) {
                 y += LINE_H;
                 ensureSpace(LINE_H);
-                cx = indentX;
+                cx = textStartX; // align continuation with text, not bullet
               }
               doc.text(token.text, cx, y);
               cx += w;
@@ -403,10 +405,13 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
         currentSectionLabel = "";
 
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.2);
-        doc.line(MARGIN, y, pageW - MARGIN, y);
-        y += SECTION_GAP;
+        // Draw section divider only if not the last section before references
+        if (y + SECTION_GAP < bodyBottom) {
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.2);
+          doc.line(MARGIN, y, pageW - MARGIN, y);
+          y += SECTION_GAP;
+        }
       }
 
       /* ── References ──────────────────────────────────────── */
@@ -423,7 +428,10 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         doc.setTextColor(0, 0, 0);
         y += 7;
 
-        for (const ref of references) {
+        for (let ri = 0; ri < references.length; ri++) {
+          const ref = references[ri];
+          const seqNum = ri + 1; // sequential numbering regardless of source data
+
           // Estimate block height to avoid breaking a source mid-page
           const estimatedH = 12
             + (ref.url ? 6 : 0)
@@ -433,7 +441,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           // Reference number + title
           doc.setFontSize(9);
           doc.setFont("Roboto", "bold");
-          const prefix = `[${ref.number}]  `;
+          const prefix = `[${seqNum}]  `;
           doc.text(prefix, MARGIN, y);
           const prefixW = doc.getTextWidth(prefix);
 
