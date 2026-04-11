@@ -116,8 +116,8 @@ export default function PartnerDetail() {
   const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleAutofill = async () => {
-    const query = form.inn || form.ogrn || form.partner_name;
-    if (!query.trim()) { toast.error("Введите название, ИНН или ОГРН"); return; }
+    const query = form.partner_name;
+    if (!query.trim()) { toast.error("Введите название партнера"); return; }
     setIsAutofilling(true);
     try {
       const { data, error } = await supabase.functions.invoke("autofill-partner-info", {
