@@ -801,6 +801,29 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         </div>
       </div>
 
+      {/* Banner for viewing historical version */}
+      {isViewingHistory && !editing && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-blue-50 border-blue-200 text-sm">
+          <Eye className="h-5 w-5 shrink-0 text-blue-600" />
+          <div className="flex-1">
+            <span className="font-medium text-blue-800">
+              Просмотр версии v{viewingProfile!.version_number} ({statusLabels[viewingProfile!.status] || viewingProfile!.status})
+            </span>
+            <span className="text-blue-600 ml-2">
+              от {new Date(viewingProfile!.created_at).toLocaleDateString("ru")}
+            </span>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setViewingProfileId(null)}>
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" />Назад к текущей
+          </Button>
+          {canEdit && !hasDraft && (
+            <Button size="sm" onClick={() => createDraft.mutate(viewingProfile)} disabled={createDraft.isPending}>
+              <Copy className="mr-1 h-3.5 w-3.5" />Новая версия на основе
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Meta info */}
       {displayProfile && !editing && (
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
