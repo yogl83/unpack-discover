@@ -54,6 +54,12 @@ export const memberRoleLabels: Record<string, string> = {
   engineer: "Инженер", pm: "PM", expert: "Эксперт", other: "Другой",
 };
 
+// === Unit type ===
+export const unitTypeLabels: Record<string, string> = {
+  lab: "Лаборатория", project_group: "Проектная группа",
+  center: "Центр", department: "Департамент",
+};
+
 // Combined status labels (used in PartnerDetail where multiple entity statuses appear)
 export const allStatusLabels: Record<string, string> = {
   ...partnerStatusLabels,

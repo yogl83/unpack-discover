@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { unitTypeLabels } from "@/lib/labels";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
