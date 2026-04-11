@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,8 @@ import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare, Quote } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -35,10 +36,16 @@ const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
 };
 
+interface ReferenceQuote {
+  fact_text: string;
+  source_quote: string;
+}
+
 interface ReferenceItem {
   number: number;
   text: string;
   url?: string;
+  quotes?: ReferenceQuote[];
 }
 
 interface FactCheck {
