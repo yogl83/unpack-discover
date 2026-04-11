@@ -1,51 +1,41 @@
 
 
-# AI-помощник заполнения основной информации о партнёре
+# Улучшение AI-заполнения: убрать ИНН/ОГРН + подсветка AI-полей
 
 ## Что получит пользователь
 
-На вкладке «Информация» появится кнопка **«Заполнить с помощью AI»** (иконка Sparkles). Пользователь вводит **название компании**, **ИНН** или **ОГРН** — нажимает кнопку — AI ищет информацию и заполняет остальные поля формы (юр. наименование, сайт, отрасль, подотрасль, бизнес-модель, город, география, размер). Пользователь проверяет, корректирует и сохраняет.
-
-Поля, которые уже заполнены, **не перезаписываются** — AI заполняет только пустые поля (с возможностью переключить на «перезаписать все»).
+1. AI больше не пытается угадывать ИНН и ОГРН — эти поля заполняются только вручную
+2. После нажатия «Заполнить с AI» все заполненные AI-ом поля отображаются **синим шрифтом**
+3. При сохранении формы синий цвет сбрасывается на обычный чёрный
 
 ## Что будет сделано
 
-### 1. Новая edge function `autofill-partner-info`
+### 1. Edge function: убрать `inn` и `ogrn`
 
-- Принимает: `{ query: "название или ИНН или ОГРН" }`
-- Вызывает Lovable AI (google/gemini-3-flash-preview) с tool calling
-- Инструкция AI: по названию/ИНН/ОГРН найти и вернуть структурированные данные:
-  - `partner_name`, `legal_name`, `website_url`, `industry`, `subindustry`, `business_model`, `city`, `geography`, `company_size`
-- Возвращает JSON с заполненными полями
-- Не сохраняет в БД — только возвращает данные для предзаполнения формы
+**`supabase/functions/autofill-partner-info/index.ts`**:
+- Удалить `inn` и `ogrn` из `properties` в tool calling schema
+- Добавить в системный промт: «НЕ выдумывай ИНН, ОГРН и регистрационные номера»
 
-### 2. Обновление `PartnerDetail.tsx`
+### 2. Frontend: подсветка AI-полей синим
 
-- Кнопка «Заполнить с AI» рядом с заголовком карточки «Основная информация»
-- При нажатии: берёт из формы `partner_name` (или ИНН/ОГРН, когда поля будут добавлены)
-- Вызывает edge function
-- Заполняет пустые поля формы результатами AI
-- Показывает toast: «Данные заполнены — проверьте и сохраните»
-- Loading state на кнопке во время генерации
+**`src/pages/PartnerDetail.tsx`**:
+- Добавить state: `const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set())`
+- В `handleAutofill`: при заполнении пустого поля — добавлять ключ в `aiFilledFields`
+- Убрать `inn`, `ogrn` из `fillableKeys`
+- На каждом Input/Select/Textarea: если поле в `aiFilledFields` — добавлять `className="text-blue-600"`
+- В `save.mutate` (onSuccess): сбрасывать `setAiFilledFields(new Set())`
 
-### 3. Миграция: добавить `inn` и `ogrn` в `partners`
+### Техническая деталь
 
-```sql
-ALTER TABLE public.partners ADD COLUMN inn TEXT;
-ALTER TABLE public.partners ADD COLUMN ogrn TEXT;
+Подсветка работает через условный класс:
+```tsx
+<Input className={aiFilledFields.has("website_url") ? "text-blue-600" : ""} ... />
 ```
-
-TEXT с клиентской валидацией (только цифры, 10-12 для ИНН, 13-15 для ОГРН). Хранение как TEXT, потому что это идентификаторы, а не числа для вычислений.
-
-### 4. Поля ИНН/ОГРН в форме
-
-Добавить два поля после «Юридическое наименование» с input validation (только цифры).
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `supabase/functions/autofill-partner-info/index.ts` | Новая edge function |
-| `src/pages/PartnerDetail.tsx` | Кнопка AI-заполнения + поля ИНН/ОГРН |
-| Миграция SQL | `inn`, `ogrn` в таблицу `partners` |
+| `supabase/functions/autofill-partner-info/index.ts` | Убрать inn/ogrn из schema и промта |
+| `src/pages/PartnerDetail.tsx` | State aiFilledFields, синий шрифт, сброс при сохранении |
 
