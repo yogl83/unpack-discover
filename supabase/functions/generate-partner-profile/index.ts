@@ -536,10 +536,37 @@ Deno.serve(async (req) => {
 
     // --- SINGLE SECTION REGENERATION ---
     if (section_key && profile_id) {
+      const { user_comment, fact_check_results, current_content } = body;
       const sectionConfig = sections.find((s) => s.key === section_key);
       if (!sectionConfig) return errorResponse(`Unknown section: ${section_key}`, 400);
 
-      const singlePrompt = `${sourceContext}\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}\nИспользуй ТОЛЬКО источники из списка выше. Также обнови список источников (references).`;
+      // Build enhanced prompt with current content, fact-check results, and user comment
+      const promptParts: string[] = [
+        sourceContext,
+        `\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}`,
+      ];
+
+      if (current_content) {
+        promptParts.push(`\n\n--- ТЕКУЩИЙ ТЕКСТ СЕКЦИИ ---\n${current_content}\n--- КОНЕЦ ТЕКУЩЕГО ТЕКСТА ---`);
+      }
+
+      if (fact_check_results && Array.isArray(fact_check_results) && fact_check_results.length > 0) {
+        const issues = fact_check_results
+          .filter((f: any) => f.status === "unconfirmed" || f.status === "contradicted")
+          .map((f: any) => `${f.status === "contradicted" ? "❌" : "⚠️"} ${f.fact}${f.explanation ? ` (${f.explanation})` : ""}`)
+          .join("\n");
+        if (issues) {
+          promptParts.push(`\n\n--- РЕЗУЛЬТАТЫ ПРОВЕРКИ ФАКТОВ ---\nСледующие факты требуют исправления или удаления:\n${issues}\n\nИсправь неподтверждённые факты (найди подтверждение в источниках или удали). Удали или исправь противоречащие факты.\n--- КОНЕЦ РЕЗУЛЬТАТОВ ---`);
+        }
+      }
+
+      if (user_comment && typeof user_comment === "string" && user_comment.trim()) {
+        promptParts.push(`\n\n--- УКАЗАНИЯ АНАЛИТИКА ---\n${user_comment.trim()}\n--- КОНЕЦ УКАЗАНИЙ ---`);
+      }
+
+      promptParts.push(`\nИспользуй ТОЛЬКО источники из списка выше. Также обнови список источников (references).`);
+
+      const singlePrompt = promptParts.join("");
 
       const toolProps: Record<string, { type: string; description: string }> = {
         [section_key]: { type: "string", description: `${sectionConfig.title}: ${sectionConfig.prompt}` },
