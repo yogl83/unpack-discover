@@ -15,7 +15,7 @@ import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare, Eye, Copy, ArrowLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
