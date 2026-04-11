@@ -144,7 +144,7 @@ export function ProfileFileUpload({ profileId, partnerId, files, editable }: Pro
                   variant="ghost"
                   triggerClassName="h-7 w-7 text-destructive"
                 />
-              )
+              )}
             </div>
           ))}
         </div>
