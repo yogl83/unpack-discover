@@ -42,6 +42,9 @@ interface ProfilePdfExportProps {
 function preprocessText(text: string): string {
   return text
     .replace(/\\?\[(\d+)\]\\?/g, "[$1]")
+    .replace(/\\\[/g, "[")
+    .replace(/\\\]/g, "]")
+    .replace(/:([^\s])/g, ": $1")
     .replace(/^#{1,6}\s+/gm, "");
 }
 
@@ -53,7 +56,6 @@ interface WordToken {
 }
 
 function tokenizeToWords(line: string): WordToken[] {
-  // First split into bold/normal runs
   const tokens: WordToken[] = [];
   const re = /\*\*(.+?)\*\*/g;
   let last = 0;
@@ -72,7 +74,6 @@ function tokenizeToWords(line: string): WordToken[] {
 }
 
 function splitRunToWords(text: string, bold: boolean, out: WordToken[]) {
-  // Split on spaces but keep spaces attached to words for proper rendering
   const parts = text.split(/( +)/);
   for (const part of parts) {
     if (part.length > 0) {
@@ -168,11 +169,12 @@ async function loadFont(url: string): Promise<string> {
 
 const HSE_BLUE: [number, number, number] = [26, 95, 180];
 const MARGIN = 15;
-const LINE_H = 4.8;
-const PARA_GAP = 3;
-const BULLET_INDENT = 6;
-const HEADER_H = 12;
+const LINE_H = 5.2;
+const PARA_GAP = 4;
+const BULLET_INDENT = 7;
+const HEADER_H = 16;
 const FOOTER_H = 10;
+const SECTION_GAP = 8;
 
 /* ── Main component ────────────────────────────────────── */
 
@@ -205,10 +207,22 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       const bodyBottom = pageH - MARGIN - FOOTER_H;
       let y = bodyTop;
 
+      // Track current section for continuation headers
+      let currentSectionLabel = "";
+
       const ensureSpace = (needed: number) => {
         if (y + needed > bodyBottom) {
           doc.addPage();
           y = bodyTop;
+          // Draw continuation header if inside a section
+          if (currentSectionLabel) {
+            doc.setFontSize(9);
+            doc.setFont("Roboto", "normal");
+            doc.setTextColor(120, 120, 120);
+            doc.text(`${currentSectionLabel} (продолжение)`, MARGIN, y);
+            doc.setTextColor(0, 0, 0);
+            y += LINE_H + 2;
+          }
         }
       };
 
@@ -221,7 +235,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           doc.setFont("Roboto", token.bold ? "bold" : "normal");
           const w = doc.getTextWidth(token.text);
 
-          // If this word exceeds the line, wrap
           if (cx + w > rightEdge && cx > startX) {
             y += LINE_H;
             ensureSpace(LINE_H);
@@ -256,7 +269,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             doc.text(prefix, indentX, y);
             const prefixW = doc.getTextWidth(prefix);
 
-            // Draw body tokens word-by-word starting after prefix
             let cx = indentX + prefixW;
             const rightEdge = indentX + lineMaxW;
 
@@ -272,7 +284,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
               cx += w;
             }
             doc.setFont("Roboto", "normal");
-            y += LINE_H;
+            y += LINE_H + 1; // 1mm gap between list items
             continue;
           }
 
@@ -290,31 +302,58 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       };
 
       /* ── Title page area ─────────────────────────────────── */
-      doc.setFontSize(18);
+      doc.setFontSize(11);
+      doc.setFont("Roboto", "normal");
+      doc.setTextColor(120, 120, 120);
+      doc.text("Профайл партнёра", MARGIN, y);
+      y += 6;
+
+      doc.setFontSize(20);
       doc.setFont("Roboto", "bold");
       doc.setTextColor(...HSE_BLUE);
       doc.text(partnerName, MARGIN, y);
-      y += 9;
+      y += 8;
 
       doc.setFontSize(9);
       doc.setFont("Roboto", "normal");
       doc.setTextColor(120, 120, 120);
       const date = profile.profile_date || new Date().toISOString().split("T")[0];
-      doc.text(`Профайл v${profile.version_number || 1}  |  ${date}`, MARGIN, y);
+      doc.text(`Версия ${profile.version_number || 1}  ·  ${date}`, MARGIN, y);
       doc.setTextColor(0, 0, 0);
-      y += 4;
+      y += 5;
 
       doc.setDrawColor(...HSE_BLUE);
       doc.setLineWidth(0.5);
       doc.line(MARGIN, y, pageW - MARGIN, y);
-      y += 8;
+      y += 6;
+
+      // If summary_short exists, render it as intro paragraph before sections
+      if (profile.summary_short) {
+        const summaryText = preprocessText(profile.summary_short);
+        doc.setFontSize(9);
+        doc.setFont("Roboto", "normal");
+        doc.setTextColor(60, 60, 60);
+        const summaryTokens = tokenizeToWords(summaryText.replace(/\n/g, " "));
+        drawRichParagraph(summaryTokens, MARGIN, contentW);
+        doc.setTextColor(0, 0, 0);
+
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.line(MARGIN, y, pageW - MARGIN, y);
+        y += SECTION_GAP;
+      }
 
       /* ── Sections ────────────────────────────────────────── */
       for (const s of SECTIONS) {
+        // Skip summary_short in sections since we rendered it above
+        if (s.key === "summary_short") continue;
+
         const val = profile[s.key];
         if (!val) continue;
 
-        ensureSpace(18);
+        ensureSpace(20);
+
+        currentSectionLabel = s.label;
 
         doc.setFillColor(...HSE_BLUE);
         doc.rect(MARGIN, y - 4, 2, 7, "F");
@@ -331,16 +370,19 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         for (const seg of segments) {
           if (seg.type === "table") {
             ensureSpace(20);
-            // Apply preprocessText to table data
             const cleanHeaders = seg.headers.map(h => preprocessText(h));
             const cleanRows = seg.rows.map(r => r.map(c => preprocessText(c)));
+            const isSmall = cleanRows.length <= 6;
             autoTable(doc, {
               startY: y,
               head: [cleanHeaders],
               body: cleanRows,
-              margin: { left: MARGIN, right: MARGIN },
-              styles: { fontSize: 8, cellPadding: 2, font: "Roboto" },
+              margin: { left: MARGIN, right: MARGIN, top: MARGIN + HEADER_H },
+              styles: { fontSize: 8, cellPadding: 3, font: "Roboto", overflow: "linebreak" },
               headStyles: { fillColor: HSE_BLUE, textColor: 255, fontStyle: "bold" },
+              columnStyles: { 0: { cellWidth: "auto", minCellWidth: 40 } },
+              showHead: "everyPage",
+              pageBreak: isSmall ? "avoid" : "auto",
               theme: "grid",
             });
             y = (doc as any).lastAutoTable.finalY + 4;
@@ -349,14 +391,17 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           }
         }
 
+        currentSectionLabel = "";
+
         doc.setDrawColor(220, 220, 220);
         doc.setLineWidth(0.2);
         doc.line(MARGIN, y, pageW - MARGIN, y);
-        y += 6;
+        y += SECTION_GAP;
       }
 
       /* ── References ──────────────────────────────────────── */
       if (references.length > 0) {
+        currentSectionLabel = "Источники";
         ensureSpace(15);
 
         doc.setFillColor(...HSE_BLUE);
@@ -368,29 +413,30 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         doc.setTextColor(0, 0, 0);
         y += 7;
 
-        doc.setFontSize(8);
-
         for (const ref of references) {
-          ensureSpace(6);
+          ensureSpace(8);
 
+          // Reference number + title
+          doc.setFontSize(8.5);
           doc.setFont("Roboto", "bold");
           const prefix = `[${ref.number}]  `;
           doc.text(prefix, MARGIN, y);
           const prefixW = doc.getTextWidth(prefix);
 
           doc.setFont("Roboto", "normal");
-          const titleText = ref.text || "";
+          const titleText = preprocessText(ref.text || "");
           const titleLines = doc.splitTextToSize(titleText, contentW - prefixW);
           for (let i = 0; i < titleLines.length; i++) {
-            if (i > 0) ensureSpace(3.8);
+            if (i > 0) { y += 4; ensureSpace(4); }
             doc.text(titleLines[i], MARGIN + prefixW, y);
-            y += 3.8;
           }
+          y += 4;
 
+          // URL
           if (ref.url) {
             ensureSpace(4);
             doc.setTextColor(...HSE_BLUE);
-            doc.setFontSize(7);
+            doc.setFontSize(7.5);
             const urlLines = doc.splitTextToSize(ref.url, contentW - 4);
             for (const uLine of urlLines) {
               ensureSpace(3.5);
@@ -400,58 +446,70 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
               y += 3.5;
             }
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
           }
 
+          // Quotes
           if (ref.quotes && ref.quotes.length > 0) {
             doc.setFontSize(7);
-            doc.setTextColor(100, 100, 100);
+            doc.setTextColor(80, 80, 80);
             for (const q of ref.quotes) {
               ensureSpace(4);
               const quoteText = `«${q.source_quote}»`;
               const qLines = doc.splitTextToSize(quoteText, contentW - 8);
               for (const ql of qLines) {
-                ensureSpace(3.2);
+                ensureSpace(3.5);
                 doc.text(ql, MARGIN + 8, y);
-                y += 3.2;
+                y += 3.5;
               }
               if (q.fact_text) {
-                ensureSpace(3.2);
-                doc.setTextColor(140, 140, 140);
+                ensureSpace(3.5);
+                doc.setTextColor(100, 100, 100);
                 const factLines = doc.splitTextToSize(`→ ${q.fact_text}`, contentW - 8);
                 for (const fl of factLines) {
-                  ensureSpace(3.2);
+                  ensureSpace(3.5);
                   doc.text(fl, MARGIN + 8, y);
-                  y += 3.2;
+                  y += 3.5;
                 }
               }
-              doc.setTextColor(100, 100, 100);
+              doc.setTextColor(80, 80, 80);
             }
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(8);
           }
+
+          // Divider between sources
+          y += 2;
+          doc.setDrawColor(230, 230, 230);
+          doc.setLineWidth(0.1);
+          doc.line(MARGIN + 4, y, pageW - MARGIN - 4, y);
           y += 2;
         }
+        currentSectionLabel = "";
       }
 
       /* ── Headers & footers on every page ─────────────────── */
       const totalPages = doc.getNumberOfPages();
+      const genDate = new Date().toLocaleDateString("ru-RU");
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
 
+        // Header
         doc.setFontSize(7);
         doc.setFont("Roboto", "normal");
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(120, 120, 120);
         doc.text(partnerName, MARGIN, MARGIN + 4);
-        doc.text(`Профайл партнёра`, pageW - MARGIN, MARGIN + 4, { align: "right" });
-        doc.setDrawColor(220, 220, 220);
+        doc.text("Профайл партнёра", pageW - MARGIN, MARGIN + 4, { align: "right" });
+        doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.2);
-        doc.line(MARGIN, MARGIN + HEADER_H - 2, pageW - MARGIN, MARGIN + HEADER_H - 2);
+        doc.line(MARGIN, MARGIN + HEADER_H - 4, pageW - MARGIN, MARGIN + HEADER_H - 4);
 
+        // Footer
         const footerY = pageH - MARGIN;
+        doc.setDrawColor(200, 200, 200);
         doc.line(MARGIN, footerY - 4, pageW - MARGIN, footerY - 4);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Стр. ${p} из ${totalPages}`, pageW / 2, footerY, { align: "center" });
+        doc.setTextColor(120, 120, 120);
+        doc.setFontSize(7);
+        doc.text(`Сгенерировано: ${genDate}`, MARGIN, footerY);
+        doc.text(`${p} / ${totalPages}`, pageW - MARGIN, footerY, { align: "right" });
         doc.setTextColor(0, 0, 0);
       }
 
