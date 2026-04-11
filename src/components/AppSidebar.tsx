@@ -75,7 +75,7 @@ export function AppSidebar() {
         {/* Партнёрства */}
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span>ОРГАНИЗАЦИИ</span>}
+            {!collapsed && <span>ПАРТНЕРЫ</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <MenuItems items={partnershipItems} collapsed={collapsed} />
