@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, Users, ClipboardList, Lightbulb, Sparkles, Loader2 } from "lucide-react";
 import { PartnerProfileTab } from "@/components/partner/PartnerProfileTab";
 import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadge";
 import { toast } from "sonner";
@@ -71,10 +71,11 @@ export default function PartnerDetail() {
 
 
   const [form, setForm] = useState({
-    partner_name: "", legal_name: "", website_url: "", industry: "", subindustry: "",
+    partner_name: "", legal_name: "", inn: "", ogrn: "", website_url: "", industry: "", subindustry: "",
     business_model: "", city: "", geography: "", company_size: "", company_profile: "",
     technology_profile: "", strategic_priorities: "", priority_level: "", partner_status: "new", notes: "",
   });
+  const [isAutofilling, setIsAutofilling] = useState(false);
 
   useEffect(() => {
     if (partner) {
@@ -111,6 +112,35 @@ export default function PartnerDetail() {
   });
 
   const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const handleAutofill = async () => {
+    const query = form.inn || form.ogrn || form.partner_name;
+    if (!query.trim()) { toast.error("Введите название, ИНН или ОГРН"); return; }
+    setIsAutofilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("autofill-partner-info", {
+        body: { query: query.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      // Fill only empty fields
+      setForm(prev => {
+        const updated = { ...prev };
+        const fillableKeys = ["partner_name", "legal_name", "inn", "ogrn", "website_url", "industry", "subindustry", "business_model", "city", "geography", "company_size"] as const;
+        for (const key of fillableKeys) {
+          if (!updated[key] && data[key]) {
+            (updated as any)[key] = data[key];
+          }
+        }
+        return updated;
+      });
+      toast.success("Данные заполнены — проверьте и сохраните");
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка AI-заполнения");
+    } finally {
+      setIsAutofilling(false);
+    }
+  };
 
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
@@ -151,7 +181,15 @@ export default function PartnerDetail() {
         {/* === INFO TAB === */}
         <TabsContent value="info" className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Основная информация</CardTitle>
+              {canEdit && (
+                <Button variant="outline" size="sm" onClick={handleAutofill} disabled={isAutofilling}>
+                  {isAutofilling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Заполнить с AI
+                </Button>
+              )}
+            </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label>Название партнера *</Label>
@@ -160,6 +198,14 @@ export default function PartnerDetail() {
               <div className="space-y-2">
                 <Label>Юридическое наименование</Label>
                 <Input value={form.legal_name} onChange={e => set("legal_name", e.target.value)} disabled={!canEdit} />
+              </div>
+              <div className="space-y-2">
+                <Label>ИНН</Label>
+                <Input value={form.inn} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 12); set("inn", v); }} disabled={!canEdit} placeholder="10–12 цифр" />
+              </div>
+              <div className="space-y-2">
+                <Label>ОГРН</Label>
+                <Input value={form.ogrn} onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 15); set("ogrn", v); }} disabled={!canEdit} placeholder="13–15 цифр" />
               </div>
               <div className="space-y-2">
                 <Label>Сайт</Label>
@@ -231,18 +277,6 @@ export default function PartnerDetail() {
                     <SelectItem value="critical">Критический</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Профиль компании</Label>
-                <Textarea value={form.company_profile} onChange={e => set("company_profile", e.target.value)} disabled={!canEdit} rows={3} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Технологический профиль</Label>
-                <Textarea value={form.technology_profile} onChange={e => set("technology_profile", e.target.value)} disabled={!canEdit} rows={2} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Стратегические приоритеты</Label>
-                <Textarea value={form.strategic_priorities} onChange={e => set("strategic_priorities", e.target.value)} disabled={!canEdit} rows={2} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Заметки</Label>
