@@ -12,14 +12,9 @@ const SECTION_KEYS = [
   "business_scale",
   "technology_focus",
   "strategic_priorities",
-  "talent_needs",
-  "collaboration_opportunities",
-  "current_relationship_with_miem",
   "relationship_with_other_universities",
   "recent_news_and_plans",
   "key_events_and_touchpoints",
-  "risks_and_constraints",
-  "recommended_next_steps",
 ] as const;
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
