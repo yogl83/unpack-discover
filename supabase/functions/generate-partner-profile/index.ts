@@ -217,7 +217,7 @@ ${sectionInstructions}`;
     if (websiteContent) {
       userPrompt += `\n\n--- СОДЕРЖИМОЕ САЙТА КОМПАНИИ ---\n${websiteContent}`;
     }
-    userPrompt += "\n\nЗаполни все 13 секций профайла и список источников (references), вызвав функцию fill_profile.";
+    userPrompt += `\n\nЗаполни все ${sections.length} секций профайла и список источников (references), вызвав функцию fill_profile.`;
 
     // Step 3: Build tool schema from sections
     const sectionProperties: Record<string, { type: string; description: string }> = {};
