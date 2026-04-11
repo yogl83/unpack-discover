@@ -97,6 +97,7 @@ export default function PartnerDetail() {
     },
     onSuccess: () => {
       toast.success(isNew ? "Партнер создан" : "Изменения сохранены");
+      setAiFilledFields(new Set());
       qc.invalidateQueries({ queryKey: ["partners"] });
       if (isNew) navigate("/partners");
     },
@@ -127,12 +128,15 @@ export default function PartnerDetail() {
       // Fill only empty fields
       setForm(prev => {
         const updated = { ...prev };
-        const fillableKeys = ["partner_name", "legal_name", "inn", "ogrn", "website_url", "industry", "subindustry", "business_model", "city", "geography", "company_size"] as const;
+        const filled = new Set<string>();
+        const fillableKeys = ["partner_name", "legal_name", "website_url", "industry", "subindustry", "business_model", "city", "geography", "company_size"] as const;
         for (const key of fillableKeys) {
           if (!updated[key] && data[key]) {
             (updated as any)[key] = data[key];
+            filled.add(key);
           }
         }
+        setAiFilledFields(filled);
         return updated;
       });
       toast.success("Данные заполнены — проверьте и сохраните");
