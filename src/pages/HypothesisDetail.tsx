@@ -165,8 +165,8 @@ export default function HypothesisDetail() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Оценка релевантности (0–5)</Label>
-            <Input type="number" min="0" max="5" step="0.5" value={form.relevance_score} onChange={e => set("relevance_score", e.target.value)} disabled={!canEdit} />
+            <Label>Оценка релевантности (0–10)</Label>
+            <Input type="number" min="0" max="10" step="0.5" value={form.relevance_score} onChange={e => set("relevance_score", e.target.value)} disabled={!canEdit} />
           </div>
           <div className="space-y-2">
             <Label>Формат сотрудничества</Label>
