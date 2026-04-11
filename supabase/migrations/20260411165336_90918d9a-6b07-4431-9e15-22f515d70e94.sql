@@ -1,0 +1,2 @@
+ALTER TABLE public.collaboration_hypotheses DROP CONSTRAINT collaboration_hypotheses_relevance_score_check;
+ALTER TABLE public.collaboration_hypotheses ADD CONSTRAINT collaboration_hypotheses_relevance_score_check CHECK (relevance_score >= 0 AND relevance_score <= 10);
