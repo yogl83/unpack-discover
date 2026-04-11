@@ -94,7 +94,7 @@ export default function NextStepDetail() {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2"><Label>Действие *</Label><Input value={form.action_title} onChange={e => set("action_title", e.target.value)} disabled={!canEdit} /></div>
           <div className="space-y-2">
-            <Label>Партнер</Label>
+            <Label>Организация</Label>
             <Select value={form.partner_id} onValueChange={v => set("partner_id", v)} disabled={!canEdit}>
               <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
               <SelectContent>{partners?.map(p => <SelectItem key={p.partner_id} value={p.partner_id}>{p.partner_name}</SelectItem>)}</SelectContent>
@@ -130,7 +130,7 @@ export default function NextStepDetail() {
             <Select value={form.entity_type} onValueChange={v => set("entity_type", v)} disabled={!canEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="partner">Партнер</SelectItem>
+                <SelectItem value="partner">Организация</SelectItem>
                 <SelectItem value="need">Потребность</SelectItem>
                 <SelectItem value="hypothesis">Гипотеза</SelectItem>
               </SelectContent>

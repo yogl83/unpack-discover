@@ -99,7 +99,7 @@ export default function Partners() {
       ) : isLoading ? (
         <TableSkeleton columns={9} rows={6} />
       ) : !partners?.length ? (
-        <p className="text-muted-foreground py-8 text-center">Нет партнеров</p>
+        <p className="text-muted-foreground py-8 text-center"><p className="text-muted-foreground py-8 text-center">Нет организаций</p></p>
       ) : (
         <>
           <div className="rounded-lg border overflow-x-auto">

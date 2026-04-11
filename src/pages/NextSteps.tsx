@@ -58,7 +58,7 @@ export default function NextSteps() {
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Действие</TableHead><TableHead className="hidden md:table-cell">Партнер</TableHead><TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Срок</TableHead>
+                <TableHead>Действие</TableHead><TableHead className="hidden md:table-cell">Организация</TableHead><TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Срок</TableHead><TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Срок</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {data.map(s => (

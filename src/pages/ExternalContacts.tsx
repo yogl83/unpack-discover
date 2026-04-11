@@ -105,7 +105,7 @@ export default function ExternalContacts() {
               <TableHeader>
                 <TableRow>
                   <TableHead>ФИО</TableHead>
-                  <TableHead>Партнёр</TableHead>
+                  <TableHead>Организация</TableHead>
                   <TableHead className="hidden md:table-cell">Должность</TableHead>
                   <TableHead className="hidden md:table-cell">Тип</TableHead>
                   <TableHead className="hidden lg:table-cell">Email</TableHead>

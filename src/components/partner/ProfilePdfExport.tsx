@@ -317,7 +317,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       doc.setFontSize(11);
       doc.setFont("Roboto", "normal");
       doc.setTextColor(120, 120, 120);
-      doc.text("Профайл партнёра", MARGIN, y);
+      doc.text("Профайл организации", MARGIN, y);
       y += 6;
 
       doc.setFontSize(20);
@@ -523,7 +523,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           doc.setFont("Roboto", "normal");
           doc.setTextColor(120, 120, 120);
           doc.text(partnerName, MARGIN, MARGIN + 4);
-          doc.text("Профайл партнёра", pageW - MARGIN, MARGIN + 4, { align: "right" });
+          doc.text("Профайл организации", pageW - MARGIN, MARGIN + 4, { align: "right" });
           doc.setDrawColor(200, 200, 200);
           doc.setLineWidth(0.2);
           doc.line(MARGIN, MARGIN + HEADER_H - 4, pageW - MARGIN, MARGIN + HEADER_H - 4);

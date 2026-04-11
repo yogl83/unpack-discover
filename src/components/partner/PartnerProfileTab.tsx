@@ -965,7 +965,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       {!editing && !displayProfile && hasLegacy && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-muted-foreground">Данные из карточки партнёра (legacy)</CardTitle>
+            <CardTitle className="text-base text-muted-foreground"><CardTitle className="text-base text-muted-foreground">Данные из карточки организации (legacy)</CardTitle></CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {legacyProfile?.company_profile && (

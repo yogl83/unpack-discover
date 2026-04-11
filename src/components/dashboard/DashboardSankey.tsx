@@ -69,7 +69,7 @@ export function DashboardSankey() {
     };
 
     for (const h of hypotheses) {
-      const partnerName = (h.partners as any)?.partner_name || "Без партнёра";
+      const partnerName = (h.partners as any)?.partner_name || const partnerName = (h.partners as any)?.partner_name || "Без организации";;
       const needTitle = (h.partner_needs as any)?.title || "Без потребности";
       const unitName = h.unit_id ? ((h.miem_units as any)?.unit_name || "Без коллектива") : null;
 
