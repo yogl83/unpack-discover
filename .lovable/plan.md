@@ -1,62 +1,45 @@
 
 
-# Улучшение интерфейса редактирования профайла
+# WYSIWYG-редактор вместо split-view
 
-## Приоритетные улучшения (по влиянию на верификацию)
+## Текущее состояние
 
-### 1. Split-view: textarea слева, preview справа
-Каждая секция при редактировании показывает два столбца:
-- Слева: textarea с markdown
-- Справа: отрендеренный ReactMarkdown с таблицами, ссылками, списками
+Сейчас в edit mode каждая секция показывает два столбца: слева textarea с raw markdown, справа — отрендеренный предпросмотр. Это занимает много места и заставляет работать с сырым markdown.
 
-Реализация: `grid grid-cols-2 gap-4` внутри каждой секции в edit mode. Preview обновляется в реальном времени при наборе текста.
+## Предложение
 
-### 2. Accordion в режиме редактирования
-Вместо плоского списка textarea — использовать Accordion (как в view mode). Каждую секцию можно свернуть/развернуть. По умолчанию открыта первая.
+Заменить split-view на WYSIWYG-редактор, где пользователь видит и редактирует уже отформатированный текст — таблицы, ссылки, списки, жирный/курсив — без raw markdown.
 
-### 3. Плавающий блок источников
-Источники показывать в фиксированной панели справа (или в sticky-блоке внизу экрана), чтобы при редактировании любой секции пользователь видел список ссылок. При hover на `[N]` в textarea — подсветка соответствующего источника.
+## Технические варианты
 
-### 4. Индикатор заполненности секций
-В заголовке каждой секции — иконка: ✓ (заполнена), ○ (пустая). В шапке — прогресс-бар: «6/8 секций заполнено».
+**Tiptap** (рекомендуемый) — headless rich-text editor на ProseMirror. Поддерживает markdown-import/export, таблицы, ссылки. Хорошо интегрируется с React и Tailwind.
 
-### 5. Кнопка «Перегенерировать секцию»
-Рядом с каждой секцией в edit mode — кнопка с иконкой Sparkles. Вызывает edge function с параметром `section_key`, перегенерирует только одну секцию.
+- Импорт: markdown → Tiptap при открытии секции (через `tiptap-markdown` extension)
+- Экспорт: Tiptap → markdown при сохранении (формат БД не меняется)
+- Таблицы, bold, italic, списки, ссылки — всё визуально
 
-## Что НЕ делаем сейчас (можно позже)
-- Diff между версиями — сложная фича, отдельный запрос
-- Inline-подсветка номера источника при hover в textarea — технически сложно в textarea
+## Что будет сделано
 
-## Порядок реализации
+### Шаг 1: Установить зависимости
+`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-table`, `@tiptap/extension-link`, `tiptap-markdown`
 
-### Шаг 1: Accordion + split-view в edit mode
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Обернуть секции в `Accordion` в edit mode
-- Внутри каждой секции: `grid grid-cols-1 lg:grid-cols-2 gap-3`
-- Слева textarea, справа ReactMarkdown preview (те же components что в view mode)
+### Шаг 2: Компонент `MarkdownWysiwyg`
+**`src/components/partner/MarkdownWysiwyg.tsx`** — переиспользуемый компонент:
+- Принимает `value` (markdown string), `onChange` (markdown string)
+- Конвертирует md → Tiptap при mount, Tiptap → md при изменениях
+- Toolbar: bold, italic, bullet list, table actions
+- Стилизация: те же `prose prose-sm` + border как в текущем preview
 
-### Шаг 2: Индикатор заполненности
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Добавить прогресс `{filledCount}/{total}` рядом с заголовком «Редактирование»
-- В AccordionTrigger: иконка Check/Circle рядом с названием секции
-
-### Шаг 3: Sticky-блок источников
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Источники в `sticky bottom-0` или в `aside` при lg-экранах
-- Всегда видны при скролле секций
-
-### Шаг 4: Перегенерация отдельной секции
-**`supabase/functions/generate-partner-profile/index.ts`**:
-- Добавить опциональный параметр `section_key`
-- Если указан — генерировать только одну секцию, обновить только её в записи
-
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Кнопка Sparkles у каждой секции, вызывает mutation с `section_key`
+### Шаг 3: Заменить textarea + preview в `PartnerProfileTab.tsx`
+- Вместо `grid-cols-2` с textarea + ReactMarkdown → один `MarkdownWysiwyg`
+- AI-сгенерированные секции подсвечиваются синей рамкой (как сейчас)
+- Accordion, progress, sticky sources — остаются без изменений
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/partner/PartnerProfileTab.tsx` | Accordion + split-view, индикаторы, sticky источники, кнопка перегенерации |
-| `supabase/functions/generate-partner-profile/index.ts` | Поддержка `section_key` для перегенерации одной секции |
+| `src/components/partner/MarkdownWysiwyg.tsx` | Новый компонент WYSIWYG на Tiptap |
+| `src/components/partner/PartnerProfileTab.tsx` | Заменить textarea+preview на MarkdownWysiwyg |
+| `package.json` | Добавить tiptap зависимости |
 
