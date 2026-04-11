@@ -15,7 +15,7 @@ import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare, Quote } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -920,7 +920,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={makeMarkdownComponents(activeReferences)}>
                         {val}
                       </ReactMarkdown>
                     </div>
