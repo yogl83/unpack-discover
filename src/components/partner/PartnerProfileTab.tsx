@@ -4,15 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -28,7 +29,7 @@ const SECTIONS = [
   { key: "key_events_and_touchpoints", label: "Ключевые мероприятия" },
 ] as const;
 
-type SectionKey = typeof SECTIONS[number]["key"];
+
 
 const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
@@ -46,6 +47,97 @@ interface Props {
   legacyProfile?: { company_profile?: string; technology_profile?: string; strategic_priorities?: string };
 }
 
+// Shared markdown components for both view and edit preview
+const makeMarkdownComponents = () => ({
+  a: ({ href, children, ...props }: any) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props}>{children}</a>
+  ),
+  p: ({ children, ...props }: any) => {
+    if (typeof children === "string") {
+      const parts = children.split(/(\[\d+(?:,\s*\d+)*\])/g);
+      if (parts.length > 1) {
+        return (
+          <p {...props}>
+            {parts.map((part: string, i: number) => {
+              const match = part.match(/^\[(\d+(?:,\s*\d+)*)\]$/);
+              if (match) {
+                const nums = match[1].split(/,\s*/).map((n: string) => n.trim());
+                return (
+                  <span key={i}>
+                    [
+                    {nums.map((num: string, ni: number) => (
+                      <span key={ni}>
+                        {ni > 0 && ", "}
+                        <a
+                          href="#references"
+                          className="text-primary hover:underline text-xs align-super cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                        >
+                          {num}
+                        </a>
+                      </span>
+                    ))}
+                    ]
+                  </span>
+                );
+              }
+              return part;
+            })}
+          </p>
+        );
+      }
+    }
+    return <p {...props}>{children}</p>;
+  },
+  table: ({ children }: any) => (
+    <div className="overflow-x-auto my-2">
+      <table className="w-full text-sm border-collapse border border-border rounded">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: any) => (
+    <thead className="bg-muted/50">{children}</thead>
+  ),
+  th: ({ children }: any) => (
+    <th className="border border-border px-3 py-2 text-left font-medium text-xs">{children}</th>
+  ),
+  td: ({ children }: any) => (
+    <td className="border border-border px-3 py-2 text-xs">{children}</td>
+  ),
+});
+
+const markdownComponents = makeMarkdownComponents();
+
+function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; sticky?: boolean }) {
+  if (references.length === 0) return null;
+  return (
+    <div className={`border rounded-lg p-4 space-y-2 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
+      <h3 className="text-sm font-semibold">Источники</h3>
+      <ol className="list-decimal list-inside space-y-1 text-sm">
+        {references.map((ref, i) => (
+          <li key={i} className="text-muted-foreground">
+            {ref.url ? (
+              <a
+                href={ref.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-1"
+              >
+                {ref.text || ref.url}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <span>{ref.text}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Props) {
   const { canEdit, isAdmin, user } = useAuth();
   const qc = useQueryClient();
@@ -53,6 +145,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
 
   // Current profile
@@ -226,7 +319,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Generate with AI
+  // Generate with AI (full profile)
   const generateProfile = useMutation({
     mutationFn: async () => {
       setIsGenerating(true);
@@ -257,6 +350,31 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       toast.error(e.message);
     },
   });
+
+  // Regenerate single section
+  const regenerateSection = async (sectionKey: string) => {
+    if (!draftProfile) return;
+    setRegeneratingSection(sectionKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-partner-profile", {
+        body: { partner_id: partnerId, section_key: sectionKey, profile_id: draftProfile.profile_id },
+      });
+      if (error) throw new Error(error.message || "Ошибка генерации");
+      if (data?.error) throw new Error(data.error);
+      const newVal = data.section_content || "";
+      setForm((prev) => ({ ...prev, [sectionKey]: newVal }));
+      setAiGeneratedSections((prev) => new Set(prev).add(sectionKey));
+      // Update references if returned
+      if (data.references) {
+        invalidateAll();
+      }
+      toast.success("Секция перегенерирована");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRegeneratingSection(null);
+    }
+  };
 
   // Start editing existing draft
   const startEditing = () => {
@@ -290,6 +408,10 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const references = displayProfile ? parseReferences(displayProfile) : [];
   const draftReferences = draftProfile ? parseReferences(draftProfile) : [];
   const activeReferences = editing ? draftReferences : references;
+
+  // Progress
+  const filledCount = SECTIONS.filter((s) => (form[s.key] || "").trim().length > 0).length;
+  const progressPercent = Math.round((filledCount / SECTIONS.length) * 100);
 
   return (
     <div className="space-y-6">
@@ -372,64 +494,111 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       {/* Edit mode */}
       {editing && draftProfile && (
         <div className="space-y-4">
-          <h3 className="text-base font-semibold">Редактирование — v{draftProfile.version_number}</h3>
-          {SECTIONS.map((s) => (
-            <div key={s.key} className="space-y-1.5">
-              <Label className="text-sm">{s.label}</Label>
-              <Textarea
-                value={form[s.key] || ""}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, [s.key]: e.target.value }));
-                  setAiGeneratedSections((prev) => { const next = new Set(prev); next.delete(s.key); return next; });
-                }}
-                rows={s.key === "summary_short" ? 2 : 4}
-                className={`font-mono text-xs ${aiGeneratedSections.has(s.key) ? "text-blue-600 border-blue-300" : ""}`}
-              />
+          {/* Progress bar */}
+          <div className="flex items-center gap-3">
+            <h3 className="text-base font-semibold">Редактирование — v{draftProfile.version_number}</h3>
+            <span className="text-sm text-muted-foreground">{filledCount}/{SECTIONS.length} секций</span>
+            <Progress value={progressPercent} className="w-32 h-2" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+            {/* Sections accordion with split-view */}
+            <div>
+              <Accordion type="multiple" defaultValue={[SECTIONS[0].key]}>
+                {SECTIONS.map((s) => {
+                  const isFilled = (form[s.key] || "").trim().length > 0;
+                  const isRegenerating = regeneratingSection === s.key;
+                  return (
+                    <AccordionItem key={s.key} value={s.key}>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <span className="flex items-center gap-2">
+                          {isFilled ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          {s.label}
+                          {aiGeneratedSections.has(s.key) && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700">AI</Badge>
+                          )}
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs gap-1"
+                            disabled={isRegenerating || !!regeneratingSection}
+                            onClick={() => regenerateSection(s.key)}
+                          >
+                            {isRegenerating ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            {isRegenerating ? "Генерация..." : "Перегенерировать"}
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          {/* Left: textarea */}
+                          <Textarea
+                            value={form[s.key] || ""}
+                            onChange={(e) => {
+                              setForm((prev) => ({ ...prev, [s.key]: e.target.value }));
+                              setAiGeneratedSections((prev) => { const next = new Set(prev); next.delete(s.key); return next; });
+                            }}
+                            rows={s.key === "summary_short" ? 4 : 8}
+                            className={`font-mono text-xs resize-y ${aiGeneratedSections.has(s.key) ? "text-blue-600 border-blue-300" : ""}`}
+                          />
+                          {/* Right: live preview */}
+                          <div className="prose prose-sm max-w-none dark:prose-invert border rounded-md p-3 bg-muted/30 overflow-auto max-h-[400px]">
+                            {(form[s.key] || "").trim() ? (
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                {form[s.key]}
+                              </ReactMarkdown>
+                            ) : (
+                              <p className="text-muted-foreground italic text-xs">Предпросмотр появится при вводе текста</p>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+
+              {/* File upload in edit mode */}
+              <div className="mt-4">
+                <ProfileFileUpload
+                  profileId={draftProfile.profile_id}
+                  partnerId={partnerId}
+                  files={(profileFiles as any) || []}
+                  editable
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending}>
+                  <Save className="mr-1 h-3.5 w-3.5" />Сохранить черновик
+                </Button>
+                <Button variant="secondary" onClick={() => sendToReview.mutate()} disabled={sendToReview.isPending}>
+                  <Send className="mr-1 h-3.5 w-3.5" />На рассмотрение
+                </Button>
+                <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+              </div>
             </div>
-          ))}
 
-          {/* File upload in edit mode */}
-          <ProfileFileUpload
-            profileId={draftProfile.profile_id}
-            partnerId={partnerId}
-            files={(profileFiles as any) || []}
-            editable
-          />
+            {/* Sticky references sidebar */}
+            <aside className="hidden lg:block">
+              <ReferencesBlock references={draftReferences} sticky />
+            </aside>
+          </div>
 
-          {/* References in edit mode (read-only) */}
-          {draftReferences.length > 0 && (
-            <div className="border rounded-lg p-4 space-y-2" id="references">
-              <h3 className="text-sm font-semibold">Источники</h3>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                {draftReferences.map((ref, i) => (
-                  <li key={i} className="text-muted-foreground">
-                    {ref.url ? (
-                      <a
-                        href={ref.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        {ref.text || ref.url}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : (
-                      <span>{ref.text}</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-2">
-            <Button onClick={() => saveDraft.mutate()} disabled={saveDraft.isPending}>
-              <Save className="mr-1 h-3.5 w-3.5" />Сохранить черновик
-            </Button>
-            <Button variant="secondary" onClick={() => sendToReview.mutate()} disabled={sendToReview.isPending}>
-              <Send className="mr-1 h-3.5 w-3.5" />На рассмотрение
-            </Button>
-            <Button variant="ghost" onClick={() => setEditing(false)}>Отмена</Button>
+          {/* References on mobile (below sections) */}
+          <div className="lg:hidden">
+            <ReferencesBlock references={draftReferences} />
           </div>
         </div>
       )}
@@ -446,68 +615,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   <AccordionTrigger className="text-sm font-medium">{s.label}</AccordionTrigger>
                   <AccordionContent>
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({ href, children, ...props }) => (
-                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props}>{children}</a>
-                          ),
-                          p: ({ children, ...props }) => {
-                            if (typeof children === "string") {
-                              const parts = children.split(/(\[\d+(?:,\s*\d+)*\])/g);
-                              if (parts.length > 1) {
-                                return (
-                                  <p {...props}>
-                                    {parts.map((part, i) => {
-                                      const match = part.match(/^\[(\d+(?:,\s*\d+)*)\]$/);
-                                      if (match) {
-                                        const nums = match[1].split(/,\s*/).map(n => n.trim());
-                                        return (
-                                          <span key={i}>
-                                            [
-                                            {nums.map((num, ni) => (
-                                              <span key={ni}>
-                                                {ni > 0 && ", "}
-                                                <a
-                                                  href="#references"
-                                                  className="text-primary hover:underline text-xs align-super cursor-pointer"
-                                                  onClick={(e) => {
-                                                    e.preventDefault();
-                                                    document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
-                                                  }}
-                                                >
-                                                  {num}
-                                                </a>
-                                              </span>
-                                            ))}
-                                            ]
-                                          </span>
-                                        );
-                                      }
-                                      return part;
-                                    })}
-                                  </p>
-                                );
-                              }
-                            }
-                            return <p {...props}>{children}</p>;
-                          },
-                          table: ({ children }: any) => (
-                            <div className="overflow-x-auto my-2">
-                              <table className="w-full text-sm border-collapse border border-border rounded">{children}</table>
-                            </div>
-                          ),
-                          thead: ({ children }: any) => (
-                            <thead className="bg-muted/50">{children}</thead>
-                          ),
-                          th: ({ children }: any) => (
-                            <th className="border border-border px-3 py-2 text-left font-medium text-xs">{children}</th>
-                          ),
-                          td: ({ children }: any) => (
-                            <td className="border border-border px-3 py-2 text-xs">{children}</td>
-                          ),
-                        }}
-                      >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                         {val}
                       </ReactMarkdown>
                     </div>
@@ -517,31 +625,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             })}
           </Accordion>
 
-          {/* References block */}
-          {references.length > 0 && (
-            <div className="border rounded-lg p-4 space-y-2" id="references">
-              <h3 className="text-sm font-semibold">Источники</h3>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                {references.map((ref, i) => (
-                  <li key={i} className="text-muted-foreground">
-                    {ref.url ? (
-                      <a
-                        href={ref.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        {ref.text || ref.url}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : (
-                      <span>{ref.text}</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+          <ReferencesBlock references={references} />
 
           {/* Files */}
           {activeProfileId && (
