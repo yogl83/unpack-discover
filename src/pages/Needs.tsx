@@ -57,7 +57,7 @@ export default function Needs() {
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead>
+                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead>
                 <TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Приоритет</TableHead>
               </TableRow></TableHeader>
               <TableBody>
