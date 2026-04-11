@@ -26,20 +26,17 @@ interface ProfilePdfExportProps {
   references: ReferenceItem[];
 }
 
-/** Parse a markdown table into rows of cells */
 function parseMarkdownTable(text: string): { headers: string[]; rows: string[][] } | null {
   const lines = text.trim().split("\n").filter(l => l.trim().startsWith("|"));
   if (lines.length < 2) return null;
   const parse = (line: string) =>
     line.split("|").map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length);
   const headers = parse(lines[0]);
-  // skip separator line (line[1])
   const rows = lines.slice(2).map(parse);
   return { headers, rows };
 }
 
-/** Split text into segments: plain text and markdown tables */
-function splitContentSegments(text: string): Array<{ type: "text"; content: string } | { type: "table"; headers: string[]; rows: string[][] }> {
+function splitContentSegments(text: string) {
   const segments: Array<{ type: "text"; content: string } | { type: "table"; headers: string[]; rows: string[][] }> = [];
   const lines = text.split("\n");
   let buffer: string[] = [];
@@ -55,11 +52,8 @@ function splitContentSegments(text: string): Array<{ type: "text"; content: stri
   const flushTable = () => {
     if (tableBuffer.length) {
       const parsed = parseMarkdownTable(tableBuffer.join("\n"));
-      if (parsed) {
-        segments.push({ type: "table", ...parsed });
-      } else {
-        buffer.push(...tableBuffer);
-      }
+      if (parsed) segments.push({ type: "table", ...parsed });
+      else buffer.push(...tableBuffer);
       tableBuffer = [];
     }
   };
@@ -67,26 +61,18 @@ function splitContentSegments(text: string): Array<{ type: "text"; content: stri
   for (const line of lines) {
     const isTableLine = line.trim().startsWith("|") && line.trim().endsWith("|");
     if (isTableLine) {
-      if (!inTable) {
-        flushText();
-        inTable = true;
-      }
+      if (!inTable) { flushText(); inTable = true; }
       tableBuffer.push(line);
     } else {
-      if (inTable) {
-        flushTable();
-        inTable = false;
-      }
+      if (inTable) { flushTable(); inTable = false; }
       buffer.push(line);
     }
   }
   if (inTable) flushTable();
   flushText();
-
   return segments;
 }
 
-/** Strip markdown formatting for plain-text PDF output */
 function stripMarkdown(text: string): string {
   return text
     .replace(/^#{1,6}\s+/gm, "")
@@ -94,6 +80,17 @@ function stripMarkdown(text: string): string {
     .replace(/\*(.+?)\*/g, "$1")
     .replace(/\[(\d+)\]/g, "[$1]")
     .replace(/\[(.+?)\]\(.+?\)/g, "$1");
+}
+
+async function loadFont(url: string): Promise<string> {
+  const resp = await fetch(url);
+  const buf = await resp.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 export function ProfilePdfExport({ profile, partnerName, references }: ProfilePdfExportProps) {
@@ -105,15 +102,29 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
 
+      // Load Roboto fonts for Cyrillic support
+      const [regularB64, boldB64] = await Promise.all([
+        loadFont("/fonts/Roboto-Regular.ttf"),
+        loadFont("/fonts/Roboto-Bold.ttf"),
+      ]);
+
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
+      // Register fonts
+      doc.addFileToVFS("Roboto-Regular.ttf", regularB64);
+      doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+      doc.addFileToVFS("Roboto-Bold.ttf", boldB64);
+      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+      doc.setFont("Roboto", "normal");
+
       const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
       const margin = 15;
       const contentW = pageW - margin * 2;
       let y = margin;
 
       const addPageIfNeeded = (needed: number) => {
-        if (y + needed > doc.internal.pageSize.getHeight() - margin) {
+        if (y + needed > pageH - margin) {
           doc.addPage();
           y = margin;
         }
@@ -121,15 +132,15 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
       // Title
       doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
+      doc.setFont("Roboto", "bold");
       doc.text(partnerName, margin, y);
       y += 8;
 
       doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
+      doc.setFont("Roboto", "normal");
       doc.setTextColor(120, 120, 120);
       const date = profile.profile_date || new Date().toISOString().split("T")[0];
-      doc.text(`Profail v${profile.version_number || 1} | ${date}`, margin, y);
+      doc.text(`Профайл v${profile.version_number || 1} | ${date}`, margin, y);
       doc.setTextColor(0, 0, 0);
       y += 10;
 
@@ -140,9 +151,8 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
         addPageIfNeeded(15);
 
-        // Section title
         doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("Roboto", "bold");
         doc.text(s.label, margin, y);
         y += 6;
 
@@ -156,7 +166,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
               head: [seg.headers],
               body: seg.rows,
               margin: { left: margin, right: margin },
-              styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
+              styles: { fontSize: 8, cellPadding: 2, font: "Roboto" },
               headStyles: { fillColor: [26, 95, 180], textColor: 255, fontStyle: "bold" },
               theme: "grid",
             });
@@ -165,7 +175,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             const plainText = stripMarkdown(seg.content).trim();
             if (!plainText) continue;
             doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
+            doc.setFont("Roboto", "normal");
             const lines = doc.splitTextToSize(plainText, contentW);
             for (const line of lines) {
               addPageIfNeeded(5);
@@ -182,12 +192,12 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       if (references.length > 0) {
         addPageIfNeeded(15);
         doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("Roboto", "bold");
         doc.text("Источники", margin, y);
         y += 6;
 
         doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("Roboto", "normal");
         for (const ref of references) {
           addPageIfNeeded(5);
           const refText = `[${ref.number}] ${ref.text || ""}${ref.url ? " — " + ref.url : ""}`;
