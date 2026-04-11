@@ -56,9 +56,17 @@ export default function HypothesisDetail() {
     mutationFn: async () => {
       const payload = {
         ...form,
-        relevance_score: form.relevance_score ? Number(form.relevance_score) : null,
+        title: form.title || null,
+        partner_id: form.partner_id || null,
+        need_id: form.need_id || null,
         unit_id: form.unit_id || null,
         competency_id: form.competency_id || null,
+        confidence_level: form.confidence_level || null,
+        relevance_score: form.relevance_score ? Number(form.relevance_score) : null,
+        recommended_collaboration_format: form.recommended_collaboration_format || null,
+        recommended_entry_point: form.recommended_entry_point || null,
+        rationale: form.rationale || null,
+        notes: form.notes || null,
       };
       if (!payload.partner_id || !payload.need_id) { toast.error("Заполните обязательные поля"); throw new Error("required"); }
       if (isNew) { const { error } = await supabase.from("collaboration_hypotheses").insert(payload as any); if (error) throw error; }
