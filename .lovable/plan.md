@@ -1,34 +1,31 @@
 
 
-# Руководство пользователя в PDF
+# Исправление ошибки check constraint при создании гипотезы
 
-Создам полное руководство по системе «Управление партнёрствами МИЭМ» в формате PDF с помощью Python (reportlab).
+## Проблема
 
-## Структура документа
+При создании гипотезы без выбора «Уровень уверенности» отправляется пустая строка `""` вместо `null`. БД имеет check constraint `collaboration_hypotheses_confidence_level_check`, который допускает только конкретные значения (`low`, `medium`, `high`) или `null`.
 
-1. **Титульная страница** — название системы, логотип МИЭМ (текстовый), дата
-2. **Содержание**
-3. **Введение** — назначение системы, роли (admin/analyst/viewer)
-4. **Разделы по модулям:**
-   - Дашборд — матрица, Sankey-диаграммы
-   - Организации — список, создание, редактирование, профайл, автозаполнение AI
-   - Потребности — привязка к организации, статусы, приоритеты
-   - Контакты (внешние) — связь с организацией
-   - Коллективы — список, руководитель, участники
-   - Компетенции — привязка к коллективу
-   - Контакты (внутренние) — участники коллективов
-   - Гипотезы — связь организация↔коллектив через потребность
-   - Следующие шаги — задачи с дедлайнами
-5. **Администрирование** — управление пользователями, роли, синхронизация с Google Sheets, настройки AI, email
-6. **Интеграция с Google Sheets** — настройка, листы, импорт/экспорт, external_id
+## Решение
 
-## Технические детали
+В `src/pages/HypothesisDetail.tsx`, строка ~57-62 — при формировании `payload` конвертировать все необязательные строковые поля из `""` в `null`:
 
-- Генерация через `reportlab` (Platypus) — `SimpleDocTemplate` с оглавлением
-- Шрифт: DejaVu Sans (поддержка кириллицы)
-- Цвет заголовков: HSE blue (#1a5fb4)
-- Формат: A4, поля 2 см
-- Таблицы для описания полей и ролей
-- ~15–20 страниц
-- Обязательный QA: конвертация в изображения и проверка каждой страницы
+```ts
+const payload = {
+  ...form,
+  title: form.title || null,
+  partner_id: form.partner_id || null,
+  need_id: form.need_id || null,
+  unit_id: form.unit_id || null,
+  competency_id: form.competency_id || null,
+  confidence_level: form.confidence_level || null,
+  relevance_score: form.relevance_score ? Number(form.relevance_score) : null,
+  recommended_collaboration_format: form.recommended_collaboration_format || null,
+  recommended_entry_point: form.recommended_entry_point || null,
+  rationale: form.rationale || null,
+  notes: form.notes || null,
+};
+```
+
+Одна правка в одном файле — все пустые строки превращаются в `null` перед отправкой в БД.
 
