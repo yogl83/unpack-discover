@@ -76,6 +76,7 @@ export default function PartnerDetail() {
     technology_profile: "", strategic_priorities: "", priority_level: "", partner_status: "new", notes: "",
   });
   const [isAutofilling, setIsAutofilling] = useState(false);
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (partner) {
