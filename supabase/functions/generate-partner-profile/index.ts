@@ -794,7 +794,7 @@ ${repairIssues}
     }
     console.log("AI sections received:", Object.keys(parsed).length);
 
-    const references = buildReferencesFromSources(numberedSources);
+    const references = mergeReferencesWithQuotes(buildReferencesFromSources(numberedSources), parsed);
 
     // ============ FACT-CHECK SECOND PASS ============
     console.log("Running fact-check...");
