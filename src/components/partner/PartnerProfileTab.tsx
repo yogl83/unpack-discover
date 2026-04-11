@@ -312,6 +312,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
   const [verificationData, setVerificationData] = useState<SectionVerification[]>([]);
+  const [verificationSummaryOverride, setVerificationSummaryOverride] = useState<VerificationSummary | null>(null);
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
 
