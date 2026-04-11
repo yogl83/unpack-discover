@@ -1050,11 +1050,12 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   <TableHead>Статус</TableHead>
                   <TableHead>Дата</TableHead>
                   <TableHead>Текущий</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {history.map((h) => (
-                  <TableRow key={h.profile_id}>
+                  <TableRow key={h.profile_id} className={viewingProfileId === h.profile_id ? "bg-blue-50" : ""}>
                     <TableCell className="font-medium">v{h.version_number}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{statusLabels[h.status] || h.status}</Badge>
@@ -1063,6 +1064,53 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                       {new Date(h.created_at).toLocaleDateString("ru")}
                     </TableCell>
                     <TableCell>{h.is_current ? <Badge>Да</Badge> : "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setViewingProfileId(
+                                  viewingProfileId === h.profile_id ? null : h.profile_id
+                                )}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Просмотр</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        {canEdit && !hasDraft && ["approved", "archived"].includes(h.status) && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  disabled={createDraft.isPending}
+                                  onClick={async () => {
+                                    // Load full profile then create draft
+                                    const { data } = await supabase
+                                      .from("partner_profiles")
+                                      .select("*")
+                                      .eq("profile_id", h.profile_id)
+                                      .single();
+                                    if (data) createDraft.mutate(data);
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Новая версия на основе</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
