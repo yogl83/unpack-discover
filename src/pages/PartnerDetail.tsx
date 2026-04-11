@@ -198,11 +198,11 @@ export default function PartnerDetail() {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label>Название партнера *</Label>
-                <Input value={form.partner_name} onChange={e => set("partner_name", e.target.value)} disabled={!canEdit} />
+                <Input value={form.partner_name} onChange={e => set("partner_name", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("partner_name") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>Юридическое наименование</Label>
-                <Input value={form.legal_name} onChange={e => set("legal_name", e.target.value)} disabled={!canEdit} />
+                <Input value={form.legal_name} onChange={e => set("legal_name", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("legal_name") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>ИНН</Label>
@@ -214,20 +214,20 @@ export default function PartnerDetail() {
               </div>
               <div className="space-y-2">
                 <Label>Сайт</Label>
-                <Input value={form.website_url} onChange={e => set("website_url", e.target.value)} disabled={!canEdit} />
+                <Input value={form.website_url} onChange={e => set("website_url", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("website_url") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>Отрасль</Label>
-                <Input value={form.industry} onChange={e => set("industry", e.target.value)} disabled={!canEdit} />
+                <Input value={form.industry} onChange={e => set("industry", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("industry") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>Подотрасль</Label>
-                <Input value={form.subindustry} onChange={e => set("subindustry", e.target.value)} disabled={!canEdit} />
+                <Input value={form.subindustry} onChange={e => set("subindustry", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("subindustry") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>Бизнес-модель</Label>
                 <Select value={form.business_model} onValueChange={v => set("business_model", v)} disabled={!canEdit}>
-                  <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+                  <SelectTrigger className={aiFilledFields.has("business_model") ? "text-blue-600" : ""}><SelectValue placeholder="Выберите" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="B2B">B2B</SelectItem>
                     <SelectItem value="B2G">B2G</SelectItem>
@@ -238,16 +238,16 @@ export default function PartnerDetail() {
               </div>
               <div className="space-y-2">
                 <Label>Город</Label>
-                <Input value={form.city} onChange={e => set("city", e.target.value)} disabled={!canEdit} />
+                <Input value={form.city} onChange={e => set("city", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("city") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>География</Label>
-                <Input value={form.geography} onChange={e => set("geography", e.target.value)} disabled={!canEdit} placeholder="Россия, СНГ, международный..." />
+                <Input value={form.geography} onChange={e => set("geography", e.target.value)} disabled={!canEdit} placeholder="Россия, СНГ, международный..." className={aiFilledFields.has("geography") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
                 <Label>Размер компании</Label>
                 <Select value={form.company_size} onValueChange={v => set("company_size", v)} disabled={!canEdit}>
-                  <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
+                  <SelectTrigger className={aiFilledFields.has("company_size") ? "text-blue-600" : ""}><SelectValue placeholder="Выберите" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="startup">Стартап (&lt;50)</SelectItem>
                     <SelectItem value="small">Малый (50–250)</SelectItem>
