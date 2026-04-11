@@ -455,6 +455,20 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                             }
                             return <p {...props}>{children}</p>;
                           },
+                          table: ({ children }: any) => (
+                            <div className="overflow-x-auto my-2">
+                              <table className="w-full text-sm border-collapse border border-border rounded">{children}</table>
+                            </div>
+                          ),
+                          thead: ({ children }: any) => (
+                            <thead className="bg-muted/50">{children}</thead>
+                          ),
+                          th: ({ children }: any) => (
+                            <th className="border border-border px-3 py-2 text-left font-medium text-xs">{children}</th>
+                          ),
+                          td: ({ children }: any) => (
+                            <td className="border border-border px-3 py-2 text-xs">{children}</td>
+                          ),
                         }}
                       >
                         {val}
