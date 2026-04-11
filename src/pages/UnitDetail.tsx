@@ -283,7 +283,7 @@ export default function UnitDetail() {
               <div className="rounded-lg border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead>Потребность</TableHead><TableHead>Статус</TableHead>
+                    <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead>Потребность</TableHead><TableHead>Статус</TableHead><TableHead>Статус</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {hypotheses.map(h => (

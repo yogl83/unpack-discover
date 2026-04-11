@@ -86,7 +86,7 @@ export default function PartnerDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!form.partner_name.trim()) { toast.error("Введите название партнера"); throw new Error("required"); }
+      if (!form.partner_name.trim()) { toast.error("Введите название организации"); throw new Error("required"); }
       if (isNew) {
         const { error } = await supabase.from("partners").insert(form);
         if (error) throw error;
@@ -96,7 +96,7 @@ export default function PartnerDetail() {
       }
     },
     onSuccess: () => {
-      toast.success(isNew ? "Партнер создан" : "Изменения сохранены");
+      toast.success(isNew ? "Организация создана" : "Изменения сохранены");
       setAiFilledFields(new Set());
       qc.invalidateQueries({ queryKey: ["partners"] });
       if (isNew) navigate("/partners");
@@ -117,7 +117,7 @@ export default function PartnerDetail() {
 
   const handleAutofill = async () => {
     const query = form.partner_name;
-    if (!query.trim()) { toast.error("Введите название партнера"); return; }
+    if (!query.trim()) { toast.error("Введите название организации"); return; }
     setIsAutofilling(true);
     try {
       const { data, error } = await supabase.functions.invoke("autofill-partner-info", {
@@ -197,7 +197,7 @@ export default function PartnerDetail() {
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <Label>Название партнера *</Label>
+                <Label>Название организации *</Label>
                 <Input value={form.partner_name} onChange={e => set("partner_name", e.target.value)} disabled={!canEdit} className={aiFilledFields.has("partner_name") ? "text-blue-600" : ""} />
               </div>
               <div className="space-y-2">
@@ -317,7 +317,7 @@ export default function PartnerDetail() {
             {/* Partner contacts */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Контакты партнёра</h2>
+                <h2 className="text-lg font-semibold">Контакты организации</h2>
                 {canEdit && (
                   <Button size="sm" variant="outline" onClick={() => navigate(`/partners/${id}/contacts/new`)}>
                     <Plus className="mr-1 h-4 w-4" />Добавить

@@ -125,7 +125,7 @@ export default function CompetencyDetail() {
             <div className="rounded-lg border">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Название</TableHead><TableHead>Партнер</TableHead><TableHead>Статус</TableHead>
+                  <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead>Статус</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {linkedHypotheses.map(h => (

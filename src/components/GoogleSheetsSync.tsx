@@ -12,7 +12,7 @@ import { FileSpreadsheet, Upload, Download, Loader2 } from "lucide-react";
 type SyncMode = "create+update" | "update-only";
 
 const TABLES: { key: string; label: string; mode: SyncMode }[] = [
-  { key: "partners", label: "Партнёры", mode: "create+update" },
+  { key: "partners", label: "Организации", mode: "create+update" },
   { key: "contacts", label: "Контакты", mode: "update-only" },
   { key: "partner_needs", label: "Потребности", mode: "update-only" },
   { key: "collaboration_hypotheses", label: "Гипотезы", mode: "update-only" },
