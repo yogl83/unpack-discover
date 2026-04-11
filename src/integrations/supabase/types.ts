@@ -834,9 +834,11 @@ export type Database = {
           external_source: string | null
           geography: string | null
           industry: string | null
+          inn: string | null
           last_synced_at: string | null
           legal_name: string | null
           notes: string | null
+          ogrn: string | null
           owner_user_id: string | null
           partner_id: string
           partner_name: string
@@ -858,9 +860,11 @@ export type Database = {
           external_source?: string | null
           geography?: string | null
           industry?: string | null
+          inn?: string | null
           last_synced_at?: string | null
           legal_name?: string | null
           notes?: string | null
+          ogrn?: string | null
           owner_user_id?: string | null
           partner_id?: string
           partner_name: string
@@ -882,9 +886,11 @@ export type Database = {
           external_source?: string | null
           geography?: string | null
           industry?: string | null
+          inn?: string | null
           last_synced_at?: string | null
           legal_name?: string | null
           notes?: string | null
+          ogrn?: string | null
           owner_user_id?: string | null
           partner_id?: string
           partner_name?: string
