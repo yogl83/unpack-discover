@@ -67,7 +67,7 @@ export default function Hypotheses() {
                     <TableCell className="text-muted-foreground">{(h.partners as any)?.partner_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden md:table-cell">{(h.partner_needs as any)?.title || "—"}</TableCell>
                     <TableCell><Badge variant="secondary">{hypothesisStatusLabels[h.hypothesis_status || ""] || h.hypothesis_status || "—"}</Badge></TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{h.confidence_level || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{confidenceLevelLabels[h.confidence_level || ""] || h.confidence_level || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
