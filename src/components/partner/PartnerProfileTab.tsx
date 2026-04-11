@@ -14,7 +14,8 @@ import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -286,6 +287,8 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
   const [verificationData, setVerificationData] = useState<SectionVerification[]>([]);
+  const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
+  const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -515,8 +518,17 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     if (!draftProfile) return;
     setRegeneratingSection(sectionKey);
     try {
+      const comment = sectionComments[sectionKey] || "";
+      const sectionVerification = activeVerification.find(v => v.section_key === sectionKey);
       const { data, error } = await supabase.functions.invoke("generate-partner-profile", {
-        body: { partner_id: partnerId, section_key: sectionKey, profile_id: draftProfile.profile_id },
+        body: {
+          partner_id: partnerId,
+          section_key: sectionKey,
+          profile_id: draftProfile.profile_id,
+          user_comment: comment || undefined,
+          fact_check_results: sectionVerification?.facts || undefined,
+          current_content: form[sectionKey] || undefined,
+        },
       });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (data?.error) throw new Error(data.error);
@@ -526,6 +538,9 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       if (data.references) {
         invalidateAll();
       }
+      // Clear comment after successful regeneration
+      setSectionComments(prev => ({ ...prev, [sectionKey]: "" }));
+      setShowCommentFor(null);
       toast.success("Секция перегенерирована");
     } catch (e: any) {
       toast.error(e.message);
@@ -704,21 +719,41 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                         </span>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-xs gap-1"
-                            disabled={isRegenerating || !!regeneratingSection}
-                            onClick={() => regenerateSection(s.key)}
-                          >
-                            {isRegenerating ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-3 w-3" />
-                            )}
-                            {isRegenerating ? "Генерация..." : "Перегенерировать"}
-                          </Button>
+                        <div className="space-y-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs gap-1"
+                              disabled={isRegenerating || !!regeneratingSection}
+                              onClick={() => regenerateSection(s.key)}
+                            >
+                              {isRegenerating ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3" />
+                              )}
+                              {isRegenerating ? "Генерация..." : "Перегенерировать"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => setShowCommentFor(showCommentFor === s.key ? null : s.key)}
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              Уточнения
+                            </Button>
+                          </div>
+                          {showCommentFor === s.key && (
+                            <Textarea
+                              rows={2}
+                              placeholder="Уточнения для AI: что добавить, убрать, исправить..."
+                              value={sectionComments[s.key] || ""}
+                              onChange={(e) => setSectionComments(prev => ({ ...prev, [s.key]: e.target.value }))}
+                              className="text-xs"
+                            />
+                          )}
                         </div>
                         <MarkdownWysiwyg
                           value={form[s.key] || ""}
