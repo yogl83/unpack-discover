@@ -430,7 +430,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
         for (let ri = 0; ri < references.length; ri++) {
           const ref = references[ri];
-          const seqNum = ri + 1; // sequential numbering regardless of source data
+          const seqNum = ref.number ?? (ri + 1);
 
           // Estimate block height to avoid breaking a source mid-page
           const estimatedH = 12
