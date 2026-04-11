@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
       if (!parsed) return errorResponse("AI did not return structured data", 500);
 
       let sectionContent = parsed[section_key] || "";
-      const references = buildReferencesFromSources(numberedSources);
+      const references = mergeReferencesWithQuotes(buildReferencesFromSources(numberedSources), parsed);
 
       // ============ FACT-CHECK THE REGENERATED SECTION ============
       console.log("Running fact-check on regenerated section:", section_key);
