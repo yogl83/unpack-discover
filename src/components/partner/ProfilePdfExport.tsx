@@ -44,6 +44,8 @@ function preprocessText(text: string): string {
     .replace(/\\?\[(\d+)\]\\?/g, "[$1]")
     .replace(/\\\[/g, "[")
     .replace(/\\\]/g, "]")
+    .replace(/\\-/g, "-")
+    .replace(/\\([^[\]])/g, "$1")
     .replace(/:([^\s])/g, ": $1")
     .replace(/^#{1,6}\s+/gm, "");
 }
