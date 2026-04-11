@@ -64,7 +64,7 @@ export default function Units() {
                 {data.map(u => (
                   <TableRow key={u.unit_id}>
                     <TableCell><Link to={`/units/${u.unit_id}`} className="font-medium text-primary hover:underline">{u.unit_name}</Link></TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{u.unit_type || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{unitTypeLabels[u.unit_type] || u.unit_type || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden md:table-cell">{u.lead_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{u.research_area || "—"}</TableCell>
                     <TableCell className="text-right">{u.competencies_count}</TableCell>
