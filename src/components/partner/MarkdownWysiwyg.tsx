@@ -6,9 +6,44 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import Link from "@tiptap/extension-link";
 import { Markdown } from "tiptap-markdown";
+import { Extension } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, List, ListOrdered, Table as TableIcon, Undo, Redo, Link as LinkIcon } from "lucide-react";
+
+// Tiptap extension to highlight [N] citation patterns
+const CitationHighlight = Extension.create({
+  name: "citationHighlight",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("citationHighlight"),
+        props: {
+          decorations(state) {
+            const decorations: Decoration[] = [];
+            const regex = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
+            state.doc.descendants((node, pos) => {
+              if (!node.isText || !node.text) return;
+              let match: RegExpExecArray | null;
+              while ((match = regex.exec(node.text)) !== null) {
+                const from = pos + match.index;
+                const to = from + match[0].length;
+                decorations.push(
+                  Decoration.inline(from, to, {
+                    class: "citation-ref",
+                  })
+                );
+              }
+            });
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
+  },
+});
 
 interface MarkdownWysiwygProps {
   value: string;
@@ -36,6 +71,7 @@ export function MarkdownWysiwyg({ value, onChange, className = "", minHeight = "
         transformPastedText: true,
         transformCopiedText: true,
       }),
+      CitationHighlight,
     ],
     content: value,
     onUpdate: ({ editor }) => {
