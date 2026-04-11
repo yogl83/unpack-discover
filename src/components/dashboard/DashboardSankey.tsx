@@ -71,7 +71,7 @@ export function DashboardSankey() {
     for (const h of hypotheses) {
       const partnerName = (h.partners as any)?.partner_name || "Без партнёра";
       const needTitle = (h.partner_needs as any)?.title || "Без потребности";
-      const unitName = h.unit_id ? ((h.miem_units as any)?.unit_name || "Без подразделения") : null;
+      const unitName = h.unit_id ? ((h.miem_units as any)?.unit_name || "Без коллектива") : null;
 
       const pIdx = getNodeIndex(`p-${h.partner_id}`, partnerName);
       const nIdx = getNodeIndex(`n-${h.need_id}`, needTitle);
@@ -97,7 +97,7 @@ export function DashboardSankey() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Поток: Партнёры → Потребности → Подразделения</CardTitle>
+          <CardTitle className="text-base">Поток: Организации → Потребности → Коллективы</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm py-8 text-center">
@@ -111,7 +111,7 @@ export function DashboardSankey() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Поток: Партнёры → Потребности → Подразделения</CardTitle>
+        <CardTitle className="text-base">Поток: Организации → Потребности → Коллективы</CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <div className="min-w-[600px]">

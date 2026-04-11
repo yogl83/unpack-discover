@@ -71,7 +71,7 @@ export function UnitSankey() {
     };
 
     for (const h of withUnit) {
-      const unitName = (h.miem_units as any)?.unit_name || "Подразделение";
+      const unitName = (h.miem_units as any)?.unit_name || "Коллектив";
       const uIdx = getIdx(`u-${h.unit_id}`, unitName);
 
       if (h.competency_id) {
@@ -103,7 +103,7 @@ export function UnitSankey() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Поток: Подразделения → Компетенции → Гипотезы</CardTitle>
+          <CardTitle className="text-base">Поток: Коллективы → Компетенции → Гипотезы</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm py-8 text-center">
@@ -117,7 +117,7 @@ export function UnitSankey() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Поток: Подразделения → Компетенции → Гипотезы</CardTitle>
+        <CardTitle className="text-base">Поток: Коллективы → Компетенции → Гипотезы</CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <div className="min-w-[600px]">

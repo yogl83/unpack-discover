@@ -8,11 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ENTITY_TABLES = [
-  { key: "partners", label: "Партнёры" },
+  { key: "partners", label: "Организации" },
   { key: "contacts", label: "Контакты" },
-  { key: "partner_needs", label: "Задачи партнёров" },
+  { key: "partner_needs", label: "Потребности" },
   { key: "collaboration_hypotheses", label: "Гипотезы" },
-  { key: "miem_units", label: "Коллективы МИЭМ" },
+  { key: "miem_units", label: "Коллективы" },
   { key: "competencies", label: "Компетенции" },
   { key: "next_steps", label: "Следующие шаги" },
 ];

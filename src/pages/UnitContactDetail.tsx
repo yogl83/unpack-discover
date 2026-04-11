@@ -151,7 +151,7 @@ export default function UnitContactDetail() {
         </Button>
         <div>
           <p className="text-sm text-muted-foreground">
-            {standalone ? "Внутренние контакты" : `${unit?.unit_name || "Коллектив"} → Контакты`}
+            {standalone ? "Контакты МИЭМ" : `${unit?.unit_name || "Коллектив"} → Контакты`}
           </p>
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт МИЭМ" : form.full_name}</h1>
         </div>

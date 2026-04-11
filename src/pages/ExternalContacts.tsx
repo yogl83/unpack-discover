@@ -69,9 +69,9 @@ export default function ExternalContacts() {
           <Input placeholder="Поиск по ФИО или email…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
         </div>
         <Select value={filterPartner} onValueChange={setFilterPartner}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Партнёр" /></SelectTrigger>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Организация" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Все партнёры</SelectItem>
+            <SelectItem value="all">Все организации</SelectItem>
             {partners.map(p => <SelectItem key={p} value={p!}>{p}</SelectItem>)}
           </SelectContent>
         </Select>

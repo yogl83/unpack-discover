@@ -32,11 +32,11 @@ export default function Index() {
   });
 
   const cards = [
-    { title: "Партнёры", value: stats?.partners ?? "—", icon: Building2, color: "text-primary", href: "/partners" },
+    { title: "Организации", value: stats?.partners ?? "—", icon: Building2, color: "text-primary", href: "/partners" },
     { title: "Потребности", value: stats?.needs ?? "—", icon: ClipboardList, color: "text-amber-500", href: "/needs" },
     { title: "Гипотезы", value: stats?.hypotheses ?? "—", icon: Lightbulb, color: "text-emerald-500", href: "/hypotheses" },
-    { title: "Шаги", value: stats?.steps ?? "—", icon: ArrowRight, color: "text-violet-500", href: "/next-steps" },
-    { title: "Подразделения", value: stats?.units ?? "—", icon: Users2, color: "text-sky-500", href: "/units" },
+    { title: "Следующие шаги", value: stats?.steps ?? "—", icon: ArrowRight, color: "text-violet-500", href: "/next-steps" },
+    { title: "Коллективы", value: stats?.units ?? "—", icon: Users2, color: "text-sky-500", href: "/units" },
     { title: "Компетенции", value: stats?.competencies ?? "—", icon: Brain, color: "text-rose-500", href: "/competencies" },
   ];
 
