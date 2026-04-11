@@ -485,7 +485,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
 
   // Create new draft (optionally from a specific base version)
   const createDraft = useMutation({
-    mutationFn: async (baseOverride?: any) => {
+    mutationFn: async (baseOverride?: any | undefined) => {
       const base = baseOverride || currentProfile;
       const nextVersion = (base?.version_number || 0) + 1;
       const sectionData: Record<string, string | null> = {};
@@ -706,7 +706,8 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
 
   if (isLoading) return <p className="text-muted-foreground py-4">Загрузка профайла...</p>;
 
-  const displayProfile = currentProfile;
+  const isViewingHistory = !!viewingProfileId && !!viewingProfile;
+  const displayProfile = isViewingHistory ? viewingProfile : currentProfile;
   const hasDraft = !!draftProfile;
   const hasLegacy = !currentProfile && !draftProfile && (legacyProfile?.company_profile || legacyProfile?.technology_profile || legacyProfile?.strategic_priorities);
   const references = displayProfile ? parseReferences(displayProfile) : [];
@@ -753,7 +754,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         <div className="flex items-center gap-2 flex-wrap">
           {canEdit && !editing && !hasDraft && (
             <>
-              <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending || isGenerating}>
+              <Button size="sm" onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending || isGenerating}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {currentProfile ? "Новая версия" : "Создать профайл"}
               </Button>
@@ -1006,7 +1007,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             )}
             {canEdit && (
               <div className="flex gap-2 mt-2">
-                <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                <Button size="sm" onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending}>
                   <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
@@ -1025,7 +1026,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
           <p className="text-muted-foreground mb-4">Профайл ещё не создан</p>
           {canEdit && (
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+              <Button onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending}>
                 <Plus className="mr-1 h-4 w-4" />Создать профайл
               </Button>
               <Button variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
