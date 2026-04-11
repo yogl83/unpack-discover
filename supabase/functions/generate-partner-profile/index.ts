@@ -86,19 +86,142 @@ async function loadAISettings(supabase: ReturnType<typeof createClient>) {
   return { model, systemPrompt, sections };
 }
 
+async function scrapeWebsite(websiteUrl: string, firecrawlKey: string): Promise<{ content: string; url: string }> {
+  let url = websiteUrl.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+  console.log("Scraping:", url);
+  try {
+    const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
+    });
+    const scrapeData = await scrapeRes.json();
+    if (scrapeRes.ok && scrapeData.success !== false) {
+      const md = scrapeData.data?.markdown || scrapeData.markdown || "";
+      const content = md.slice(0, 30000);
+      console.log(`Scraped ${content.length} chars`);
+      return { content, url };
+    }
+    console.warn("Scrape failed:", JSON.stringify(scrapeData).slice(0, 500));
+  } catch (e) {
+    console.warn("Scrape error:", e);
+  }
+  return { content: "", url };
+}
+
+function buildPartnerContext(partner: Record<string, any>, websiteContent: string): string {
+  const cardInfo = [
+    `Название: ${partner.partner_name}`,
+    partner.legal_name ? `Юр. лицо: ${partner.legal_name}` : null,
+    partner.industry ? `Отрасль: ${partner.industry}` : null,
+    partner.subindustry ? `Подотрасль: ${partner.subindustry}` : null,
+    partner.business_model ? `Бизнес-модель: ${partner.business_model}` : null,
+    partner.city ? `Город: ${partner.city}` : null,
+    partner.geography ? `География: ${partner.geography}` : null,
+    partner.company_size ? `Размер: ${partner.company_size}` : null,
+    partner.website_url ? `Сайт: ${partner.website_url}` : null,
+    partner.company_profile ? `Профиль компании (legacy): ${partner.company_profile}` : null,
+    partner.technology_profile ? `Технологический профиль (legacy): ${partner.technology_profile}` : null,
+    partner.strategic_priorities ? `Стратегические приоритеты (legacy): ${partner.strategic_priorities}` : null,
+  ].filter(Boolean).join("\n");
+
+  let prompt = `Данные из карточки партнёра:\n${cardInfo}`;
+  if (websiteContent) {
+    prompt += `\n\n--- СОДЕРЖИМОЕ САЙТА КОМПАНИИ ---\n${websiteContent}`;
+  }
+  return prompt;
+}
+
+async function callAI(
+  lovableKey: string,
+  aiModel: string,
+  systemPrompt: string,
+  userPrompt: string,
+  toolProperties: Record<string, { type: string; description: string }>,
+  requiredKeys: string[],
+) {
+  const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lovableKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: aiModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "fill_profile",
+            description: "Заполняет секции профайла партнёра и список источников",
+            parameters: {
+              type: "object",
+              properties: toolProperties,
+              required: requiredKeys,
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "fill_profile" } },
+    }),
+  });
+  return aiRes;
+}
+
+function parseAIResponse(aiData: any): Record<string, string> | null {
+  const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall?.function?.arguments) return null;
+  try {
+    return JSON.parse(toolCall.function.arguments);
+  } catch {
+    return null;
+  }
+}
+
+function parseReferencesFromResult(parsed: Record<string, string>, scrapedUrl: string): any[] {
+  let references: any[] = [];
+  try {
+    if (parsed.references) {
+      references = JSON.parse(parsed.references);
+      if (!Array.isArray(references)) references = [];
+    }
+  } catch {
+    console.warn("Could not parse references as JSON array");
+  }
+  if (scrapedUrl && !references.some((r: any) => r.url === scrapedUrl)) {
+    references.unshift({ number: 0, text: "Сайт компании", url: scrapedUrl });
+    references = references.map((r: any, i: number) => ({ ...r, number: i + 1 }));
+  }
+  return references;
+}
+
+function errorResponse(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { partner_id } = await req.json();
-    if (!partner_id) {
-      return new Response(JSON.stringify({ error: "partner_id is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const body = await req.json();
+    const { partner_id, section_key, profile_id } = body;
+    if (!partner_id) return errorResponse("partner_id is required", 400);
 
     // Validate auth
     const authHeader = req.headers.get("Authorization");
@@ -106,24 +229,14 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Create user client to verify auth
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader! } },
     });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (authError || !user) return errorResponse("Unauthorized", 401);
 
-    // Service client for DB operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Load AI settings from DB
     const { model: aiModel, systemPrompt, sections } = await loadAISettings(supabase);
-    console.log("Using model:", aiModel, "sections:", sections.length);
 
     // Load partner data
     const { data: partner, error: partnerError } = await supabase
@@ -131,15 +244,74 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("partner_id", partner_id)
       .single();
+    if (partnerError || !partner) return errorResponse("Partner not found", 404);
 
-    if (partnerError || !partner) {
-      return new Response(JSON.stringify({ error: "Partner not found" }), {
-        status: 404,
+    // Scrape website
+    let websiteContent = "";
+    let scrapedUrl = "";
+    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+    if (partner.website_url && firecrawlKey) {
+      const result = await scrapeWebsite(partner.website_url, firecrawlKey);
+      websiteContent = result.content;
+      scrapedUrl = result.url;
+    }
+
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!lovableKey) return errorResponse("LOVABLE_API_KEY not configured", 500);
+
+    const partnerContext = buildPartnerContext(partner, websiteContent);
+
+    // --- SINGLE SECTION REGENERATION ---
+    if (section_key && profile_id) {
+      const sectionConfig = sections.find((s) => s.key === section_key);
+      if (!sectionConfig) return errorResponse(`Unknown section: ${section_key}`, 400);
+
+      const singlePrompt = `${partnerContext}\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}\nТакже обнови список источников (references).`;
+
+      const toolProps: Record<string, { type: string; description: string }> = {
+        [section_key]: { type: "string", description: `${sectionConfig.title}: ${sectionConfig.prompt}` },
+        references: {
+          type: "string",
+          description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}]",
+        },
+      };
+
+      console.log("Regenerating section:", section_key);
+      const aiRes = await callAI(lovableKey, aiModel, systemPrompt, singlePrompt, toolProps, [section_key, "references"]);
+
+      if (!aiRes.ok) {
+        const status = aiRes.status;
+        if (status === 429) return errorResponse("Превышен лимит запросов к AI. Попробуйте позже.", 429);
+        if (status === 402) return errorResponse("Недостаточно кредитов AI.", 402);
+        return errorResponse("AI generation failed", 500);
+      }
+
+      const aiData = await aiRes.json();
+      const parsed = parseAIResponse(aiData);
+      if (!parsed) return errorResponse("AI did not return structured data", 500);
+
+      const sectionContent = parsed[section_key] || "";
+      const references = parseReferencesFromResult(parsed, scrapedUrl);
+
+      // Update the specific section in the existing profile
+      const { error: updateError } = await supabase
+        .from("partner_profiles")
+        .update({
+          [section_key]: sectionContent,
+          references_json: references,
+          updated_by: user.id,
+          last_generated_at: new Date().toISOString(),
+        })
+        .eq("profile_id", profile_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+
+      return new Response(JSON.stringify({ success: true, section_content: sectionContent, references }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get current max version
+    // --- FULL PROFILE GENERATION ---
     const { data: maxVersionRow } = await supabase
       .from("partner_profiles")
       .select("version_number")
@@ -149,191 +321,45 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const nextVersion = (maxVersionRow?.version_number || 0) + 1;
 
-    // Step 1: Scrape website if available
-    let websiteContent = "";
-    let scrapedUrl = "";
-    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    if (partner.website_url && firecrawlKey) {
-      try {
-        let url = partner.website_url.trim();
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-          url = `https://${url}`;
-        }
-        scrapedUrl = url;
-        console.log("Scraping:", url);
-        const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${firecrawlKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url,
-            formats: ["markdown"],
-            onlyMainContent: true,
-          }),
-        });
-        const scrapeData = await scrapeRes.json();
-        if (scrapeRes.ok && scrapeData.success !== false) {
-          const md = scrapeData.data?.markdown || scrapeData.markdown || "";
-          websiteContent = md.slice(0, 30000);
-          console.log(`Scraped ${websiteContent.length} chars`);
-        } else {
-          console.warn("Scrape failed:", JSON.stringify(scrapeData).slice(0, 500));
-        }
-      } catch (e) {
-        console.warn("Scrape error:", e);
-      }
-    }
-
-    // Step 2: Build composite system prompt from sections
     const sectionInstructions = sections.map((s, i) =>
       `${i + 1}. ${s.key} — «${s.title}»\nИнструкция: ${s.prompt}`
     ).join("\n\n");
 
-    const compositeSystemPrompt = `${systemPrompt}
+    const compositeSystemPrompt = `${systemPrompt}\n\n--- ИНСТРУКЦИИ ПО СЕКЦИЯМ ---\n\n${sectionInstructions}`;
 
---- ИНСТРУКЦИИ ПО СЕКЦИЯМ ---
+    const userPrompt = `${partnerContext}\n\nЗаполни все ${sections.length} секций профайла и список источников (references), вызвав функцию fill_profile.`;
 
-${sectionInstructions}`;
-
-    // Build user prompt
-    const cardInfo = [
-      `Название: ${partner.partner_name}`,
-      partner.legal_name ? `Юр. лицо: ${partner.legal_name}` : null,
-      partner.industry ? `Отрасль: ${partner.industry}` : null,
-      partner.subindustry ? `Подотрасль: ${partner.subindustry}` : null,
-      partner.business_model ? `Бизнес-модель: ${partner.business_model}` : null,
-      partner.city ? `Город: ${partner.city}` : null,
-      partner.geography ? `География: ${partner.geography}` : null,
-      partner.company_size ? `Размер: ${partner.company_size}` : null,
-      partner.website_url ? `Сайт: ${partner.website_url}` : null,
-      partner.company_profile ? `Профиль компании (legacy): ${partner.company_profile}` : null,
-      partner.technology_profile ? `Технологический профиль (legacy): ${partner.technology_profile}` : null,
-      partner.strategic_priorities ? `Стратегические приоритеты (legacy): ${partner.strategic_priorities}` : null,
-    ].filter(Boolean).join("\n");
-
-    let userPrompt = `Данные из карточки партнёра:\n${cardInfo}`;
-    if (websiteContent) {
-      userPrompt += `\n\n--- СОДЕРЖИМОЕ САЙТА КОМПАНИИ ---\n${websiteContent}`;
-    }
-    userPrompt += `\n\nЗаполни все ${sections.length} секций профайла и список источников (references), вызвав функцию fill_profile.`;
-
-    // Step 3: Build tool schema from sections
     const sectionProperties: Record<string, { type: string; description: string }> = {};
     for (const s of sections) {
       sectionProperties[s.key] = { type: "string", description: `${s.title}: ${s.prompt}` };
     }
-    // Add references field
     sectionProperties["references"] = {
       type: "string",
-      description: "JSON-массив источников в формате: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}]. Включи ВСЕ источники, на которые ссылаешься через [N].",
+      description: "JSON-массив источников: [{\"number\": 1, \"text\": \"Название\", \"url\": \"https://...\"}].",
     };
-
     const requiredKeys = [...sections.map(s => s.key), "references"];
 
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("Calling AI...");
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: "system", content: compositeSystemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "fill_profile",
-              description: "Заполняет все секции профайла партнёра и список источников",
-              parameters: {
-                type: "object",
-                properties: sectionProperties,
-                required: requiredKeys,
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "fill_profile" } },
-      }),
-    });
+    console.log("Calling AI for full profile...");
+    const aiRes = await callAI(lovableKey, aiModel, compositeSystemPrompt, userPrompt, sectionProperties, requiredKeys);
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       console.error("AI error:", aiRes.status, errText);
-      if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: "Превышен лимит запросов к AI. Попробуйте позже." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: "Недостаточно кредитов AI. Пополните баланс." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "AI generation failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (aiRes.status === 429) return errorResponse("Превышен лимит запросов к AI. Попробуйте позже.", 429);
+      if (aiRes.status === 402) return errorResponse("Недостаточно кредитов AI. Пополните баланс.", 402);
+      return errorResponse("AI generation failed", 500);
     }
 
     const aiData = await aiRes.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
+    const parsed = parseAIResponse(aiData);
+    if (!parsed) {
       console.error("No tool call in response:", JSON.stringify(aiData).slice(0, 1000));
-      return new Response(JSON.stringify({ error: "AI did not return structured data" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    let parsed: Record<string, string>;
-    try {
-      parsed = JSON.parse(toolCall.function.arguments);
-    } catch {
-      console.error("Failed to parse tool call args:", toolCall.function.arguments.slice(0, 500));
-      return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("AI did not return structured data", 500);
     }
     console.log("AI sections received:", Object.keys(parsed).length);
 
-    // Parse references
-    let references: any[] = [];
-    try {
-      if (parsed.references) {
-        references = JSON.parse(parsed.references);
-        if (!Array.isArray(references)) references = [];
-      }
-    } catch {
-      // If references is already text, try to keep it
-      console.warn("Could not parse references as JSON array");
-    }
-    // Add scraped URL as source if used
-    if (scrapedUrl && !references.some((r: any) => r.url === scrapedUrl)) {
-      references.unshift({ number: 0, text: "Сайт компании", url: scrapedUrl });
-      // Re-number
-      references = references.map((r: any, i: number) => ({ ...r, number: i + 1 }));
-    }
+    const references = parseReferencesFromResult(parsed, scrapedUrl);
 
-    // Step 4: Save as draft
     const profileData: Record<string, unknown> = {
       partner_id,
       title: `${partner.partner_name} — AI-профайл v${nextVersion}`,
@@ -365,10 +391,7 @@ ${sectionInstructions}`;
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      return new Response(JSON.stringify({ error: insertError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(insertError.message, 500);
     }
 
     console.log("Profile created:", profile.profile_id);
@@ -377,9 +400,6 @@ ${sectionInstructions}`;
     });
   } catch (e) {
     console.error("Unexpected error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
   }
 });
