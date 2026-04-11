@@ -37,6 +37,7 @@ const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрст
 - Избегай общих слов и клише ("динамично развивающаяся компания", "широкий спектр")
 - Для business_scale используй табличный формат
 - Для strategic_priorities — обосновывай направления конкретными фактами о компании
+- НЕ ДАВАЙ рекомендаций, прогнозов или предложений по сотрудничеству с МИЭМ — профайл должен содержать только проверенные факты о компании
 
 СТРУКТУРА ССЫЛОК:
 В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
@@ -55,7 +56,7 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
   { key: "strategic_priorities", title: "Стратегические направления", prompt: "3-5 направлений." },
   { key: "relationship_with_other_universities", title: "Другие университеты", prompt: "Конкретные вузы-партнёры." },
   { key: "recent_news_and_plans", title: "Новости и планы", prompt: "За последние 12-18 месяцев." },
-  { key: "key_events_and_touchpoints", title: "Мероприятия", prompt: "Конференции, хакатоны." },
+  { key: "key_events_and_touchpoints", title: "Мероприятия", prompt: "Только подтверждённые прошедшие мероприятия с датами и местами проведения. НЕ пиши рекомендации, прогнозы или предложения для МИЭМ. Только факты." },
 ];
 
 async function loadAISettings(supabase: ReturnType<typeof createClient>) {

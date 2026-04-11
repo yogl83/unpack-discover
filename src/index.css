@@ -121,3 +121,8 @@
 .tiptap [data-active] {
   @apply bg-accent;
 }
+/* Highlight citation references [N] in WYSIWYG editor */
+.citation-ref {
+  @apply text-primary font-medium cursor-default;
+  font-size: 0.85em;
+}
