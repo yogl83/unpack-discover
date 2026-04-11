@@ -15,7 +15,7 @@ const dashboardItem = { title: "Дашборд", url: "/", icon: LayoutDashboard
 
 const partnershipItems = [
   { title: "Организации", url: "/partners", icon: Building2 },
-  { title: "Задачи", url: "/needs", icon: ClipboardList },
+  { title: "Потребности", url: "/needs", icon: ClipboardList },
   { title: "Контакты", url: "/contacts/external", icon: Contact },
 ];
 

@@ -55,7 +55,7 @@ export default function ExternalContacts() {
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Внешние контакты</h1>
+        <h1 className="text-2xl font-bold">Контакты</h1>
         {canEdit && (
           <Button onClick={() => navigate("/contacts/external/new")}>
             <Plus className="mr-1 h-4 w-4" />Добавить контакт

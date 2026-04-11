@@ -83,7 +83,7 @@ export default function Partners() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Партнеры</h1>
+        <h1 className="text-2xl font-bold">Организации</h1>
         {canEdit && (
           <Button asChild>
             <Link to="/partners/new"><Plus className="mr-2 h-4 w-4" />Добавить</Link>
