@@ -113,7 +113,7 @@ export default function HypothesisDetail() {
           <div className="space-y-2">
             <Label>Потребность *</Label>
             <Select value={form.need_id} onValueChange={v => set("need_id", v)} disabled={!canEdit || !form.partner_id}>
-              <SelectTrigger><SelectValue placeholder={form.partner_id ? "Выберите" : "<SelectTrigger><SelectValue placeholder={form.partner_id ? "Выберите" : "Сначала выберите организацию"} /></SelectTrigger>"} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={form.partner_id ? "Выберите" : "Сначала выберите организацию"} /></SelectTrigger>
               <SelectContent>{filteredNeeds.map(n => <SelectItem key={n.need_id} value={n.need_id}>{n.title}</SelectItem>)}</SelectContent>
             </Select>
           </div>
