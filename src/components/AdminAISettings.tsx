@@ -48,6 +48,13 @@ interface SectionConfig {
   prompt: string;
 }
 
+// Only these 8 keys correspond to actual partner_profiles columns
+const ALLOWED_SECTION_KEYS = new Set([
+  "summary_short", "company_overview", "business_scale", "technology_focus",
+  "strategic_priorities", "relationship_with_other_universities",
+  "recent_news_and_plans", "key_events_and_touchpoints",
+]);
+
 const DEFAULT_SECTIONS: SectionConfig[] = [
   { key: "summary_short", title: "Краткое описание", prompt: "Напиши 2-3 предложения: основная деятельность, масштаб (выручка/сотрудники), уникальное ценностное предложение. Не повторяй информацию из других секций. Каждый факт — со ссылкой [N]." },
   { key: "company_overview", title: "Общие сведения о компании", prompt: "История создания (год, основатели), миссия, основная деятельность, ключевые продукты/услуги. Укажи организационную структуру если известна. Факты со ссылками [N]." },
