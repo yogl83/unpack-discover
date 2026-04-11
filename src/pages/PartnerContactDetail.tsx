@@ -166,7 +166,7 @@ export default function PartnerContactDetail() {
         </Button>
         <div>
           <p className="text-sm text-muted-foreground">
-            {standalone ? "Внешние контакты" : `${partner?.partner_name || "Партнёр"} → Контакты`}
+            {standalone ? "Контакты" : `${partner?.partner_name || "Организация"} → Контакты`}
           </p>
           <h1 className="text-2xl font-bold">{isNew ? "Новый контакт" : form.full_name}</h1>
         </div>

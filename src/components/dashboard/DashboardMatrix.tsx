@@ -54,11 +54,11 @@ export function DashboardMatrix() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Матрица: Партнёр × Подразделение МИЭМ</CardTitle>
+          <CardTitle className="text-base">Матрица: Организация × Коллектив</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm py-8 text-center">
-            Недостаточно данных. Создайте гипотезы с привязкой к партнёрам и подразделениям.
+            Недостаточно данных. Создайте гипотезы с привязкой к организациям и коллективам.
           </p>
         </CardContent>
       </Card>
@@ -76,13 +76,13 @@ export function DashboardMatrix() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Матрица: Партнёр × Подразделение МИЭМ</CardTitle>
+        <CardTitle className="text-base">Матрица: Организация × Коллектив</CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr>
-              <th className="text-left p-2 font-medium text-muted-foreground border-b">Партнёр / Подразделение</th>
+              <th className="text-left p-2 font-medium text-muted-foreground border-b">Организация / Коллектив</th>
               {matrix.units.map(([id, name]) => (
                 <th key={id} className="p-2 font-medium text-muted-foreground border-b text-center min-w-[100px]">
                   <span className="text-xs leading-tight block">{name.length > 20 ? name.slice(0, 18) + "…" : name}</span>

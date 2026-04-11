@@ -113,7 +113,7 @@ export default function Partners() {
                    <TableHead>Статус</TableHead>
                    <TableHead className="hidden md:table-cell">Приоритет</TableHead>
                    <TableHead className="text-right hidden lg:table-cell">Контакты</TableHead>
-                   <TableHead className="text-right hidden lg:table-cell">Задачи</TableHead>
+                   <TableHead className="text-right hidden lg:table-cell">Потребности</TableHead>
                    <TableHead className="text-right hidden lg:table-cell">Гипотезы</TableHead>
                  </TableRow>
               </TableHeader>
