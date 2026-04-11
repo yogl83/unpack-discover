@@ -44,7 +44,7 @@ export function MarkdownWysiwyg({ value, onChange, className = "", minHeight = "
     },
     editorProps: {
       attributes: {
-        class: `prose prose-sm max-w-none dark:prose-invert focus:outline-none`,
+        class: `prose prose-sm max-w-none dark:prose-invert focus:outline-none wysiwyg-citations`,
         style: `min-height: ${minHeight}`,
       },
     },
