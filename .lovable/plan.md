@@ -1,46 +1,34 @@
 
 
-# Уведомление админов о новых заявках на регистрацию
+# Обновление логотипа и мета-данных сайта
 
-## Проблема
-При регистрации нового пользователя админы не получают email-уведомление. Они узнают о заявках только при ручном заходе на страницу /admin.
+## Что нужно сделать
 
-## Решение
+Загруженное изображение (качели) — логотип. Нужно поставить его как favicon, добавить на страницу логина, в сайдбар, и обновить заголовки.
 
-### 1. Создать шаблон `new-registration-request` 
-**Файл:** `supabase/functions/_shared/transactional-email-templates/new-registration-request.tsx`
+## Изменения
 
-Письмо для админов с информацией: ФИО, email заявителя, ссылка на страницу администрирования.
+### 1. Скопировать логотип в проект
+- `lov-copy user-uploads://image-19.png public/logo.png`
+- `lov-copy user-uploads://image-19.png src/assets/logo.png` (для импорта в React)
+- Удалить `public/favicon.ico`
 
-### 2. Зарегистрировать шаблон в `registry.ts`
-Добавить импорт и запись в `TEMPLATES`.
+### 2. `index.html` — заголовок и favicon
+- Заменить `<title>Lovable App</title>` на `<title>МИЭМ — Партнёрства</title>`
+- Заменить все `og:title`, `twitter:title` на «МИЭМ — Партнёрства»
+- Заменить `og:description`, `twitter:description` на «Система управления партнёрствами МИЭМ НИУ ВШЭ»
+- Добавить `<link rel="icon" href="/logo.png" type="image/png">`
 
-### 3. Расширить `register-request/index.ts`
-После отправки письма заявителю — запросить из БД всех пользователей с ролью `admin`, и каждому отправить `new-registration-request` через `send-transactional-email`.
+### 3. `src/pages/Auth.tsx` — логотип на странице входа
+- Импортировать `logo from "@/assets/logo.png"`
+- Добавить `<img src={logo} alt="МИЭМ" className="h-16 mx-auto mb-2" />` перед заголовком в CardHeader
 
-Логика:
-```
-const { data: admins } = await supabaseAdmin
-  .from("user_roles")
-  .select("user_id, profiles(email, full_name)")
-  .eq("role", "admin");
+### 4. `src/components/AppSidebar.tsx` — логотип в сайдбаре
+- Импортировать логотип
+- Добавить в верхнюю часть Sidebar (перед первой SidebarGroup) изображение + название «Партнёрства» (скрывается при collapsed)
 
-for (const admin of admins) {
-  await fetch(.../send-transactional-email, {
-    body: {
-      templateName: "new-registration-request",
-      recipientEmail: admin.profiles.email,
-      idempotencyKey: `new-reg-admin-${userData.user.id}-${admin.user_id}`,
-      templateData: { adminName: admin.profiles.full_name, applicantName: full_name, applicantEmail: email },
-    }
-  });
-}
-```
+### 5. `src/components/AppLayout.tsx` — без изменений
+Хедер остаётся как есть (пользователь + роль + выход).
 
-### 4. Задеплоить edge functions
-
-**Файлы для изменения:**
-- `supabase/functions/_shared/transactional-email-templates/new-registration-request.tsx` — новый
-- `supabase/functions/_shared/transactional-email-templates/registry.ts` — регистрация
-- `supabase/functions/register-request/index.ts` — отправка админам
+**Файлы для изменения:** `index.html`, `Auth.tsx`, `AppSidebar.tsx`; копирование файла логотипа.
 
