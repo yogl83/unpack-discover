@@ -15,7 +15,7 @@ import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare } from "lucide-react";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck, MessageSquare, Eye, Copy, ArrowLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -378,6 +378,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [verificationSummaryOverride, setVerificationSummaryOverride] = useState<VerificationSummary | null>(null);
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -444,6 +445,22 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     enabled: showHistory,
   });
 
+  // Load a specific version for viewing
+  const { data: viewingProfile } = useQuery({
+    queryKey: ["partner-profile-view", viewingProfileId],
+    queryFn: async () => {
+      if (!viewingProfileId) return null;
+      const { data, error } = await supabase
+        .from("partner_profiles")
+        .select("*")
+        .eq("profile_id", viewingProfileId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!viewingProfileId,
+  });
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["partner-profile-current", partnerId] });
     qc.invalidateQueries({ queryKey: ["partner-profile-draft", partnerId] });
@@ -466,10 +483,10 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     }
   };
 
-  // Create new draft
+  // Create new draft (optionally from a specific base version)
   const createDraft = useMutation({
-    mutationFn: async () => {
-      const base = currentProfile;
+    mutationFn: async (baseOverride?: any | undefined) => {
+      const base = baseOverride || currentProfile;
       const nextVersion = (base?.version_number || 0) + 1;
       const sectionData: Record<string, string | null> = {};
       for (const s of SECTIONS) {
@@ -497,6 +514,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       }
       setForm(formData);
       setEditing(true);
+      setViewingProfileId(null);
       toast.success("Черновик создан");
     },
     onError: (e: any) => toast.error(e.message),
@@ -688,7 +706,8 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
 
   if (isLoading) return <p className="text-muted-foreground py-4">Загрузка профайла...</p>;
 
-  const displayProfile = currentProfile;
+  const isViewingHistory = !!viewingProfileId && !!viewingProfile;
+  const displayProfile = isViewingHistory ? viewingProfile : currentProfile;
   const hasDraft = !!draftProfile;
   const hasLegacy = !currentProfile && !draftProfile && (legacyProfile?.company_profile || legacyProfile?.technology_profile || legacyProfile?.strategic_priorities);
   const references = displayProfile ? parseReferences(displayProfile) : [];
@@ -735,7 +754,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         <div className="flex items-center gap-2 flex-wrap">
           {canEdit && !editing && !hasDraft && (
             <>
-              <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending || isGenerating}>
+              <Button size="sm" onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending || isGenerating}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {currentProfile ? "Новая версия" : "Создать профайл"}
               </Button>
@@ -781,6 +800,29 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
           </Button>
         </div>
       </div>
+
+      {/* Banner for viewing historical version */}
+      {isViewingHistory && !editing && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-blue-50 border-blue-200 text-sm">
+          <Eye className="h-5 w-5 shrink-0 text-blue-600" />
+          <div className="flex-1">
+            <span className="font-medium text-blue-800">
+              Просмотр версии v{viewingProfile!.version_number} ({statusLabels[viewingProfile!.status] || viewingProfile!.status})
+            </span>
+            <span className="text-blue-600 ml-2">
+              от {new Date(viewingProfile!.created_at).toLocaleDateString("ru")}
+            </span>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setViewingProfileId(null)}>
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" />Назад к текущей
+          </Button>
+          {canEdit && !hasDraft && (
+            <Button size="sm" onClick={() => createDraft.mutate(viewingProfile)} disabled={createDraft.isPending}>
+              <Copy className="mr-1 h-3.5 w-3.5" />Новая версия на основе
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Meta info */}
       {displayProfile && !editing && (
@@ -988,7 +1030,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             )}
             {canEdit && (
               <div className="flex gap-2 mt-2">
-                <Button size="sm" onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+                <Button size="sm" onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending}>
                   <Plus className="mr-1 h-3.5 w-3.5" />Создать профайл
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
@@ -1007,7 +1049,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
           <p className="text-muted-foreground mb-4">Профайл ещё не создан</p>
           {canEdit && (
             <div className="flex gap-2 justify-center">
-              <Button onClick={() => createDraft.mutate()} disabled={createDraft.isPending}>
+              <Button onClick={() => createDraft.mutate(undefined)} disabled={createDraft.isPending}>
                 <Plus className="mr-1 h-4 w-4" />Создать профайл
               </Button>
               <Button variant="outline" onClick={() => generateProfile.mutate()} disabled={generateProfile.isPending || isGenerating}>
@@ -1031,11 +1073,12 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                   <TableHead>Статус</TableHead>
                   <TableHead>Дата</TableHead>
                   <TableHead>Текущий</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {history.map((h) => (
-                  <TableRow key={h.profile_id}>
+                  <TableRow key={h.profile_id} className={viewingProfileId === h.profile_id ? "bg-blue-50" : ""}>
                     <TableCell className="font-medium">v{h.version_number}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{statusLabels[h.status] || h.status}</Badge>
@@ -1044,6 +1087,53 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                       {new Date(h.created_at).toLocaleDateString("ru")}
                     </TableCell>
                     <TableCell>{h.is_current ? <Badge>Да</Badge> : "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setViewingProfileId(
+                                  viewingProfileId === h.profile_id ? null : h.profile_id
+                                )}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Просмотр</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        {canEdit && !hasDraft && ["approved", "archived"].includes(h.status) && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  disabled={createDraft.isPending}
+                                  onClick={async () => {
+                                    // Load full profile then create draft
+                                    const { data } = await supabase
+                                      .from("partner_profiles")
+                                      .select("*")
+                                      .eq("profile_id", h.profile_id)
+                                      .single();
+                                    if (data) createDraft.mutate(data);
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Новая версия на основе</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
