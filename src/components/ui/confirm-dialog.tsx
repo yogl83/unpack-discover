@@ -22,6 +22,7 @@ interface ConfirmDialogProps {
   triggerSize?: "sm" | "default" | "lg" | "icon";
   triggerClassName?: string;
   showIcon?: boolean;
+  actionLabel?: string;
 }
 
 export function ConfirmDialog({
@@ -33,6 +34,7 @@ export function ConfirmDialog({
   triggerSize = "sm",
   triggerClassName,
   showIcon = true,
+  actionLabel = "Удалить",
 }: ConfirmDialogProps) {
   return (
     <AlertDialog>
@@ -50,7 +52,7 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Удалить
+            {actionLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
