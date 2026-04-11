@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Upload, File, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -86,7 +87,6 @@ export function ProfileFileUpload({ profileId, partnerId, files, editable }: Pro
   };
 
   const handleDelete = async (f: ProfileFile) => {
-    if (!confirm(`Удалить файл "${f.original_filename}"?`)) return;
     await supabase.storage.from("partner-profile-files").remove([f.storage_path]);
     await supabase.from("partner_profile_files").delete().eq("file_id", f.file_id);
     toast.success("Файл удалён");
@@ -134,9 +134,16 @@ export function ProfileFileUpload({ profileId, partnerId, files, editable }: Pro
                 <Download className="h-3.5 w-3.5" />
               </Button>
               {editable && (
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDelete(f)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <ConfirmDialog
+                  title={`Удалить файл?`}
+                  description={`Файл «${f.original_filename}» будет удалён без возможности восстановления.`}
+                  onConfirm={() => handleDelete(f)}
+                  triggerSize="icon"
+                  triggerLabel={<Trash2 className="h-3.5 w-3.5" />}
+                  showIcon={false}
+                  variant="ghost"
+                  triggerClassName="h-7 w-7 text-destructive"
+                />
               )}
             </div>
           ))}

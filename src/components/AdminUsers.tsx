@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, UserPlus, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { format } from "date-fns";
 
 export default function AdminUsers() {
@@ -181,9 +182,16 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{format(new Date(u.created_at), "dd.MM.yyyy")}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Удалить пользователя?")) deleteUser.mutate(u.id); }}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <ConfirmDialog
+                          title="Удалить пользователя?"
+                          description="Это действие нельзя отменить. Пользователь будет удалён."
+                          onConfirm={() => deleteUser.mutate(u.id)}
+                          triggerSize="icon"
+                          triggerLabel={<Trash2 className="h-4 w-4" />}
+                          showIcon={false}
+                          variant="ghost"
+                          triggerClassName="text-destructive"
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -252,9 +260,16 @@ function PendingRow({ user, onApprove, onReject, isPending }: {
           <Button size="sm" variant="outline" onClick={() => onApprove(role)} disabled={isPending}>
             <CheckCircle className="h-4 w-4 mr-1 text-green-600" /> Одобрить
           </Button>
-          <Button size="sm" variant="ghost" onClick={onReject} disabled={isPending}>
-            <XCircle className="h-4 w-4 mr-1 text-destructive" /> Отклонить
-          </Button>
+          <ConfirmDialog
+            title="Отклонить заявку?"
+            description="Заявка будет отклонена, а пользователь удалён. Это действие нельзя отменить."
+            onConfirm={onReject}
+            triggerLabel={<><XCircle className="h-4 w-4 mr-1 text-destructive" /> Отклонить</>}
+            showIcon={false}
+            variant="ghost"
+            triggerSize="sm"
+            actionLabel="Отклонить"
+          />
         </div>
       </TableCell>
     </TableRow>
