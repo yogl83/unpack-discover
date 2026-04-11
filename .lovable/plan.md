@@ -1,66 +1,48 @@
 
-Нужно исправить не одну, а две связанные проблемы на экране гипотез.
 
-## Что я нашёл
+# Исправление ошибки регистрации
 
-1. Ошибка с `confidence_level` уже не связана с пустой строкой в форме:
-   - в `src/pages/HypothesisDetail.tsx` пустые значения уже переводятся в `null`
-   - значит текущий сбой вызван несовпадением значений UI и ограничений БД
+## Проблема
 
-2. Есть реальное расхождение UI ↔ БД для гипотез:
-   - в БД `confidence_level` разрешает только `A / B / C`
-   - в UI сейчас отправляются `low / medium / high`
-   - в БД `hypothesis_status` разрешает `new / in_progress / confirmed / rejected / moved_to_initiative / moved_to_project`
-   - в UI сейчас используется `testing`, которого в ограничении БД нет
-   - в БД `relevance_score` ограничен диапазоном `0–5`
-   - в UI сейчас показано `0–10`
+При отправке заявки на регистрацию edge function `register-request` возвращает 400 с сообщением «Пароль должен быть не менее 6 символов». Пароль на скриншоте — 5 символов.
 
-3. В консоли есть отдельное предупреждение React:
-   - `Function components cannot be given refs`
-   - источник, вероятнее всего, не сам `Select`, а один из компонентов рядом в `HypothesisDetail`; это нужно локально поправить после основной фиксации формы
+Две связанных проблемы:
 
-## План исправления
+1. **Ошибка не показывается пользователю** — при статусе 400 `supabase.functions.invoke` кладёт результат в `res.error` (тип `FunctionsHttpError`), но `res.error.message` содержит общее «Edge Function returned a non-2xx status code», а не текст из тела ответа. Нужно парсить тело: `JSON.parse(await res.error.context.json())`.
 
-1. Привести форму гипотезы к фактической схеме БД в `src/pages/HypothesisDetail.tsx`:
-   - заменить значения уверенности на `A / B / C` с русскими подписями
-   - заменить `testing` на допустимый статус (`in_progress`) с подписью «В работе»
-   - скорректировать поле релевантности с `0–10` на `0–5`
+2. **Валидация на клиенте недостаточна** — HTML-атрибут `minLength={6}` не всегда срабатывает (зависит от браузера). Нужна явная проверка перед отправкой.
 
-2. Синхронизировать словари и списки отображения:
-   - обновить `src/lib/labels.ts` для статусов гипотез
-   - при необходимости добавить человекочитаемые подписи для `A / B / C`, чтобы в таблицах не показывались “сырые” значения без расшифровки
+## Решение
 
-3. Проверить места, где гипотезы отображаются списком:
-   - `src/pages/Hypotheses.tsx`
-   - `src/pages/PartnerDetail.tsx`
-   Чтобы после правки статусов и уверенности там были корректные подписи
+Одна правка в `src/pages/Auth.tsx`:
 
-4. Убрать React warning с ref:
-   - проверить JSX в `HypothesisDetail` вокруг `Select`, `ConfirmDialog`, `CardHeader/CardTitle`
-   - исправить компонент-источник, если где-то в дерево попадает function component без `forwardRef`
+1. Добавить клиентскую проверку длины пароля перед вызовом edge function
+2. Корректно извлекать сообщение об ошибке из ответа edge function
 
-## Ожидаемый результат
-
-После правки:
-- новая гипотеза будет сохраняться без ошибки check constraint
-- значения формы будут соответствовать реальным ограничениям БД
-- список гипотез и карточки организаций будут показывать корректные подписи
-- предупреждение React в консоли исчезнет или будет локализовано и устранено
-
-## Технические детали
-
-Ключевая причина не в `null`, а в несовместимых enum-like значениях между фронтендом и SQL schema.
-
-Сейчас конфликт такой:
-```text
-UI confidence_level: low | medium | high
-DB confidence_level: A | B | C
-
-UI hypothesis_status: new | testing | confirmed | rejected
-DB hypothesis_status: new | in_progress | confirmed | rejected | moved_to_initiative | moved_to_project
-
-UI relevance_score: 0..10
-DB relevance_score: 0..5
+```ts
+} else if (mode === "register") {
+  if (password.length < 6) {
+    toast.error("Пароль должен быть не менее 6 символов");
+    return;
+  }
+  const res = await supabase.functions.invoke("register-request", {
+    body: { email, password, full_name: fullName },
+  });
+  if (res.error) {
+    // Extract message from edge function response body
+    let msg = "Ошибка при отправке заявки";
+    try {
+      const body = await res.error.context.json();
+      if (body?.error) msg = body.error;
+    } catch {}
+    toast.error(msg);
+  } else if (res.data?.error) {
+    toast.error(res.data.error);
+  } else {
+    ...
+  }
+}
 ```
 
-Править лучше фронтенд, а не БД, потому что схема уже типизирована и используется в других местах приложения.
+Одна правка, один файл.
+
