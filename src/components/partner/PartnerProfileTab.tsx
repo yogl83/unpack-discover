@@ -13,7 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
 import { ProfilePdfExport } from "./ProfilePdfExport";
-import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink, CheckCircle2, Circle, AlertTriangle, XCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -29,8 +30,6 @@ const SECTIONS = [
   { key: "key_events_and_touchpoints", label: "Ключевые мероприятия" },
 ] as const;
 
-
-
 const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
 };
@@ -39,6 +38,27 @@ interface ReferenceItem {
   number: number;
   text: string;
   url?: string;
+}
+
+interface FactCheck {
+  fact: string;
+  source_ref: number;
+  status: "confirmed" | "unconfirmed" | "contradicted";
+  explanation?: string;
+}
+
+interface SectionVerification {
+  section_key: string;
+  facts: FactCheck[];
+  confirmed: number;
+  unconfirmed: number;
+  contradicted: number;
+}
+
+interface VerificationSummary {
+  confirmed: number;
+  unconfirmed: number;
+  contradicted: number;
 }
 
 interface Props {
@@ -110,6 +130,124 @@ const makeMarkdownComponents = () => ({
 
 const markdownComponents = makeMarkdownComponents();
 
+function VerificationBadge({ verification }: { verification?: SectionVerification }) {
+  if (!verification) return null;
+  const total = verification.confirmed + verification.unconfirmed + verification.contradicted;
+  if (total === 0) return null;
+
+  if (verification.contradicted > 0) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+              <XCircle className="h-3 w-3" />
+              {verification.contradicted}❌
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <p className="text-xs">✅ {verification.confirmed} подтв. ⚠️ {verification.unconfirmed} не подтв. ❌ {verification.contradicted} противореч.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  if (verification.unconfirmed > 0) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-0.5 bg-yellow-100 text-yellow-800">
+              <AlertTriangle className="h-3 w-3" />
+              {verification.unconfirmed} не подтв.
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <p className="text-xs">✅ {verification.confirmed} подтв. ⚠️ {verification.unconfirmed} не подтв.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-0.5 bg-green-100 text-green-800">
+            <ShieldCheck className="h-3 w-3" />
+            {verification.confirmed}/{total}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p className="text-xs">Все {total} фактов подтверждены источниками</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function VerificationDetails({ verification }: { verification: SectionVerification }) {
+  const [expanded, setExpanded] = useState(false);
+  if (verification.facts.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <button
+        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <ShieldCheck className="h-3 w-3" />
+        {expanded ? "Скрыть проверку фактов" : "Показать проверку фактов"}
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1 border rounded-md p-2 bg-muted/30">
+          {verification.facts.map((f, i) => (
+            <div key={i} className="flex items-start gap-1.5 text-xs">
+              <span className="shrink-0 mt-0.5">
+                {f.status === "confirmed" ? "✅" : f.status === "contradicted" ? "❌" : "⚠️"}
+              </span>
+              <div>
+                <span className={f.status === "unconfirmed" ? "text-yellow-700" : f.status === "contradicted" ? "text-destructive" : "text-muted-foreground"}>
+                  {f.fact}
+                </span>
+                {f.source_ref > 0 && <span className="text-primary ml-1">[{f.source_ref}]</span>}
+                {f.explanation && <span className="text-muted-foreground ml-1">— {f.explanation}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VerificationSummaryBanner({ summary, sourcesCount }: { summary: VerificationSummary; sourcesCount: number }) {
+  const total = summary.confirmed + summary.unconfirmed + summary.contradicted;
+  if (total === 0) return null;
+
+  const pct = Math.round((summary.confirmed / total) * 100);
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 text-sm">
+      <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+      <div className="flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium">Факт-чекинг:</span>
+          <span className="text-green-700">✅ {summary.confirmed}</span>
+          {summary.unconfirmed > 0 && <span className="text-yellow-700">⚠️ {summary.unconfirmed}</span>}
+          {summary.contradicted > 0 && <span className="text-destructive">❌ {summary.contradicted}</span>}
+          <span className="text-muted-foreground">({pct}% подтверждено)</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Проверено по {sourcesCount} источникам (сайт, веб-поиск, загруженные файлы)
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; sticky?: boolean }) {
   if (references.length === 0) return null;
   return (
@@ -147,6 +285,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [isGenerating, setIsGenerating] = useState(false);
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
+  const [verificationData, setVerificationData] = useState<SectionVerification[]>([]);
 
   // Current profile
   const { data: currentProfile, isLoading } = useQuery({
@@ -217,6 +356,22 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
     qc.invalidateQueries({ queryKey: ["partner-profile-current", partnerId] });
     qc.invalidateQueries({ queryKey: ["partner-profile-draft", partnerId] });
     qc.invalidateQueries({ queryKey: ["partner-profile-history", partnerId] });
+  };
+
+  // Extract verification from profile's generated_from_sources_json
+  const getStoredVerification = (profile: any): { verification: SectionVerification[]; summary: VerificationSummary | null; sourcesCount: number } => {
+    try {
+      const sources = profile?.generated_from_sources_json;
+      if (!sources) return { verification: [], summary: null, sourcesCount: 0 };
+      const parsed = typeof sources === "string" ? JSON.parse(sources) : sources;
+      return {
+        verification: parsed.verification || [],
+        summary: parsed.verification_summary || null,
+        sourcesCount: parsed.total_sources || 0,
+      };
+    } catch {
+      return { verification: [], summary: null, sourcesCount: 0 };
+    }
   };
 
   // Create new draft
@@ -328,10 +483,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (data?.error) throw new Error(data.error);
-      return data.profile;
+      return data;
     },
-    onSuccess: (profile) => {
+    onSuccess: (data) => {
       invalidateAll();
+      const profile = data.profile;
       const formData: Record<string, string> = {};
       const aiSections = new Set<string>();
       for (const s of SECTIONS) {
@@ -341,6 +497,9 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       }
       setForm(formData);
       setAiGeneratedSections(aiSections);
+      if (data.verification) {
+        setVerificationData(data.verification);
+      }
       setEditing(true);
       setIsGenerating(false);
       toast.success("Профайл сгенерирован AI. Проверьте и отредактируйте черновик.");
@@ -364,7 +523,6 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       const newVal = data.section_content || "";
       setForm((prev) => ({ ...prev, [sectionKey]: newVal }));
       setAiGeneratedSections((prev) => new Set(prev).add(sectionKey));
-      // Update references if returned
       if (data.references) {
         invalidateAll();
       }
@@ -385,6 +543,9 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
       }
       setForm(formData);
       setEditing(true);
+      // Load stored verification if available
+      const { verification } = getStoredVerification(draftProfile);
+      if (verification.length > 0) setVerificationData(verification);
     }
   };
 
@@ -408,6 +569,18 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const references = displayProfile ? parseReferences(displayProfile) : [];
   const draftReferences = draftProfile ? parseReferences(draftProfile) : [];
   const activeReferences = editing ? draftReferences : references;
+
+  // Verification from stored profile or live data
+  const storedVerification = getStoredVerification(editing ? draftProfile : displayProfile);
+  const activeVerification = verificationData.length > 0 ? verificationData : storedVerification.verification;
+  const activeSummary = verificationData.length > 0
+    ? { confirmed: verificationData.reduce((s, v) => s + v.confirmed, 0), unconfirmed: verificationData.reduce((s, v) => s + v.unconfirmed, 0), contradicted: verificationData.reduce((s, v) => s + v.contradicted, 0) }
+    : storedVerification.summary;
+  const sourcesCount = storedVerification.sourcesCount;
+
+  const getVerificationForSection = (key: string): SectionVerification | undefined => {
+    return activeVerification.find(v => v.section_key === key);
+  };
 
   // Progress
   const filledCount = SECTIONS.filter((s) => (form[s.key] || "").trim().length > 0).length;
@@ -491,6 +664,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         </div>
       )}
 
+      {/* Verification summary banner */}
+      {activeSummary && (activeSummary.confirmed + activeSummary.unconfirmed + activeSummary.contradicted) > 0 && (
+        <VerificationSummaryBanner summary={activeSummary} sourcesCount={sourcesCount} />
+      )}
+
       {/* Edit mode */}
       {editing && draftProfile && (
         <div className="space-y-4">
@@ -508,6 +686,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                 {SECTIONS.map((s) => {
                   const isFilled = (form[s.key] || "").trim().length > 0;
                   const isRegenerating = regeneratingSection === s.key;
+                  const sectionVerification = getVerificationForSection(s.key);
                   return (
                     <AccordionItem key={s.key} value={s.key}>
                       <AccordionTrigger className="text-sm font-medium">
@@ -521,6 +700,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                           {aiGeneratedSections.has(s.key) && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700">AI</Badge>
                           )}
+                          <VerificationBadge verification={sectionVerification} />
                         </span>
                       </AccordionTrigger>
                       <AccordionContent>
@@ -549,6 +729,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
                           className={aiGeneratedSections.has(s.key) ? "border-blue-300" : ""}
                           minHeight={s.key === "summary_short" ? "120px" : "200px"}
                         />
+                        {sectionVerification && <VerificationDetails verification={sectionVerification} />}
                       </AccordionContent>
                     </AccordionItem>
                   );
@@ -597,15 +778,22 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             {SECTIONS.map((s) => {
               const val = (displayProfile as any)[s.key];
               if (!val) return null;
+              const sectionVerification = getVerificationForSection(s.key);
               return (
                 <AccordionItem key={s.key} value={s.key}>
-                  <AccordionTrigger className="text-sm font-medium">{s.label}</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-medium">
+                    <span className="flex items-center gap-2">
+                      {s.label}
+                      <VerificationBadge verification={sectionVerification} />
+                    </span>
+                  </AccordionTrigger>
                   <AccordionContent>
                     <div className="prose prose-sm max-w-none dark:prose-invert">
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                         {val}
                       </ReactMarkdown>
                     </div>
+                    {sectionVerification && <VerificationDetails verification={sectionVerification} />}
                   </AccordionContent>
                 </AccordionItem>
               );

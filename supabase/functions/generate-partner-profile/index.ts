@@ -39,6 +39,11 @@ const DEFAULT_SYSTEM_PROMPT = `Ты — аналитик по партнёрст
 - Для strategic_priorities — обосновывай направления конкретными фактами о компании
 - НЕ ДАВАЙ рекомендаций, прогнозов или предложений по сотрудничеству с МИЭМ — профайл должен содержать только проверенные факты о компании
 
+ПРАВИЛА ССЫЛОК:
+- Ссылайся ТОЛЬКО на источники из предоставленного списка с номерами [N]
+- НЕ ВЫДУМЫВАЙ URL-адреса — используй только те, что даны в списке источников
+- Если факт не подтверждён ни одним источником — НЕ включай его
+
 СТРУКТУРА ССЫЛОК:
 В поле references верни массив всех источников: [{"number": 1, "text": "Название источника", "url": "https://..."}]`;
 
@@ -58,6 +63,33 @@ const DEFAULT_SECTIONS: SectionConfig[] = [
   { key: "recent_news_and_plans", title: "Последние новости и планы", prompt: "Только за последние 12-18 месяцев. Структурируй хронологически. Укажи: дата, суть новости, влияние на бизнес. Выдели новости, релевантные для академического сотрудничества. Ссылки [N]." },
   { key: "key_events_and_touchpoints", title: "Ключевые мероприятия", prompt: "Только подтверждённые прошедшие мероприятия с датами и местами проведения. Укажи: название, дату, место, масштаб. НЕ пиши рекомендации, прогнозы или предложения для МИЭМ — только факты. Ссылки [N]." },
 ];
+
+// ============ Source types ============
+interface NumberedSource {
+  number: number;
+  type: "website" | "search" | "file" | "card";
+  title: string;
+  url?: string;
+  content: string;
+}
+
+// ============ Verification types ============
+interface FactCheck {
+  fact: string;
+  source_ref: number;
+  status: "confirmed" | "unconfirmed" | "contradicted";
+  explanation?: string;
+}
+
+interface SectionVerification {
+  section_key: string;
+  facts: FactCheck[];
+  confirmed: number;
+  unconfirmed: number;
+  contradicted: number;
+}
+
+// ============ Helpers ============
 
 async function loadAISettings(supabase: ReturnType<typeof createClient>) {
   let model = DEFAULT_MODEL;
@@ -116,7 +148,112 @@ async function scrapeWebsite(websiteUrl: string, firecrawlKey: string): Promise<
   return { content: "", url };
 }
 
-function buildPartnerContext(partner: Record<string, any>, websiteContent: string): string {
+async function searchWeb(partnerName: string, firecrawlKey: string): Promise<{ title: string; url: string; content: string }[]> {
+  const results: { title: string; url: string; content: string }[] = [];
+  const queries = [
+    `"${partnerName}" компания новости`,
+    `"${partnerName}" технологии университет партнёрство`,
+  ];
+
+  for (const query of queries) {
+    try {
+      console.log("Web search:", query);
+      const res = await fetch("https://api.firecrawl.dev/v1/search", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          limit: 5,
+          lang: "ru",
+          country: "ru",
+          scrapeOptions: { formats: ["markdown"] },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false && Array.isArray(data.data)) {
+        for (const item of data.data) {
+          if (item.url && !results.some(r => r.url === item.url)) {
+            results.push({
+              title: item.title || item.url,
+              url: item.url,
+              content: (item.markdown || item.description || "").slice(0, 5000),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Search error:", e);
+    }
+  }
+  return results.slice(0, 8);
+}
+
+async function loadUploadedFiles(
+  supabase: ReturnType<typeof createClient>,
+  partnerId: string,
+): Promise<{ filename: string; content: string }[]> {
+  const files: { filename: string; content: string }[] = [];
+  try {
+    const { data: fileRecords } = await supabase
+      .from("partner_profile_files")
+      .select("file_id, original_filename, storage_path, storage_bucket, mime_type")
+      .eq("partner_id", partnerId)
+      .eq("is_source_document", true)
+      .limit(5);
+
+    if (!fileRecords || fileRecords.length === 0) return files;
+
+    for (const file of fileRecords) {
+      try {
+        // Only process text-based files
+        const mime = file.mime_type || "";
+        const filename = file.original_filename || "";
+        const isText = mime.startsWith("text/") || 
+          mime === "application/json" ||
+          filename.endsWith(".md") || filename.endsWith(".txt");
+        
+        if (!isText) {
+          console.log(`Skipping non-text file: ${filename} (${mime})`);
+          // Still note the file as a source even if we can't read it
+          files.push({ filename, content: `[Файл загружен: ${filename}. Содержимое не извлечено — формат ${mime || "неизвестен"}.]` });
+          continue;
+        }
+
+        const { data: fileData, error } = await supabase.storage
+          .from(file.storage_bucket)
+          .download(file.storage_path);
+
+        if (error || !fileData) {
+          console.warn(`Failed to download ${filename}:`, error);
+          continue;
+        }
+
+        const text = await fileData.text();
+        files.push({ filename, content: text.slice(0, 10000) });
+        console.log(`Loaded file: ${filename} (${text.length} chars)`);
+      } catch (e) {
+        console.warn(`Error loading file ${file.original_filename}:`, e);
+      }
+    }
+  } catch (e) {
+    console.warn("Error loading uploaded files:", e);
+  }
+  return files;
+}
+
+function buildNumberedSources(
+  partner: Record<string, any>,
+  websiteResult: { content: string; url: string },
+  searchResults: { title: string; url: string; content: string }[],
+  uploadedFiles: { filename: string; content: string }[],
+): NumberedSource[] {
+  const sources: NumberedSource[] = [];
+  let num = 1;
+
+  // 1. Partner card data
   const cardInfo = [
     `Название: ${partner.partner_name}`,
     partner.legal_name ? `Юр. лицо: ${partner.legal_name}` : null,
@@ -132,11 +269,36 @@ function buildPartnerContext(partner: Record<string, any>, websiteContent: strin
     partner.strategic_priorities ? `Стратегические приоритеты (legacy): ${partner.strategic_priorities}` : null,
   ].filter(Boolean).join("\n");
 
-  let prompt = `Данные из карточки партнёра:\n${cardInfo}`;
-  if (websiteContent) {
-    prompt += `\n\n--- СОДЕРЖИМОЕ САЙТА КОМПАНИИ ---\n${websiteContent}`;
+  sources.push({ number: num++, type: "card", title: "Карточка партнёра в системе", content: cardInfo });
+
+  // 2. Website scrape
+  if (websiteResult.content) {
+    sources.push({ number: num++, type: "website", title: "Сайт компании", url: websiteResult.url, content: websiteResult.content });
   }
-  return prompt;
+
+  // 3. Web search results
+  for (const sr of searchResults) {
+    sources.push({ number: num++, type: "search", title: sr.title, url: sr.url, content: sr.content });
+  }
+
+  // 4. Uploaded files
+  for (const uf of uploadedFiles) {
+    sources.push({ number: num++, type: "file", title: `Загруженный файл: ${uf.filename}`, content: uf.content });
+  }
+
+  return sources;
+}
+
+function buildContextFromSources(sources: NumberedSource[]): string {
+  const parts: string[] = [];
+  parts.push("=== СПИСОК ИСТОЧНИКОВ ===\n");
+  for (const s of sources) {
+    parts.push(`--- ИСТОЧНИК [${s.number}]: ${s.title}${s.url ? ` (${s.url})` : ""} ---`);
+    parts.push(s.content);
+    parts.push("");
+  }
+  parts.push("=== КОНЕЦ СПИСКА ИСТОЧНИКОВ ===");
+  return parts.join("\n");
 }
 
 async function callAI(
@@ -190,21 +352,120 @@ function parseAIResponse(aiData: any): Record<string, string> | null {
   }
 }
 
-function parseReferencesFromResult(parsed: Record<string, string>, scrapedUrl: string): any[] {
-  let references: any[] = [];
+function buildReferencesFromSources(sources: NumberedSource[]): any[] {
+  return sources
+    .filter(s => s.type !== "card") // don't list internal card as a URL reference
+    .map(s => ({
+      number: s.number,
+      text: s.title,
+      url: s.url || null,
+    }));
+}
+
+async function runFactCheck(
+  lovableKey: string,
+  aiModel: string,
+  sections: SectionConfig[],
+  profileContent: Record<string, string>,
+  sources: NumberedSource[],
+): Promise<SectionVerification[]> {
+  const sourceTexts = sources.map(s =>
+    `[${s.number}] ${s.title}${s.url ? ` (${s.url})` : ""}:\n${s.content.slice(0, 3000)}`
+  ).join("\n\n");
+
+  const profileTexts = sections
+    .filter(s => profileContent[s.key])
+    .map(s => `### ${s.title} (${s.key}):\n${profileContent[s.key]}`)
+    .join("\n\n");
+
+  const verifyPrompt = `Ты — факт-чекер. Тебе дан сгенерированный профайл компании и исходные тексты источников.
+
+Для каждой секции профайла:
+1. Выдели все фактические утверждения (с ссылками [N])
+2. Для каждого факта проверь, подтверждается ли он текстом указанного источника:
+   - "confirmed" — факт найден в тексте источника
+   - "unconfirmed" — факт НЕ найден в указанном источнике (возможная галлюцинация)
+   - "contradicted" — факт противоречит данным источника
+
+Верни JSON-массив по секциям.
+
+=== ИСХОДНЫЕ ТЕКСТЫ ===
+${sourceTexts}
+
+=== ПРОФАЙЛ ===
+${profileTexts}`;
+
   try {
-    if (parsed.references) {
-      references = JSON.parse(parsed.references);
-      if (!Array.isArray(references)) references = [];
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: aiModel,
+        messages: [
+          { role: "system", content: "Ты — независимый факт-чекер. Проверяй каждый факт строго по тексту источника. Будь объективен." },
+          { role: "user", content: verifyPrompt },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "submit_verification",
+            description: "Результаты проверки фактов по секциям",
+            parameters: {
+              type: "object",
+              properties: {
+                sections: {
+                  type: "string",
+                  description: `JSON-массив: [{"section_key": "...", "facts": [{"fact": "текст факта", "source_ref": N, "status": "confirmed|unconfirmed|contradicted", "explanation": "пояснение"}]}]`,
+                },
+              },
+              required: ["sections"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "submit_verification" } },
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn("Fact-check AI call failed:", res.status);
+      return [];
     }
-  } catch {
-    console.warn("Could not parse references as JSON array");
+
+    const data = await res.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall?.function?.arguments) return [];
+
+    const parsed = JSON.parse(toolCall.function.arguments);
+    let sectionsData: any[] = [];
+    
+    if (typeof parsed.sections === "string") {
+      sectionsData = JSON.parse(parsed.sections);
+    } else if (Array.isArray(parsed.sections)) {
+      sectionsData = parsed.sections;
+    }
+
+    return sectionsData.map((s: any) => {
+      const facts: FactCheck[] = (s.facts || []).map((f: any) => ({
+        fact: f.fact || "",
+        source_ref: f.source_ref || 0,
+        status: ["confirmed", "unconfirmed", "contradicted"].includes(f.status) ? f.status : "unconfirmed",
+        explanation: f.explanation || undefined,
+      }));
+      return {
+        section_key: s.section_key,
+        facts,
+        confirmed: facts.filter(f => f.status === "confirmed").length,
+        unconfirmed: facts.filter(f => f.status === "unconfirmed").length,
+        contradicted: facts.filter(f => f.status === "contradicted").length,
+      };
+    });
+  } catch (e) {
+    console.error("Fact-check error:", e);
+    return [];
   }
-  if (scrapedUrl && !references.some((r: any) => r.url === scrapedUrl)) {
-    references.unshift({ number: 0, text: "Сайт компании", url: scrapedUrl });
-    references = references.map((r: any, i: number) => ({ ...r, number: i + 1 }));
-  }
-  return references;
 }
 
 function errorResponse(message: string, status: number) {
@@ -247,27 +508,38 @@ Deno.serve(async (req) => {
       .single();
     if (partnerError || !partner) return errorResponse("Partner not found", 404);
 
-    // Scrape website
-    let websiteContent = "";
-    let scrapedUrl = "";
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    if (partner.website_url && firecrawlKey) {
-      const result = await scrapeWebsite(partner.website_url, firecrawlKey);
-      websiteContent = result.content;
-      scrapedUrl = result.url;
-    }
-
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) return errorResponse("LOVABLE_API_KEY not configured", 500);
 
-    const partnerContext = buildPartnerContext(partner, websiteContent);
+    // ============ GATHER ALL SOURCES ============
+    // 1. Scrape website
+    let websiteResult = { content: "", url: "" };
+    if (partner.website_url && firecrawlKey) {
+      websiteResult = await scrapeWebsite(partner.website_url, firecrawlKey);
+    }
+
+    // 2. Web search
+    let searchResults: { title: string; url: string; content: string }[] = [];
+    if (firecrawlKey) {
+      searchResults = await searchWeb(partner.partner_name, firecrawlKey);
+    }
+
+    // 3. Uploaded files
+    const uploadedFiles = await loadUploadedFiles(supabase, partner_id);
+
+    // 4. Build numbered sources
+    const numberedSources = buildNumberedSources(partner, websiteResult, searchResults, uploadedFiles);
+    console.log(`Sources gathered: ${numberedSources.length} (website: ${websiteResult.content ? 1 : 0}, search: ${searchResults.length}, files: ${uploadedFiles.length})`);
+
+    const sourceContext = buildContextFromSources(numberedSources);
 
     // --- SINGLE SECTION REGENERATION ---
     if (section_key && profile_id) {
       const sectionConfig = sections.find((s) => s.key === section_key);
       if (!sectionConfig) return errorResponse(`Unknown section: ${section_key}`, 400);
 
-      const singlePrompt = `${partnerContext}\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}\nТакже обнови список источников (references).`;
+      const singlePrompt = `${sourceContext}\n\nЗаполни ТОЛЬКО секцию "${sectionConfig.title}" (ключ: ${sectionConfig.key}). Инструкция: ${sectionConfig.prompt}\nИспользуй ТОЛЬКО источники из списка выше. Также обнови список источников (references).`;
 
       const toolProps: Record<string, { type: string; description: string }> = {
         [section_key]: { type: "string", description: `${sectionConfig.title}: ${sectionConfig.prompt}` },
@@ -292,7 +564,7 @@ Deno.serve(async (req) => {
       if (!parsed) return errorResponse("AI did not return structured data", 500);
 
       const sectionContent = parsed[section_key] || "";
-      const references = parseReferencesFromResult(parsed, scrapedUrl);
+      const references = buildReferencesFromSources(numberedSources);
 
       // Update the specific section in the existing profile
       const { error: updateError } = await supabase
@@ -328,7 +600,7 @@ Deno.serve(async (req) => {
 
     const compositeSystemPrompt = `${systemPrompt}\n\n--- ИНСТРУКЦИИ ПО СЕКЦИЯМ ---\n\n${sectionInstructions}`;
 
-    const userPrompt = `${partnerContext}\n\nЗаполни все ${sections.length} секций профайла и список источников (references), вызвав функцию fill_profile.`;
+    const userPrompt = `${sourceContext}\n\nЗаполни все ${sections.length} секций профайла, используя ТОЛЬКО источники из списка выше. Ссылайся на них как [N]. Вызови функцию fill_profile.`;
 
     const sectionProperties: Record<string, { type: string; description: string }> = {};
     for (const s of sections) {
@@ -359,7 +631,22 @@ Deno.serve(async (req) => {
     }
     console.log("AI sections received:", Object.keys(parsed).length);
 
-    const references = parseReferencesFromResult(parsed, scrapedUrl);
+    const references = buildReferencesFromSources(numberedSources);
+
+    // ============ FACT-CHECK SECOND PASS ============
+    console.log("Running fact-check...");
+    const profileContent: Record<string, string> = {};
+    for (const key of SECTION_KEYS) {
+      if (parsed[key]) profileContent[key] = parsed[key];
+    }
+    const verification = await runFactCheck(lovableKey, aiModel, sections, profileContent, numberedSources);
+    console.log("Fact-check complete:", verification.length, "sections verified");
+
+    // Calculate summary
+    const totalConfirmed = verification.reduce((sum, v) => sum + v.confirmed, 0);
+    const totalUnconfirmed = verification.reduce((sum, v) => sum + v.unconfirmed, 0);
+    const totalContradicted = verification.reduce((sum, v) => sum + v.contradicted, 0);
+    console.log(`Verification summary: ✅${totalConfirmed} ⚠️${totalUnconfirmed} ❌${totalContradicted}`);
 
     const profileData: Record<string, unknown> = {
       partner_id,
@@ -367,7 +654,7 @@ Deno.serve(async (req) => {
       status: "draft",
       version_number: nextVersion,
       profile_type: "ai_generated",
-      source_type: websiteContent ? "ai_web" : "ai_card",
+      source_type: websiteResult.content ? "ai_web" : "ai_card",
       created_by: user.id,
       generation_status: "completed",
       last_generated_at: new Date().toISOString(),
@@ -376,8 +663,13 @@ Deno.serve(async (req) => {
       generated_from_prompt: compositeSystemPrompt.slice(0, 10000),
       generated_from_sources_json: {
         website_url: partner.website_url || null,
-        website_content_length: websiteContent.length,
+        website_content_length: websiteResult.content.length,
+        search_results_count: searchResults.length,
+        uploaded_files_count: uploadedFiles.length,
+        total_sources: numberedSources.length,
         card_fields: Object.keys(partner).filter((k) => partner[k as keyof typeof partner]),
+        verification,
+        verification_summary: { confirmed: totalConfirmed, unconfirmed: totalUnconfirmed, contradicted: totalContradicted },
       },
     };
     for (const key of SECTION_KEYS) {
@@ -396,7 +688,7 @@ Deno.serve(async (req) => {
     }
 
     console.log("Profile created:", profile.profile_id);
-    return new Response(JSON.stringify({ success: true, profile }), {
+    return new Response(JSON.stringify({ success: true, profile, verification }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
