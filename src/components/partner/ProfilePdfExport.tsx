@@ -37,6 +37,50 @@ interface ProfilePdfExportProps {
   references: ReferenceItem[];
 }
 
+/* ── Preprocess raw markdown text ──────────────────────── */
+
+function preprocessText(text: string): string {
+  return text
+    .replace(/\\?\[(\d+)\]\\?/g, "[$1]")
+    .replace(/^#{1,6}\s+/gm, "");
+}
+
+/* ── Inline run: split text into bold/normal word tokens ── */
+
+interface WordToken {
+  text: string;
+  bold: boolean;
+}
+
+function tokenizeToWords(line: string): WordToken[] {
+  // First split into bold/normal runs
+  const tokens: WordToken[] = [];
+  const re = /\*\*(.+?)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) {
+      splitRunToWords(line.slice(last, m.index), false, tokens);
+    }
+    splitRunToWords(m[1], true, tokens);
+    last = m.index + m[0].length;
+  }
+  if (last < line.length) {
+    splitRunToWords(line.slice(last), false, tokens);
+  }
+  return tokens;
+}
+
+function splitRunToWords(text: string, bold: boolean, out: WordToken[]) {
+  // Split on spaces but keep spaces attached to words for proper rendering
+  const parts = text.split(/( +)/);
+  for (const part of parts) {
+    if (part.length > 0) {
+      out.push({ text: part, bold });
+    }
+  }
+}
+
 /* ── Markdown table parser ──────────────────────────────── */
 
 function parseMarkdownTable(text: string): { headers: string[]; rows: string[][] } | null {
@@ -92,54 +136,20 @@ function splitContentSegments(text: string): Segment[] {
   return segments;
 }
 
-/* ── Preprocess raw markdown text ──────────────────────── */
-
-function preprocessText(text: string): string {
-  return text
-    .replace(/\\?\[(\d+)\]\\?/g, "[$1]")   // unescape \[N\] → [N]
-    .replace(/^#{1,6}\s+/gm, "");            // strip heading markers
-}
-
-/* ── Inline run: split text into bold/normal runs ──────── */
-
-interface TextRun {
-  text: string;
-  bold: boolean;
-}
-
-function parseInlineRuns(line: string): TextRun[] {
-  const runs: TextRun[] = [];
-  const re = /\*\*(.+?)\*\*/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(line)) !== null) {
-    if (m.index > last) runs.push({ text: line.slice(last, m.index), bold: false });
-    runs.push({ text: m[1], bold: true });
-    last = m.index + m[0].length;
-  }
-  if (last < line.length) runs.push({ text: line.slice(last), bold: false });
-  if (runs.length === 0) runs.push({ text: line, bold: false });
-  return runs;
-}
-
 /* ── Detect line type ──────────────────────────────────── */
 
 type LineType =
-  | { kind: "bullet"; indent: number; text: string }
-  | { kind: "numbered"; indent: number; num: string; text: string }
+  | { kind: "bullet"; text: string }
+  | { kind: "numbered"; num: string; text: string }
   | { kind: "sourcesFooter" }
   | { kind: "text"; text: string };
 
 function classifyLine(raw: string): LineType {
-  // "Источники: [1], [2]..." footer line — skip in PDF
   if (/^\s*Источники?\s*:\s*\[/.test(raw)) return { kind: "sourcesFooter" };
-
-  const bulletMatch = raw.match(/^(\s*)[-*]\s+(.*)/);
-  if (bulletMatch) return { kind: "bullet", indent: bulletMatch[1].length, text: bulletMatch[2] };
-
-  const numMatch = raw.match(/^(\s*)(\d+)\.\s+(.*)/);
-  if (numMatch) return { kind: "numbered", indent: numMatch[1].length, num: numMatch[2], text: numMatch[3] };
-
+  const bulletMatch = raw.match(/^\s*[-*]\s+(.*)/);
+  if (bulletMatch) return { kind: "bullet", text: bulletMatch[1] };
+  const numMatch = raw.match(/^\s*(\d+)\.\s+(.*)/);
+  if (numMatch) return { kind: "numbered", num: numMatch[1], text: numMatch[2] };
   return { kind: "text", text: raw };
 }
 
@@ -202,21 +212,27 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         }
       };
 
-      /* ── Draw a single line with mixed bold/normal runs ── */
-      const drawRichLine = (runs: TextRun[], x: number, yPos: number, maxW: number) => {
-        let cx = x;
-        for (const run of runs) {
-          doc.setFont("Roboto", run.bold ? "bold" : "normal");
-          const w = doc.getTextWidth(run.text);
-          if (cx + w > x + maxW) {
-            // simple word-wrap fallback: just draw what fits
-            doc.text(run.text, cx, yPos, { maxWidth: x + maxW - cx });
-          } else {
-            doc.text(run.text, cx, yPos);
+      /* ── Word-by-word rich text rendering ──────────────── */
+      const drawRichParagraph = (tokens: WordToken[], startX: number, maxW: number) => {
+        let cx = startX;
+        const rightEdge = startX + maxW;
+
+        for (const token of tokens) {
+          doc.setFont("Roboto", token.bold ? "bold" : "normal");
+          const w = doc.getTextWidth(token.text);
+
+          // If this word exceeds the line, wrap
+          if (cx + w > rightEdge && cx > startX) {
+            y += LINE_H;
+            ensureSpace(LINE_H);
+            cx = startX;
           }
+
+          doc.text(token.text, cx, y);
           cx += w;
         }
         doc.setFont("Roboto", "normal");
+        y += LINE_H;
       };
 
       /* ── Render text lines with bold/lists support ─────── */
@@ -230,29 +246,33 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
           if (info.kind === "bullet" || info.kind === "numbered") {
             const prefix = info.kind === "bullet" ? "•  " : `${(info as any).num}.  `;
-            const bodyText = info.text;
-            const runs = parseInlineRuns(bodyText);
+            const bodyTokens = tokenizeToWords(info.text);
             const indentX = MARGIN + BULLET_INDENT;
             const lineMaxW = contentW - BULLET_INDENT;
 
-            // Calculate wrapped lines needed
-            const fullText = prefix + runs.map(r => r.text).join("");
-            const wrapped = doc.splitTextToSize(fullText, lineMaxW);
-            ensureSpace(wrapped.length * LINE_H);
-
+            ensureSpace(LINE_H);
             doc.setFontSize(9);
             doc.setFont("Roboto", "normal");
+            doc.text(prefix, indentX, y);
+            const prefixW = doc.getTextWidth(prefix);
 
-            for (let li = 0; li < wrapped.length; li++) {
-              if (li === 0) {
-                doc.text(prefix, indentX, y);
-                const prefixW = doc.getTextWidth(prefix);
-                drawRichLine(runs, indentX + prefixW, y, lineMaxW - prefixW);
-              } else {
-                doc.text(wrapped[li], indentX, y);
+            // Draw body tokens word-by-word starting after prefix
+            let cx = indentX + prefixW;
+            const rightEdge = indentX + lineMaxW;
+
+            for (const token of bodyTokens) {
+              doc.setFont("Roboto", token.bold ? "bold" : "normal");
+              const w = doc.getTextWidth(token.text);
+              if (cx + w > rightEdge && cx > indentX + prefixW) {
+                y += LINE_H;
+                ensureSpace(LINE_H);
+                cx = indentX;
               }
-              y += LINE_H;
+              doc.text(token.text, cx, y);
+              cx += w;
             }
+            doc.setFont("Roboto", "normal");
+            y += LINE_H;
             continue;
           }
 
@@ -261,23 +281,10 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           if (!trimmed) { y += PARA_GAP; continue; }
 
           doc.setFontSize(9);
+          ensureSpace(LINE_H);
 
-          // Check if line has bold segments
-          const runs = parseInlineRuns(trimmed);
-          const plainText = runs.map(r => r.text).join("");
-          const wrapped = doc.splitTextToSize(plainText, contentW);
-
-          for (const wLine of wrapped) {
-            ensureSpace(LINE_H);
-            if (runs.length === 1 && !runs[0].bold) {
-              doc.setFont("Roboto", "normal");
-              doc.text(wLine, MARGIN, y);
-            } else {
-              // For the first wrapped line, use rich rendering
-              drawRichLine(runs, MARGIN, y, contentW);
-            }
-            y += LINE_H;
-          }
+          const tokens = tokenizeToWords(trimmed);
+          drawRichParagraph(tokens, MARGIN, contentW);
         }
         y += PARA_GAP;
       };
@@ -297,7 +304,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       doc.setTextColor(0, 0, 0);
       y += 4;
 
-      // Divider line
       doc.setDrawColor(...HSE_BLUE);
       doc.setLineWidth(0.5);
       doc.line(MARGIN, y, pageW - MARGIN, y);
@@ -310,7 +316,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
 
         ensureSpace(18);
 
-        // Section header with colored left bar
         doc.setFillColor(...HSE_BLUE);
         doc.rect(MARGIN, y - 4, 2, 7, "F");
 
@@ -326,10 +331,13 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         for (const seg of segments) {
           if (seg.type === "table") {
             ensureSpace(20);
+            // Apply preprocessText to table data
+            const cleanHeaders = seg.headers.map(h => preprocessText(h));
+            const cleanRows = seg.rows.map(r => r.map(c => preprocessText(c)));
             autoTable(doc, {
               startY: y,
-              head: [seg.headers],
-              body: seg.rows,
+              head: [cleanHeaders],
+              body: cleanRows,
               margin: { left: MARGIN, right: MARGIN },
               styles: { fontSize: 8, cellPadding: 2, font: "Roboto" },
               headStyles: { fillColor: HSE_BLUE, textColor: 255, fontStyle: "bold" },
@@ -341,7 +349,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           }
         }
 
-        // Section divider
         doc.setDrawColor(220, 220, 220);
         doc.setLineWidth(0.2);
         doc.line(MARGIN, y, pageW - MARGIN, y);
@@ -366,7 +373,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         for (const ref of references) {
           ensureSpace(6);
 
-          // Reference title
           doc.setFont("Roboto", "bold");
           const prefix = `[${ref.number}]  `;
           doc.text(prefix, MARGIN, y);
@@ -376,16 +382,11 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           const titleText = ref.text || "";
           const titleLines = doc.splitTextToSize(titleText, contentW - prefixW);
           for (let i = 0; i < titleLines.length; i++) {
-            if (i === 0) {
-              doc.text(titleLines[i], MARGIN + prefixW, y);
-            } else {
-              ensureSpace(3.8);
-              doc.text(titleLines[i], MARGIN + prefixW, y);
-            }
+            if (i > 0) ensureSpace(3.8);
+            doc.text(titleLines[i], MARGIN + prefixW, y);
             y += 3.8;
           }
 
-          // URL
           if (ref.url) {
             ensureSpace(4);
             doc.setTextColor(...HSE_BLUE);
@@ -402,7 +403,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             doc.setFontSize(8);
           }
 
-          // Quotes
           if (ref.quotes && ref.quotes.length > 0) {
             doc.setFontSize(7);
             doc.setTextColor(100, 100, 100);
@@ -439,7 +439,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
 
-        // Header: company name + line
         doc.setFontSize(7);
         doc.setFont("Roboto", "normal");
         doc.setTextColor(150, 150, 150);
@@ -449,7 +448,6 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         doc.setLineWidth(0.2);
         doc.line(MARGIN, MARGIN + HEADER_H - 2, pageW - MARGIN, MARGIN + HEADER_H - 2);
 
-        // Footer: page number + line
         const footerY = pageH - MARGIN;
         doc.line(MARGIN, footerY - 4, pageW - MARGIN, footerY - 4);
         doc.setTextColor(150, 150, 150);
