@@ -39,7 +39,7 @@ export function MarkdownWysiwyg({ value, onChange, className = "", minHeight = "
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      const md = editor.storage.markdown.getMarkdown();
+      const md = (editor.storage as any).markdown.getMarkdown();
       onChange(md);
     },
     editorProps: {
@@ -53,7 +53,7 @@ export function MarkdownWysiwyg({ value, onChange, className = "", minHeight = "
   // Sync external value changes (e.g. AI regeneration)
   useEffect(() => {
     if (!editor) return;
-    const currentMd = editor.storage.markdown.getMarkdown();
+    const currentMd = (editor.storage as any).markdown.getMarkdown();
     if (value !== currentMd) {
       editor.commands.setContent(value);
     }
