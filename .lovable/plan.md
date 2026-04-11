@@ -1,31 +1,66 @@
 
+Нужно исправить не одну, а две связанные проблемы на экране гипотез.
 
-# Исправление ошибки check constraint при создании гипотезы
+## Что я нашёл
 
-## Проблема
+1. Ошибка с `confidence_level` уже не связана с пустой строкой в форме:
+   - в `src/pages/HypothesisDetail.tsx` пустые значения уже переводятся в `null`
+   - значит текущий сбой вызван несовпадением значений UI и ограничений БД
 
-При создании гипотезы без выбора «Уровень уверенности» отправляется пустая строка `""` вместо `null`. БД имеет check constraint `collaboration_hypotheses_confidence_level_check`, который допускает только конкретные значения (`low`, `medium`, `high`) или `null`.
+2. Есть реальное расхождение UI ↔ БД для гипотез:
+   - в БД `confidence_level` разрешает только `A / B / C`
+   - в UI сейчас отправляются `low / medium / high`
+   - в БД `hypothesis_status` разрешает `new / in_progress / confirmed / rejected / moved_to_initiative / moved_to_project`
+   - в UI сейчас используется `testing`, которого в ограничении БД нет
+   - в БД `relevance_score` ограничен диапазоном `0–5`
+   - в UI сейчас показано `0–10`
 
-## Решение
+3. В консоли есть отдельное предупреждение React:
+   - `Function components cannot be given refs`
+   - источник, вероятнее всего, не сам `Select`, а один из компонентов рядом в `HypothesisDetail`; это нужно локально поправить после основной фиксации формы
 
-В `src/pages/HypothesisDetail.tsx`, строка ~57-62 — при формировании `payload` конвертировать все необязательные строковые поля из `""` в `null`:
+## План исправления
 
-```ts
-const payload = {
-  ...form,
-  title: form.title || null,
-  partner_id: form.partner_id || null,
-  need_id: form.need_id || null,
-  unit_id: form.unit_id || null,
-  competency_id: form.competency_id || null,
-  confidence_level: form.confidence_level || null,
-  relevance_score: form.relevance_score ? Number(form.relevance_score) : null,
-  recommended_collaboration_format: form.recommended_collaboration_format || null,
-  recommended_entry_point: form.recommended_entry_point || null,
-  rationale: form.rationale || null,
-  notes: form.notes || null,
-};
+1. Привести форму гипотезы к фактической схеме БД в `src/pages/HypothesisDetail.tsx`:
+   - заменить значения уверенности на `A / B / C` с русскими подписями
+   - заменить `testing` на допустимый статус (`in_progress`) с подписью «В работе»
+   - скорректировать поле релевантности с `0–10` на `0–5`
+
+2. Синхронизировать словари и списки отображения:
+   - обновить `src/lib/labels.ts` для статусов гипотез
+   - при необходимости добавить человекочитаемые подписи для `A / B / C`, чтобы в таблицах не показывались “сырые” значения без расшифровки
+
+3. Проверить места, где гипотезы отображаются списком:
+   - `src/pages/Hypotheses.tsx`
+   - `src/pages/PartnerDetail.tsx`
+   Чтобы после правки статусов и уверенности там были корректные подписи
+
+4. Убрать React warning с ref:
+   - проверить JSX в `HypothesisDetail` вокруг `Select`, `ConfirmDialog`, `CardHeader/CardTitle`
+   - исправить компонент-источник, если где-то в дерево попадает function component без `forwardRef`
+
+## Ожидаемый результат
+
+После правки:
+- новая гипотеза будет сохраняться без ошибки check constraint
+- значения формы будут соответствовать реальным ограничениям БД
+- список гипотез и карточки организаций будут показывать корректные подписи
+- предупреждение React в консоли исчезнет или будет локализовано и устранено
+
+## Технические детали
+
+Ключевая причина не в `null`, а в несовместимых enum-like значениях между фронтендом и SQL schema.
+
+Сейчас конфликт такой:
+```text
+UI confidence_level: low | medium | high
+DB confidence_level: A | B | C
+
+UI hypothesis_status: new | testing | confirmed | rejected
+DB hypothesis_status: new | in_progress | confirmed | rejected | moved_to_initiative | moved_to_project
+
+UI relevance_score: 0..10
+DB relevance_score: 0..5
 ```
 
-Одна правка в одном файле — все пустые строки превращаются в `null` перед отправкой в БД.
-
+Править лучше фронтенд, а не БД, потому что схема уже типизирована и используется в других местах приложения.
