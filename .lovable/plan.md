@@ -1,45 +1,43 @@
 
 
-# Исправления профайла: 5 пунктов
+# Улучшение отображения таблиц в профайле
 
-## Проблемы
+## Проблема
 
-1. **Имя файла**: `_profail.pdf` → должно быть `_profile.pdf`
-2. **Гипотезы в содержании**: системный промт всё ещё упоминает `collaboration_opportunities` (строка 39 edge function) — LLM может генерировать контент про возможности сотрудничества. Нужно убрать
-3. **Ссылки в PDF не кликабельны**: `jsPDF` рендерит URL как текст, нужно добавить `doc.textWithLink()` или `doc.link()` для URL в источниках
-4. **Синий цвет при генерации профайла AI**: сейчас `aiFilledFields` подсветка есть только на странице основной информации партнёра (`PartnerDetail.tsx`). При AI-генерации профайла в `PartnerProfileTab.tsx` нет синей подсветки textarea-полей — нужно добавить
-5. **Ссылки на предпросмотре (в UI)**: ссылки `[1]`, `[2]` в тексте секций не ведут к блоку «Источники» — нужно добавить scroll-to-anchor
+Markdown-таблицы рендерятся через `react-markdown` + `remarkGfm` внутри `prose prose-sm`, но не имеют стилей для границ, padding и ширины — выглядят как сплошной текст без визуального разделения ячеек.
 
-## Что будет сделано
+## Решение
 
-### 1. Имя файла PDF
-**`src/components/partner/ProfilePdfExport.tsx`** строка 215:
-- `_profail.pdf` → `_profile.pdf`
+Добавить кастомные компоненты `table`, `th`, `td` в `ReactMarkdown.components` в `PartnerProfileTab.tsx`, а также аналогичные стили для PDF-экспорта (там уже используется `jspdf-autotable`, так что PDF в порядке).
 
-### 2. Убрать упоминание collaboration_opportunities из промта
-**`supabase/functions/generate-partner-profile/index.ts`** строка 39:
-- Удалить строку `- Для collaboration_opportunities — обосновывай каждый формат конкретными фактами о компании`
+### Что будет сделано
 
-### 3. Кликабельные ссылки в PDF
-**`src/components/partner/ProfilePdfExport.tsx`**:
-- В блоке «Источники» использовать `doc.textWithLink()` для URL — ссылки станут кликабельными в PDF-файле
+**`src/components/partner/PartnerProfileTab.tsx`** — добавить в `components` prop `ReactMarkdown`:
 
-### 4. Синий цвет при AI-генерации профайла
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Добавить `aiGeneratedSections` state (`Set<string>`)
-- В `generateProfile.onSuccess`: заполнить set ключами секций, которые AI заполнил
-- В режиме редактирования: textarea с ключом из set получает `text-blue-600`
-- При `saveDraft.onSuccess`: сбросить set
+```tsx
+table: ({ children }) => (
+  <div className="overflow-x-auto my-2">
+    <table className="w-full text-sm border-collapse border border-border rounded">
+      {children}
+    </table>
+  </div>
+),
+thead: ({ children }) => (
+  <thead className="bg-muted/50">{children}</thead>
+),
+th: ({ children }) => (
+  <th className="border border-border px-3 py-2 text-left font-medium text-xs">{children}</th>
+),
+td: ({ children }) => (
+  <td className="border border-border px-3 py-2 text-xs">{children}</td>
+),
+```
 
-### 5. Ссылки [N] в предпросмотре ведут к блоку источников
-**`src/components/partner/PartnerProfileTab.tsx`**:
-- Добавить кастомный рендерер для `ReactMarkdown` — ссылки вида `[N]` становятся якорями, кликающими к `#references`
+Таблицы получат чёткие границы, фон заголовков, горизонтальный скролл на узких экранах.
 
-## Файлы
+### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/partner/ProfilePdfExport.tsx` | Имя файла, кликабельные ссылки |
-| `src/components/partner/PartnerProfileTab.tsx` | Синий цвет AI-полей, якоря [N] |
-| `supabase/functions/generate-partner-profile/index.ts` | Убрать collaboration_opportunities из промта |
+| `src/components/partner/PartnerProfileTab.tsx` | Добавить table/th/td компоненты в ReactMarkdown |
 
