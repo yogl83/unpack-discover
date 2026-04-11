@@ -356,7 +356,6 @@ function parseAIResponse(aiData: any): Record<string, string> | null {
 
 function buildReferencesFromSources(sources: NumberedSource[]): any[] {
   return sources
-    .filter(s => s.type !== "card") // don't list internal card as a URL reference
     .map(s => ({
       number: s.number,
       text: s.title,
