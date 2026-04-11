@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,8 +82,59 @@ interface Props {
   legacyProfile?: { company_profile?: string; technology_profile?: string; strategic_priorities?: string };
 }
 
+// Citation popover for [N] references
+function CitationPopover({ num, references }: { num: string; references: ReferenceItem[] }) {
+  const refNum = parseInt(num, 10);
+  const ref = references.find(r => r.number === refNum);
+  const hasQuotes = ref?.quotes && ref.quotes.length > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="text-primary hover:underline text-xs align-super cursor-pointer font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {num}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-80 p-3 text-xs" align="start">
+        {ref ? (
+          <div className="space-y-2">
+            <div className="flex items-start gap-1.5">
+              <ExternalLink className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium">{ref.text}</p>
+                {ref.url && (
+                  <a href={ref.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                    {ref.url.length > 60 ? ref.url.slice(0, 60) + "…" : ref.url}
+                  </a>
+                )}
+              </div>
+            </div>
+            {hasQuotes ? (
+              <div className="border-t pt-2 space-y-1.5">
+                {ref.quotes!.map((q, i) => (
+                  <div key={i} className="bg-muted/50 rounded p-1.5">
+                    <p className="text-muted-foreground italic">«{q.source_quote}»</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">→ {q.fact_text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground italic border-t pt-2">Прямая цитата не найдена</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">Источник [{num}] не найден</p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // Shared markdown components for both view and edit preview
-const makeMarkdownComponents = () => ({
+const makeMarkdownComponents = (references: ReferenceItem[]) => ({
   a: ({ href, children, ...props }: any) => (
     <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props}>{children}</a>
   ),
@@ -103,16 +154,7 @@ const makeMarkdownComponents = () => ({
                     {nums.map((num: string, ni: number) => (
                       <span key={ni}>
                         {ni > 0 && ", "}
-                        <a
-                          href="#references"
-                          className="text-primary hover:underline text-xs align-super cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            document.getElementById("references")?.scrollIntoView({ behavior: "smooth" });
-                          }}
-                        >
-                          {num}
-                        </a>
+                        <CitationPopover num={num} references={references} />
                       </span>
                     ))}
                     ]
@@ -142,8 +184,6 @@ const makeMarkdownComponents = () => ({
     <td className="border border-border px-3 py-2 text-xs">{children}</td>
   ),
 });
-
-const markdownComponents = makeMarkdownComponents();
 
 function VerificationBadge({ verification }: { verification?: SectionVerification }) {
   if (!verification) return null;
