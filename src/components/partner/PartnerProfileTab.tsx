@@ -326,10 +326,13 @@ function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; 
   return (
     <div className={`border rounded-lg p-4 space-y-3 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
       <h3 className="text-sm font-semibold">Источники</h3>
-      <ol className="list-decimal list-inside space-y-3 text-sm">
-        {references.map((ref, i) => (
+      <ul className="space-y-3 text-sm">
+        {references.map((ref, i) => {
+          const displayNum = ref.number ?? (i + 1);
+          return (
           <li key={i} className="text-muted-foreground">
             <div className="inline">
+              <span className="font-medium text-foreground mr-1">[{displayNum}]</span>
               {ref.url ? (
                 <a
                   href={ref.url}
@@ -355,8 +358,9 @@ function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; 
               </div>
             )}
           </li>
-        ))}
-      </ol>
+          );
+        })}
+      </ul>
     </div>
   );
 }
