@@ -1,20 +1,34 @@
 
 
-# Замена `confirm()` на красивый диалог
+## Добавление русских подписей для типов коллективов
 
-## Проблема
+### Проблема
+В таблице списка коллективов (`/units`) поле `unit_type` отображается как есть из БД — например, "department" вместо "Департамент".
 
-Браузерный `confirm()` показывает уродливый URL preview-сервера в заголовке. В проекте уже есть компонент `ConfirmDialog` на базе `AlertDialog`.
+### Решение
 
-## Решение
+**1. Добавить маппинг в `src/lib/labels.ts`**
+Добавить `unitTypeLabels` на основе значений из `UnitDetail.tsx`:
 
-Заменить все вызовы `confirm()` на `ConfirmDialog` в трёх местах:
+```ts
+export const unitTypeLabels: Record<string, string> = {
+  lab: "Лаборатория",
+  project_group: "Проектная группа",
+  center: "Центр",
+  department: "Департамент",
+};
+```
 
-1. **`src/components/AdminUsers.tsx`** — строка 184: кнопка удаления пользователя (`confirm("Удалить пользователя?")`) → `ConfirmDialog` с `variant="destructive"`, `triggerSize="icon"`, иконка `Trash2`
+**2. Использовать в `src/pages/Units.tsx`**
+Импортировать `unitTypeLabels` и применить к отображению:
 
-2. **`src/components/AdminUsers.tsx`** — строка 215: кнопка «Отклонить» в `PendingRow` (`confirm("Отклонить заявку...")`) → `ConfirmDialog` с кастомным trigger (кнопка «Отклонить» с иконкой `XCircle`), `description="Отклонить заявку и удалить пользователя?"`
+```tsx
+import { unitTypeLabels } from "@/lib/labels";
+// ...
+<TableCell>{unitTypeLabels[u.unit_type] || u.unit_type || "—"}</TableCell>
+```
 
-3. **`src/components/partner/ProfileFileUpload.tsx`** — строка 89: удаление файла (`confirm(Удалить файл...)`) → `ConfirmDialog` с описанием, включающим имя файла
-
-Все три замены используют уже существующий `ConfirmDialog` — новых компонентов не нужно. Для «Отклонить» немного расширим пропсы `ConfirmDialog`: добавим `actionLabel` для текста кнопки подтверждения (вместо захардкоженного «Удалить»).
+**Файлы для изменения:**
+- `src/lib/labels.ts` — добавить маппинг
+- `src/pages/Units.tsx` — использовать маппинг при отображении типа
 
