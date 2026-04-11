@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,7 +29,7 @@ const SECTIONS = [
   { key: "key_events_and_touchpoints", label: "Ключевые мероприятия" },
 ] as const;
 
-type SectionKey = typeof SECTIONS[number]["key"];
+
 
 const statusLabels: Record<string, string> = {
   draft: "Черновик", review: "На рассмотрении", approved: "Утверждён", archived: "Архив",
