@@ -60,6 +60,13 @@ interface VerificationSummary {
   confirmed: number;
   unconfirmed: number;
   contradicted: number;
+  repair_applied?: boolean;
+  repair_stats?: {
+    original_unconfirmed: number;
+    original_contradicted: number;
+    fixed_unconfirmed: number;
+    fixed_contradicted: number;
+  };
 }
 
 interface Props {
@@ -229,20 +236,38 @@ function VerificationSummaryBanner({ summary, sourcesCount }: { summary: Verific
   if (total === 0) return null;
 
   const pct = Math.round((summary.confirmed / total) * 100);
+  const allConfirmed = summary.unconfirmed === 0 && summary.contradicted === 0;
+  const hasRepair = summary.repair_applied && summary.repair_stats;
+  const repairStats = summary.repair_stats;
+
+  // Build repair history text
+  const repairText = hasRepair && repairStats ? (() => {
+    const parts: string[] = [];
+    if (repairStats.fixed_unconfirmed > 0) parts.push(`${repairStats.fixed_unconfirmed} неподтв.`);
+    if (repairStats.fixed_contradicted > 0) parts.push(`${repairStats.fixed_contradicted} противореч.`);
+    return parts.length > 0 ? `Исправлено: ${parts.join(", ")}` : null;
+  })() : null;
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 text-sm">
-      <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+    <div className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${allConfirmed ? "bg-green-50 border-green-200" : "bg-muted/30"}`}>
+      <ShieldCheck className={`h-5 w-5 shrink-0 ${allConfirmed ? "text-green-600" : "text-primary"}`} />
       <div className="flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium">Факт-чекинг:</span>
-          <span className="text-green-700">✅ {summary.confirmed}</span>
-          {summary.unconfirmed > 0 && <span className="text-yellow-700">⚠️ {summary.unconfirmed}</span>}
-          {summary.contradicted > 0 && <span className="text-destructive">❌ {summary.contradicted}</span>}
-          <span className="text-muted-foreground">({pct}% подтверждено)</span>
+          {allConfirmed ? (
+            <span className="font-medium text-green-700">✅ Все факты подтверждены ({summary.confirmed}/{total})</span>
+          ) : (
+            <>
+              <span className="font-medium">Факт-чекинг:</span>
+              <span className="text-green-700">✅ {summary.confirmed}</span>
+              {summary.unconfirmed > 0 && <span className="text-yellow-700">⚠️ {summary.unconfirmed}</span>}
+              {summary.contradicted > 0 && <span className="text-destructive">❌ {summary.contradicted}</span>}
+              <span className="text-muted-foreground">({pct}% подтверждено)</span>
+            </>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           Проверено по {sourcesCount} источникам (сайт, веб-поиск, загруженные файлы)
+          {repairText && <span className="ml-1">· {repairText}</span>}
         </p>
       </div>
     </div>
@@ -287,6 +312,7 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [aiGeneratedSections, setAiGeneratedSections] = useState<Set<string>>(new Set());
   const [verificationData, setVerificationData] = useState<SectionVerification[]>([]);
+  const [verificationSummaryOverride, setVerificationSummaryOverride] = useState<VerificationSummary | null>(null);
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
 
@@ -545,6 +571,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         });
       }
 
+      // Update summary override with repair metadata from backend
+      if (data.verification_summary) {
+        setVerificationSummaryOverride(data.verification_summary);
+      }
+
       if (data.references) {
         invalidateAll();
       }
@@ -604,9 +635,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   // Verification from stored profile or live data
   const storedVerification = getStoredVerification(editing ? draftProfile : displayProfile);
   const activeVerification = verificationData.length > 0 ? verificationData : storedVerification.verification;
-  const activeSummary = verificationData.length > 0
-    ? { confirmed: verificationData.reduce((s, v) => s + v.confirmed, 0), unconfirmed: verificationData.reduce((s, v) => s + v.unconfirmed, 0), contradicted: verificationData.reduce((s, v) => s + v.contradicted, 0) }
-    : storedVerification.summary;
+  const activeSummary: VerificationSummary | null = verificationSummaryOverride
+    ? verificationSummaryOverride
+    : verificationData.length > 0
+      ? { confirmed: verificationData.reduce((s, v) => s + v.confirmed, 0), unconfirmed: verificationData.reduce((s, v) => s + v.unconfirmed, 0), contradicted: verificationData.reduce((s, v) => s + v.contradicted, 0) }
+      : storedVerification.summary;
   const sourcesCount = storedVerification.sourcesCount;
 
   const getVerificationForSection = (key: string): SectionVerification | undefined => {

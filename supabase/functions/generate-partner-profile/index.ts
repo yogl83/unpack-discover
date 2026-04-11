@@ -603,6 +603,9 @@ Deno.serve(async (req) => {
       const sv = sectionVerification.find(v => v.section_key === section_key);
       const badFacts = sv ? sv.unconfirmed + sv.contradicted : 0;
 
+      // Track original counts before repair
+      const originalCounts = sv ? { confirmed: sv.confirmed, unconfirmed: sv.unconfirmed, contradicted: sv.contradicted } : null;
+
       // ============ REPAIR PASS if issues remain ============
       if (badFacts > 0 && sv) {
         console.log(`Repair pass needed: ${sv.unconfirmed} unconfirmed, ${sv.contradicted} contradicted`);
@@ -643,6 +646,15 @@ ${repairIssues}
       // Get final verification for this section
       const finalSV = sectionVerification.find(v => v.section_key === section_key) || { section_key, facts: [], confirmed: 0, unconfirmed: 0, contradicted: 0 };
 
+      // Determine if repair was applied and what changed
+      const repairApplied = badFacts > 0;
+      const repairStats = repairApplied && originalCounts ? {
+        original_unconfirmed: originalCounts.unconfirmed,
+        original_contradicted: originalCounts.contradicted,
+        fixed_unconfirmed: originalCounts.unconfirmed - finalSV.unconfirmed,
+        fixed_contradicted: originalCounts.contradicted - finalSV.contradicted,
+      } : null;
+
       // ============ UPDATE DB: section + verification ============
       // Load existing generated_from_sources_json to merge verification
       const { data: existingProfile } = await supabase
@@ -662,12 +674,18 @@ ${repairIssues}
       const updatedVerification = existingVerification.filter(v => v.section_key !== section_key);
       updatedVerification.push(finalSV);
 
-      // Recalculate summary
-      const newSummary = {
+      // Recalculate summary with final (post-repair) counts
+      const newSummary: any = {
         confirmed: updatedVerification.reduce((s, v) => s + v.confirmed, 0),
         unconfirmed: updatedVerification.reduce((s, v) => s + v.unconfirmed, 0),
         contradicted: updatedVerification.reduce((s, v) => s + v.contradicted, 0),
       };
+
+      // Add repair metadata to summary
+      if (repairApplied && repairStats) {
+        newSummary.repair_applied = true;
+        newSummary.repair_stats = repairStats;
+      }
 
       sourcesJson.verification = updatedVerification;
       sourcesJson.verification_summary = newSummary;
