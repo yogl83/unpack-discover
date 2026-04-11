@@ -1,43 +1,47 @@
 
 
-# Улучшения интерфейса профайла партнёра
+# Синхронизация настроек AI + экспорт профайла в PDF
 
-## Что видно на скриншоте
+## Проблемы сейчас
 
-1. **Все секции открыты одновременно** — длинная простыня текста, сложно ориентироваться
-2. **Нет визуального разделения** между фактическими секциями и аналитическими/гипотетическими (риски, рекомендуемые шаги — выделены оранжевым пользователем)
-3. **Режим редактирования** — plain textarea без форматирования, трудно читать markdown-таблицы и нумерованные списки
-4. **Ссылки на источники** `[1]`, `[2]` — не кликабельны, нет блока «Источники» внизу
-5. **Секции «Риски и ограничения» и «Рекомендуемые шаги»** — содержат гипотезы/домыслы, а не факты (ранее обсуждали их удаление)
+1. **AdminAISettings** содержит 13 секций по умолчанию (включая 5 удалённых: `talent_needs`, `collaboration_opportunities`, `current_relationship_with_miem`, `risks_and_constraints`, `recommended_next_steps`)
+2. Системный промт по умолчанию ссылается на `collaboration_opportunities` — удалённую секцию
+3. Edge function `generate-partner-profile` в user prompt говорит «Заполни все 13 секций» вместо 8
+4. Нет экспорта профайла в PDF
 
-## Предлагаемые улучшения
+## Что будет сделано
 
-### 1. Убрать гипотетические секции из профайла
-Удалить из `SECTIONS`: `collaboration_opportunities`, `talent_needs`, `current_relationship_with_miem`, `risks_and_constraints`, `recommended_next_steps` — эта информация относится к гипотезам и следующим шагам, для которых есть отдельные вкладки.
+### 1. Синхронизация AdminAISettings с актуальной схемой
 
-### 2. Рендеринг markdown вместо plain text
-В режиме просмотра рендерить контент через `react-markdown` — таблицы, списки и жирный текст будут отображаться корректно. Установить пакет `react-markdown`.
+**`src/components/AdminAISettings.tsx`**:
+- Убрать 5 удалённых секций из `DEFAULT_SECTIONS` (оставить 8)
+- Убрать упоминание `collaboration_opportunities` из `DEFAULT_SYSTEM_PROMPT`
 
-### 3. Кликабельные ссылки на источники
-Если в `references_json` есть данные — отображать блок «Источники» внизу профайла с нумерованным списком. Ссылки `[1]` в тексте станут якорями к этому блоку.
+### 2. Исправить user prompt в edge function
 
-### 4. Секции по умолчанию свёрнуты (кроме «Краткое описание»)
-Изменить `defaultValue` аккордеона: открывать только `summary_short`, остальные свёрнуты. Так профайл не будет простынёй.
+**`supabase/functions/generate-partner-profile/index.ts`**:
+- Строка 220: заменить «13 секций» на динамическое `${sections.length} секций`
 
-### 5. Компактный режим просмотра
-Убрать Card-обёртку в режиме редактирования — она добавляет лишний padding. Сделать секции визуально компактнее.
+### 3. Экспорт профайла в PDF
+
+**Новый файл `src/components/partner/ProfilePdfExport.tsx`**:
+- Кнопка «Скачать PDF» в шапке профайла (рядом с «История»)
+- Генерирует PDF на клиенте через `jspdf` + `jspdf-autotable`
+- Содержит: название партнёра, дату, все заполненные секции, источники
+- Markdown-таблицы конвертируются в PDF-таблицы
+- Русский текст через встроенный Unicode-шрифт
+
+**`package.json`**: добавить `jspdf`, `jspdf-autotable`
+
+**`src/components/partner/PartnerProfileTab.tsx`**: добавить кнопку PDF-экспорта
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/partner/PartnerProfileTab.tsx` | Убрать 5 секций, свернуть аккордеон, добавить markdown-рендеринг, блок источников |
-| `supabase/functions/generate-partner-profile/index.ts` | Убрать генерацию удалённых секций |
-| `package.json` | Добавить `react-markdown` |
-
-## Технические детали
-
-- Пакет: `react-markdown` + `remark-gfm` (для таблиц)
-- Секции после чистки (8 шт): `summary_short`, `company_overview`, `business_scale`, `technology_focus`, `strategic_priorities`, `relationship_with_other_universities`, `recent_news_and_plans`, `key_events_and_touchpoints`
-- Блок источников: парсит `references_json` из профайла, рендерит как нумерованный список с гиперссылками
+| `src/components/AdminAISettings.tsx` | Убрать 5 секций из DEFAULT_SECTIONS, обновить промт |
+| `supabase/functions/generate-partner-profile/index.ts` | Динамическое число секций в промте |
+| `src/components/partner/ProfilePdfExport.tsx` | Новый компонент экспорта |
+| `src/components/partner/PartnerProfileTab.tsx` | Кнопка PDF |
+| `package.json` | jspdf, jspdf-autotable |
 
