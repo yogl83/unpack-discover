@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
-import { needStatusLabels, priorityLabels } from "@/lib/labels";
+import { needStatusLabels, priorityLabels, needTypeLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -57,7 +57,7 @@ export default function Needs() {
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead>
+                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Тип</TableHead>
                 <TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Приоритет</TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -65,7 +65,7 @@ export default function Needs() {
                   <TableRow key={n.need_id}>
                     <TableCell><Link to={`/needs/${n.need_id}`} className="font-medium text-primary hover:underline">{n.title}</Link></TableCell>
                     <TableCell className="text-muted-foreground">{(n.partners as any)?.partner_name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{n.need_type || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{needTypeLabels[n.need_type || ""] || n.need_type || "—"}</TableCell>
                     <TableCell><Badge variant="secondary">{needStatusLabels[n.need_status || ""] || n.need_status || "—"}</Badge></TableCell>
                     <TableCell className="hidden md:table-cell"><Badge variant="outline">{priorityLabels[n.priority_level || ""] || n.priority_level || "—"}</Badge></TableCell>
                   </TableRow>

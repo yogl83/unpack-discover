@@ -54,6 +54,12 @@ export const memberRoleLabels: Record<string, string> = {
   engineer: "Инженер", pm: "PM", expert: "Эксперт", other: "Другой",
 };
 
+// === Need type ===
+export const needTypeLabels: Record<string, string> = {
+  research: "Исследование", development: "Разработка",
+  consulting: "Консалтинг", education: "Обучение", other: "Другое",
+};
+
 // === Unit type ===
 export const unitTypeLabels: Record<string, string> = {
   lab: "Лаборатория", project_group: "Проектная группа",
