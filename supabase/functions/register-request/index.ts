@@ -63,15 +63,18 @@ Deno.serve(async (req) => {
       .update({ full_name, email })
       .eq("id", userData.user.id);
 
-    // Send "registration received" email
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Send "registration received" email to the applicant
     try {
       const emailRes = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`,
+        `${supabaseUrl}/functions/v1/send-transactional-email`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Authorization": `Bearer ${serviceRoleKey}`,
           },
           body: JSON.stringify({
             templateName: "registration-received",
@@ -86,6 +89,55 @@ Deno.serve(async (req) => {
       }
     } catch (emailErr) {
       console.error("Failed to send registration email", emailErr);
+    }
+
+    // Notify all admins about the new registration request
+    try {
+      const { data: adminRoles } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminRoles && adminRoles.length > 0) {
+        // Fetch admin profiles to get emails
+        const adminIds = adminRoles.map((r: any) => r.user_id);
+        const { data: adminProfiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, email, full_name")
+          .in("id", adminIds);
+
+        if (adminProfiles) {
+          for (const admin of adminProfiles) {
+            if (!admin.email) continue;
+            try {
+              await fetch(
+                `${supabaseUrl}/functions/v1/send-transactional-email`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${serviceRoleKey}`,
+                  },
+                  body: JSON.stringify({
+                    templateName: "new-registration-request",
+                    recipientEmail: admin.email,
+                    idempotencyKey: `new-reg-admin-${userData.user.id}-${admin.id}`,
+                    templateData: {
+                      adminName: admin.full_name,
+                      applicantName: full_name,
+                      applicantEmail: email,
+                    },
+                  }),
+                }
+              );
+            } catch (adminEmailErr) {
+              console.error("Failed to send admin notification", admin.email, adminEmailErr);
+            }
+          }
+        }
+      }
+    } catch (adminNotifyErr) {
+      console.error("Failed to notify admins", adminNotifyErr);
     }
 
     return new Response(JSON.stringify({ success: true }), {
