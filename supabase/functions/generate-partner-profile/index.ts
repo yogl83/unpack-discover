@@ -361,7 +361,34 @@ function buildReferencesFromSources(sources: NumberedSource[]): any[] {
       number: s.number,
       text: s.title,
       url: s.url || null,
+      quotes: [],
     }));
+}
+
+/** Merge AI-returned references (with quotes) into the base references list */
+function mergeReferencesWithQuotes(baseRefs: any[], aiParsed: Record<string, string>): any[] {
+  try {
+    const aiRefsRaw = aiParsed.references;
+    if (!aiRefsRaw) return baseRefs;
+    const aiRefs: any[] = typeof aiRefsRaw === "string" ? JSON.parse(aiRefsRaw) : aiRefsRaw;
+    if (!Array.isArray(aiRefs)) return baseRefs;
+
+    // Build a map of AI quotes by source number
+    const quotesMap = new Map<number, any[]>();
+    for (const r of aiRefs) {
+      if (r.number && Array.isArray(r.quotes) && r.quotes.length > 0) {
+        quotesMap.set(r.number, r.quotes);
+      }
+    }
+
+    // Merge quotes into base refs
+    return baseRefs.map(ref => ({
+      ...ref,
+      quotes: quotesMap.get(ref.number) || ref.quotes || [],
+    }));
+  } catch {
+    return baseRefs;
+  }
 }
 
 async function runFactCheck(
