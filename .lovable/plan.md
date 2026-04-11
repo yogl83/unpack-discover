@@ -1,45 +1,37 @@
 
 
-# WYSIWYG-редактор вместо split-view
+# Исправление промта и кликабельности ссылок в WYSIWYG
 
-## Текущее состояние
+## Проблема 1: «Следы прогноза» в секции мероприятий
 
-Сейчас в edit mode каждая секция показывает два столбца: слева textarea с raw markdown, справа — отрендеренный предпросмотр. Это занимает много места и заставляет работать с сырым markdown.
+Промт для секции `key_events_and_touchpoints` (строка 58) содержит только `"Конференции, хакатоны."` — слишком расплывчато. AI додумывает рекомендации типа «МИЭМ может участвовать» и прогнозы вроде «Дни карьеры проводятся для привлечения выпускников».
 
-## Предложение
+**Решение**: уточнить инструкцию для секции и добавить в системный промт правило запрета прогнозов.
 
-Заменить split-view на WYSIWYG-редактор, где пользователь видит и редактирует уже отформатированный текст — таблицы, ссылки, списки, жирный/курсив — без raw markdown.
+В `DEFAULT_SECTIONS` (строка 58):
+```
+prompt: "Конференции, хакатоны." 
+→ 
+prompt: "Только подтверждённые прошедшие мероприятия с датами и местами. НЕ пиши рекомендации, прогнозы или предложения для МИЭМ."
+```
 
-## Технические варианты
+В `DEFAULT_SYSTEM_PROMPT` (строка 36-37), добавить правило:
+```
+- НЕ ДАВАЙ рекомендаций, прогнозов или предложений по сотрудничеству с МИЭМ — профайл должен содержать только факты о компании
+```
 
-**Tiptap** (рекомендуемый) — headless rich-text editor на ProseMirror. Поддерживает markdown-import/export, таблицы, ссылки. Хорошо интегрируется с React и Tailwind.
+## Проблема 2: Ссылки `[N]` не кликабельны в WYSIWYG
 
-- Импорт: markdown → Tiptap при открытии секции (через `tiptap-markdown` extension)
-- Экспорт: Tiptap → markdown при сохранении (формат БД не меняется)
-- Таблицы, bold, italic, списки, ссылки — всё визуально
+Парсинг `[N]` → кликабельные якоря реализован в `makeMarkdownComponents()` для `ReactMarkdown`. Но в WYSIWYG-редакторе (Tiptap) текст рендерится через ProseMirror, а не ReactMarkdown — поэтому ссылки остаются простым текстом.
 
-## Что будет сделано
+**Решение**: Ссылки `[N]` в режиме WYSIWYG-редактирования сделать кликабельными сложно (потребуется кастомный Tiptap-плагин). Более практичный подход — в **режиме просмотра** (view mode) ссылки уже работают через ReactMarkdown. Нужно убедиться что view mode используется для верификации, а в WYSIWYG добавить подсветку `[N]` через CSS или Tiptap Mark extension чтобы они были визуально заметны.
 
-### Шаг 1: Установить зависимости
-`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-table`, `@tiptap/extension-link`, `tiptap-markdown`
-
-### Шаг 2: Компонент `MarkdownWysiwyg`
-**`src/components/partner/MarkdownWysiwyg.tsx`** — переиспользуемый компонент:
-- Принимает `value` (markdown string), `onChange` (markdown string)
-- Конвертирует md → Tiptap при mount, Tiptap → md при изменениях
-- Toolbar: bold, italic, bullet list, table actions
-- Стилизация: те же `prose prose-sm` + border как в текущем preview
-
-### Шаг 3: Заменить textarea + preview в `PartnerProfileTab.tsx`
-- Вместо `grid-cols-2` с textarea + ReactMarkdown → один `MarkdownWysiwyg`
-- AI-сгенерированные секции подсвечиваются синей рамкой (как сейчас)
-- Accordion, progress, sticky sources — остаются без изменений
+Вариант: добавить кастомный Tiptap `Mark` для паттерна `[N]`, который подсвечивает номера синим цветом — визуально как ссылка, но без навигации (так как в режиме редактирования навигация мешает).
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/partner/MarkdownWysiwyg.tsx` | Новый компонент WYSIWYG на Tiptap |
-| `src/components/partner/PartnerProfileTab.tsx` | Заменить textarea+preview на MarkdownWysiwyg |
-| `package.json` | Добавить tiptap зависимости |
+| `supabase/functions/generate-partner-profile/index.ts` | Убрать прогнозы из промта секции мероприятий, добавить правило в системный промт |
+| `src/components/partner/MarkdownWysiwyg.tsx` | (опционально) Подсветка `[N]` синим в редакторе |
 
