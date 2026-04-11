@@ -18,7 +18,7 @@ import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadg
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-import { allStatusLabels } from "@/lib/labels";
+import { allStatusLabels, confidenceLevelLabels } from "@/lib/labels";
 const statusLabels = allStatusLabels;
 
 export default function PartnerDetail() {
