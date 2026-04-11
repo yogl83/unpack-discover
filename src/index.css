@@ -102,3 +102,22 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
+
+/* Tiptap editor styles */
+.tiptap table {
+  @apply w-full border-collapse text-sm my-2;
+}
+.tiptap table th,
+.tiptap table td {
+  @apply border border-border px-3 py-2 text-left text-xs;
+}
+.tiptap table th {
+  @apply bg-muted/50 font-medium;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground pointer-events-none float-left h-0;
+  content: attr(data-placeholder);
+}
+.tiptap [data-active] {
+  @apply bg-accent;
+}
