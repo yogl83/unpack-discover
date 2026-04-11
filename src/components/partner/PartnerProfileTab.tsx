@@ -571,6 +571,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
         });
       }
 
+      // Update summary override with repair metadata from backend
+      if (data.verification_summary) {
+        setVerificationSummaryOverride(data.verification_summary);
+      }
+
       if (data.references) {
         invalidateAll();
       }
@@ -630,9 +635,11 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
   // Verification from stored profile or live data
   const storedVerification = getStoredVerification(editing ? draftProfile : displayProfile);
   const activeVerification = verificationData.length > 0 ? verificationData : storedVerification.verification;
-  const activeSummary = verificationData.length > 0
-    ? { confirmed: verificationData.reduce((s, v) => s + v.confirmed, 0), unconfirmed: verificationData.reduce((s, v) => s + v.unconfirmed, 0), contradicted: verificationData.reduce((s, v) => s + v.contradicted, 0) }
-    : storedVerification.summary;
+  const activeSummary: VerificationSummary | null = verificationSummaryOverride
+    ? verificationSummaryOverride
+    : verificationData.length > 0
+      ? { confirmed: verificationData.reduce((s, v) => s + v.confirmed, 0), unconfirmed: verificationData.reduce((s, v) => s + v.unconfirmed, 0), contradicted: verificationData.reduce((s, v) => s + v.contradicted, 0) }
+      : storedVerification.summary;
   const sourcesCount = storedVerification.sourcesCount;
 
   const getVerificationForSection = (key: string): SectionVerification | undefined => {
