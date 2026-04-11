@@ -324,23 +324,35 @@ function VerificationSummaryBanner({ summary, sourcesCount }: { summary: Verific
 function ReferencesBlock({ references, sticky }: { references: ReferenceItem[]; sticky?: boolean }) {
   if (references.length === 0) return null;
   return (
-    <div className={`border rounded-lg p-4 space-y-2 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
+    <div className={`border rounded-lg p-4 space-y-3 ${sticky ? "lg:sticky lg:top-4" : ""}`} id="references">
       <h3 className="text-sm font-semibold">Источники</h3>
-      <ol className="list-decimal list-inside space-y-1 text-sm">
+      <ol className="list-decimal list-inside space-y-3 text-sm">
         {references.map((ref, i) => (
           <li key={i} className="text-muted-foreground">
-            {ref.url ? (
-              <a
-                href={ref.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {ref.text || ref.url}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : (
-              <span>{ref.text}</span>
+            <div className="inline">
+              {ref.url ? (
+                <a
+                  href={ref.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {ref.text || ref.url}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <span>{ref.text}</span>
+              )}
+            </div>
+            {ref.quotes && ref.quotes.length > 0 && (
+              <div className="mt-1 ml-4 space-y-1">
+                {ref.quotes.map((q, qi) => (
+                  <div key={qi} className="text-xs bg-muted/40 rounded px-2 py-1">
+                    <p className="italic text-muted-foreground">«{q.source_quote}»</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">→ {q.fact_text}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </li>
         ))}
