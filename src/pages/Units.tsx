@@ -37,7 +37,7 @@ export default function Units() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Коллективы МИЭМ</h1>
+        <h1 className="text-2xl font-bold">Коллективы</h1>
         {canEdit && <Button asChild><Link to="/units/new"><Plus className="mr-2 h-4 w-4" />Добавить</Link></Button>}
       </div>
       <div className="relative max-w-sm">

@@ -14,12 +14,12 @@ type SyncMode = "create+update" | "update-only";
 const TABLES: { key: string; label: string; mode: SyncMode }[] = [
   { key: "partners", label: "Партнёры", mode: "create+update" },
   { key: "contacts", label: "Контакты", mode: "update-only" },
-  { key: "partner_needs", label: "Задачи партнёров", mode: "update-only" },
+  { key: "partner_needs", label: "Потребности", mode: "update-only" },
   { key: "collaboration_hypotheses", label: "Гипотезы", mode: "update-only" },
-  { key: "miem_units", label: "Подразделения МИЭМ", mode: "create+update" },
+  { key: "miem_units", label: "Коллективы", mode: "create+update" },
   { key: "competencies", label: "Компетенции", mode: "update-only" },
   { key: "next_steps", label: "Следующие шаги", mode: "update-only" },
-  { key: "unit_contacts", label: "Внутренние контакты", mode: "update-only" },
+  { key: "unit_contacts", label: "Контакты", mode: "update-only" },
   { key: "unit_contact_memberships", label: "Состав коллективов", mode: "update-only" },
 ];
 

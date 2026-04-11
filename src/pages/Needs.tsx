@@ -39,7 +39,7 @@ export default function Needs() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Потребности партнеров</h1>
+        <h1 className="text-2xl font-bold">Потребности</h1>
         {canEdit && <Button asChild><Link to="/needs/new"><Plus className="mr-2 h-4 w-4" />Добавить</Link></Button>}
       </div>
       <div className="relative max-w-sm">
