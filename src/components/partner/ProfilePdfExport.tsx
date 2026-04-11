@@ -173,7 +173,7 @@ const LINE_H = 5.2;
 const PARA_GAP = 4;
 const BULLET_INDENT = 7;
 const HEADER_H = 16;
-const FOOTER_H = 10;
+const FOOTER_H = 14;
 const SECTION_GAP = 8;
 
 /* ── Main component ────────────────────────────────────── */
