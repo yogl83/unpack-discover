@@ -28,7 +28,13 @@ export const needStatusLabels: Record<string, string> = {
 
 // === Hypothesis status ===
 export const hypothesisStatusLabels: Record<string, string> = {
-  new: "Новая", testing: "Тестируется", confirmed: "Подтверждена", rejected: "Отклонена",
+  new: "Новая", in_progress: "В работе", confirmed: "Подтверждена", rejected: "Отклонена",
+  moved_to_initiative: "В инициативу", moved_to_project: "В проект",
+};
+
+// === Confidence level ===
+export const confidenceLevelLabels: Record<string, string> = {
+  A: "Высокий", B: "Средний", C: "Низкий",
 };
 
 // === Next step status ===

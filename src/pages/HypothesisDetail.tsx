@@ -145,9 +145,11 @@ export default function HypothesisDetail() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="new">Новая</SelectItem>
-                <SelectItem value="testing">Тестируется</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
                 <SelectItem value="confirmed">Подтверждена</SelectItem>
                 <SelectItem value="rejected">Отклонена</SelectItem>
+                <SelectItem value="moved_to_initiative">В инициативу</SelectItem>
+                <SelectItem value="moved_to_project">В проект</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -156,15 +158,15 @@ export default function HypothesisDetail() {
             <Select value={form.confidence_level} onValueChange={v => set("confidence_level", v)} disabled={!canEdit}>
               <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Низкий</SelectItem>
-                <SelectItem value="medium">Средний</SelectItem>
-                <SelectItem value="high">Высокий</SelectItem>
+                <SelectItem value="A">Высокий</SelectItem>
+                <SelectItem value="B">Средний</SelectItem>
+                <SelectItem value="C">Низкий</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Оценка релевантности (0–10)</Label>
-            <Input type="number" min="0" max="10" step="0.5" value={form.relevance_score} onChange={e => set("relevance_score", e.target.value)} disabled={!canEdit} />
+            <Label>Оценка релевантности (0–5)</Label>
+            <Input type="number" min="0" max="5" step="0.5" value={form.relevance_score} onChange={e => set("relevance_score", e.target.value)} disabled={!canEdit} />
           </div>
           <div className="space-y-2">
             <Label>Формат сотрудничества</Label>

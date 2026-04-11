@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
-import { hypothesisStatusLabels } from "@/lib/labels";
+import { hypothesisStatusLabels, confidenceLevelLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { useDebounce } from "@/hooks/useDebounce";
