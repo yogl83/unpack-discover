@@ -70,11 +70,6 @@ export function AppSidebar() {
             alt="МИЭМ"
             className={collapsed ? "h-7 w-7 object-contain" : "w-full max-w-[140px] mx-auto object-contain"}
           />
-          {!collapsed && (
-            <span className="mt-1.5 text-xs font-semibold text-sidebar-foreground/70 tracking-wider uppercase">
-              Партнёрства
-            </span>
-          )}
         </div>
 
         {/* Дашборд */}
