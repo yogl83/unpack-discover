@@ -57,7 +57,7 @@ export default function Hypotheses() {
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead>
+                <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead className="hidden md:table-cell">Потребность</TableHead>
                 <TableHead>Статус</TableHead><TableHead className="hidden md:table-cell">Уверенность</TableHead>
               </TableRow></TableHeader>
               <TableBody>
