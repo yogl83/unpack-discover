@@ -342,7 +342,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.2);
         doc.line(MARGIN, y, pageW - MARGIN, y);
-        y += SECTION_GAP;
+        y += SECTION_GAP + 4;
       }
 
       /* ── Sections ────────────────────────────────────────── */
@@ -380,7 +380,7 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
               head: [cleanHeaders],
               body: cleanRows,
               margin: { left: MARGIN, right: MARGIN, top: MARGIN + HEADER_H },
-              styles: { fontSize: 8, cellPadding: 3, font: "Roboto", overflow: "linebreak" },
+              styles: { fontSize: 8, cellPadding: 4, font: "Roboto", overflow: "linebreak", minCellHeight: 8 },
               headStyles: { fillColor: HSE_BLUE, textColor: 255, fontStyle: "bold" },
               columnStyles: { 0: { cellWidth: "auto", minCellWidth: 40 } },
               showHead: "everyPage",
@@ -416,10 +416,14 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
         y += 7;
 
         for (const ref of references) {
-          ensureSpace(8);
+          // Estimate block height to avoid breaking a source mid-page
+          const estimatedH = 12
+            + (ref.url ? 6 : 0)
+            + (ref.quotes ? ref.quotes.length * 10 : 0);
+          ensureSpace(Math.min(estimatedH, 50));
 
           // Reference number + title
-          doc.setFontSize(8.5);
+          doc.setFontSize(9);
           doc.setFont("Roboto", "bold");
           const prefix = `[${ref.number}]  `;
           doc.text(prefix, MARGIN, y);
@@ -432,46 +436,49 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
             if (i > 0) { y += 4; ensureSpace(4); }
             doc.text(titleLines[i], MARGIN + prefixW, y);
           }
-          y += 4;
+          y += 5;
 
           // URL
           if (ref.url) {
             ensureSpace(4);
             doc.setTextColor(...HSE_BLUE);
             doc.setFontSize(7.5);
-            const urlLines = doc.splitTextToSize(ref.url, contentW - 4);
+            const urlLines = doc.splitTextToSize(ref.url, contentW - 6);
             for (const uLine of urlLines) {
               ensureSpace(3.5);
               const lineW = doc.getTextWidth(uLine);
-              doc.textWithLink(uLine, MARGIN + 4, y, { url: ref.url });
-              doc.link(MARGIN + 4, y - 3, lineW, 3.5, { url: ref.url });
+              doc.textWithLink(uLine, MARGIN + 6, y, { url: ref.url });
+              doc.link(MARGIN + 6, y - 3, lineW, 3.5, { url: ref.url });
               y += 3.5;
             }
             doc.setTextColor(0, 0, 0);
+            y += 1;
           }
 
           // Quotes
           if (ref.quotes && ref.quotes.length > 0) {
-            doc.setFontSize(7);
+            doc.setFontSize(7.5);
             doc.setTextColor(80, 80, 80);
             for (const q of ref.quotes) {
-              ensureSpace(4);
+              ensureSpace(5);
               const quoteText = `«${q.source_quote}»`;
-              const qLines = doc.splitTextToSize(quoteText, contentW - 8);
+              const qLines = doc.splitTextToSize(quoteText, contentW - 10);
               for (const ql of qLines) {
                 ensureSpace(3.5);
-                doc.text(ql, MARGIN + 8, y);
+                doc.text(ql, MARGIN + 10, y);
                 y += 3.5;
               }
               if (q.fact_text) {
                 ensureSpace(3.5);
+                doc.setFontSize(7);
                 doc.setTextColor(100, 100, 100);
-                const factLines = doc.splitTextToSize(`→ ${q.fact_text}`, contentW - 8);
+                const factLines = doc.splitTextToSize(`→ ${q.fact_text}`, contentW - 10);
                 for (const fl of factLines) {
                   ensureSpace(3.5);
-                  doc.text(fl, MARGIN + 8, y);
+                  doc.text(fl, MARGIN + 10, y);
                   y += 3.5;
                 }
+                doc.setFontSize(7.5);
               }
               doc.setTextColor(80, 80, 80);
             }
@@ -479,11 +486,11 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
           }
 
           // Divider between sources
-          y += 2;
+          y += 3;
           doc.setDrawColor(230, 230, 230);
           doc.setLineWidth(0.1);
           doc.line(MARGIN + 4, y, pageW - MARGIN - 4, y);
-          y += 2;
+          y += 3;
         }
         currentSectionLabel = "";
       }
