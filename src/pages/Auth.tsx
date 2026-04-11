@@ -54,11 +54,20 @@ export default function Auth() {
         if (error) toast.error(error.message);
         else { toast.success("Письмо для сброса пароля отправлено"); setResetSent(true); }
       } else if (mode === "register") {
+        if (password.length < 6) {
+          toast.error("Пароль должен быть не менее 6 символов");
+          return;
+        }
         const res = await supabase.functions.invoke("register-request", {
           body: { email, password, full_name: fullName },
         });
         if (res.error) {
-          toast.error(res.error.message);
+          let msg = "Ошибка при отправке заявки";
+          try {
+            const body = await (res.error as any).context.json();
+            if (body?.error) msg = body.error;
+          } catch {}
+          toast.error(msg);
         } else if (res.data?.error) {
           toast.error(res.data.error);
         } else {
