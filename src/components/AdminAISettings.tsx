@@ -90,7 +90,8 @@ export default function AdminAISettings() {
         if (row.key === "ai_profile_model" && val.model) setModel(val.model);
         if (row.key === "ai_profile_system_prompt" && val.prompt) setSystemPrompt(val.prompt);
         if (row.key === "ai_profile_sections" && Array.isArray(val.sections)) {
-          setSections(val.sections);
+          const filtered = (val.sections as SectionConfig[]).filter(s => ALLOWED_SECTION_KEYS.has(s.key));
+          if (filtered.length > 0) setSections(filtered);
         }
       }
     }
