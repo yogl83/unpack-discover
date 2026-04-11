@@ -1,20 +1,27 @@
 
 
-# Синхронизация промтов: edge function ← AdminAISettings
+# Удаление лишних секций из настроек AI
 
 ## Проблема
 
-Edge function `generate-partner-profile/index.ts` содержит **старые короткие промты** для секций (строки 51-59), например `"Напиши 2-3 предложения."` вместо детальных инструкций из `AdminAISettings.tsx`. Также в системном промте edge function есть строка про `collaboration_opportunities` и `strategic_priorities` с рекомендациями, которых не должно быть.
+В БД (таблица `app_settings`, ключ `ai_profile_sections`) сохранены старые 13 секций, включая:
+- `collaboration_opportunities` (Потенциальный запрос к МИЭМ)
+- `current_relationship_with_miem` (Текущее взаимодействие с МИЭМ)
+- `risks_and_constraints` (Риски и ограничения)
+- `recommended_next_steps` (Рекомендуемые шаги)
+- `talent_needs` (Кадровые потребности)
 
-Эти дефолты используются когда в БД нет сохранённых настроек — то есть практически всегда при первом запуске.
+Дефолты в коде уже правильные (8 секций), но БД перезаписывает их при загрузке.
 
 ## Решение
 
-Скопировать детальные промты из `AdminAISettings.tsx` (строки 51-59) в edge function (строки 51-59), чтобы дефолты были идентичны. Убрать строку про `collaboration_opportunities` из системного промта edge function (строка 39).
+1. **Сбросить настройки в БД** — удалить строку `ai_profile_sections` из `app_settings`, чтобы использовались дефолты из кода (8 секций)
+2. **Добавить валидацию** — при загрузке настроек из БД фильтровать секции, оставляя только те, чьи `key` совпадают с полями `partner_profiles` (8 допустимых)
 
 ## Изменения
 
 | Файл | Действие |
 |------|----------|
-| `supabase/functions/generate-partner-profile/index.ts` | Заменить DEFAULT_SECTIONS (строки 51-59) на детальные промты из AdminAISettings; убрать строку 39 про strategic_priorities/collaboration_opportunities |
+| `src/components/AdminAISettings.tsx` | Добавить фильтрацию загруженных секций по допустимым ключам |
+| SQL (однократно) | `DELETE FROM app_settings WHERE key = 'ai_profile_sections'` — сбросить старые данные |
 
