@@ -1,47 +1,45 @@
 
 
-# Синхронизация настроек AI + экспорт профайла в PDF
+# Исправления профайла: 5 пунктов
 
-## Проблемы сейчас
+## Проблемы
 
-1. **AdminAISettings** содержит 13 секций по умолчанию (включая 5 удалённых: `talent_needs`, `collaboration_opportunities`, `current_relationship_with_miem`, `risks_and_constraints`, `recommended_next_steps`)
-2. Системный промт по умолчанию ссылается на `collaboration_opportunities` — удалённую секцию
-3. Edge function `generate-partner-profile` в user prompt говорит «Заполни все 13 секций» вместо 8
-4. Нет экспорта профайла в PDF
+1. **Имя файла**: `_profail.pdf` → должно быть `_profile.pdf`
+2. **Гипотезы в содержании**: системный промт всё ещё упоминает `collaboration_opportunities` (строка 39 edge function) — LLM может генерировать контент про возможности сотрудничества. Нужно убрать
+3. **Ссылки в PDF не кликабельны**: `jsPDF` рендерит URL как текст, нужно добавить `doc.textWithLink()` или `doc.link()` для URL в источниках
+4. **Синий цвет при генерации профайла AI**: сейчас `aiFilledFields` подсветка есть только на странице основной информации партнёра (`PartnerDetail.tsx`). При AI-генерации профайла в `PartnerProfileTab.tsx` нет синей подсветки textarea-полей — нужно добавить
+5. **Ссылки на предпросмотре (в UI)**: ссылки `[1]`, `[2]` в тексте секций не ведут к блоку «Источники» — нужно добавить scroll-to-anchor
 
 ## Что будет сделано
 
-### 1. Синхронизация AdminAISettings с актуальной схемой
+### 1. Имя файла PDF
+**`src/components/partner/ProfilePdfExport.tsx`** строка 215:
+- `_profail.pdf` → `_profile.pdf`
 
-**`src/components/AdminAISettings.tsx`**:
-- Убрать 5 удалённых секций из `DEFAULT_SECTIONS` (оставить 8)
-- Убрать упоминание `collaboration_opportunities` из `DEFAULT_SYSTEM_PROMPT`
+### 2. Убрать упоминание collaboration_opportunities из промта
+**`supabase/functions/generate-partner-profile/index.ts`** строка 39:
+- Удалить строку `- Для collaboration_opportunities — обосновывай каждый формат конкретными фактами о компании`
 
-### 2. Исправить user prompt в edge function
+### 3. Кликабельные ссылки в PDF
+**`src/components/partner/ProfilePdfExport.tsx`**:
+- В блоке «Источники» использовать `doc.textWithLink()` для URL — ссылки станут кликабельными в PDF-файле
 
-**`supabase/functions/generate-partner-profile/index.ts`**:
-- Строка 220: заменить «13 секций» на динамическое `${sections.length} секций`
+### 4. Синий цвет при AI-генерации профайла
+**`src/components/partner/PartnerProfileTab.tsx`**:
+- Добавить `aiGeneratedSections` state (`Set<string>`)
+- В `generateProfile.onSuccess`: заполнить set ключами секций, которые AI заполнил
+- В режиме редактирования: textarea с ключом из set получает `text-blue-600`
+- При `saveDraft.onSuccess`: сбросить set
 
-### 3. Экспорт профайла в PDF
-
-**Новый файл `src/components/partner/ProfilePdfExport.tsx`**:
-- Кнопка «Скачать PDF» в шапке профайла (рядом с «История»)
-- Генерирует PDF на клиенте через `jspdf` + `jspdf-autotable`
-- Содержит: название партнёра, дату, все заполненные секции, источники
-- Markdown-таблицы конвертируются в PDF-таблицы
-- Русский текст через встроенный Unicode-шрифт
-
-**`package.json`**: добавить `jspdf`, `jspdf-autotable`
-
-**`src/components/partner/PartnerProfileTab.tsx`**: добавить кнопку PDF-экспорта
+### 5. Ссылки [N] в предпросмотре ведут к блоку источников
+**`src/components/partner/PartnerProfileTab.tsx`**:
+- Добавить кастомный рендерер для `ReactMarkdown` — ссылки вида `[N]` становятся якорями, кликающими к `#references`
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/AdminAISettings.tsx` | Убрать 5 секций из DEFAULT_SECTIONS, обновить промт |
-| `supabase/functions/generate-partner-profile/index.ts` | Динамическое число секций в промте |
-| `src/components/partner/ProfilePdfExport.tsx` | Новый компонент экспорта |
-| `src/components/partner/PartnerProfileTab.tsx` | Кнопка PDF |
-| `package.json` | jspdf, jspdf-autotable |
+| `src/components/partner/ProfilePdfExport.tsx` | Имя файла, кликабельные ссылки |
+| `src/components/partner/PartnerProfileTab.tsx` | Синий цвет AI-полей, якоря [N] |
+| `supabase/functions/generate-partner-profile/index.ts` | Убрать collaboration_opportunities из промта |
 
