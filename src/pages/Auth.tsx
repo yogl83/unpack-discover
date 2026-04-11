@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 type Mode = "login" | "reset" | "register";
 
@@ -93,6 +94,7 @@ export default function Auth() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <img src={logo} alt="МИЭМ" className="h-16 mx-auto mb-2" />
           <CardTitle className="text-2xl font-bold">МИЭМ НИУ ВШЭ</CardTitle>
           <CardDescription>
             {mode === "register" ? "Запрос доступа к системе" : "Система управления партнерствами"}
