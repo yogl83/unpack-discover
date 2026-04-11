@@ -1,43 +1,40 @@
 
 
-# Улучшение отображения таблиц в профайле
+# Исправление ссылок и источников в профайле
 
-## Проблема
+## Проблемы
 
-Markdown-таблицы рендерятся через `react-markdown` + `remarkGfm` внутри `prose prose-sm`, но не имеют стилей для границ, padding и ширины — выглядят как сплошной текст без визуального разделения ячеек.
+1. **Ссылки `[2, 3]` не кликабельны** — regex `(\[\d+\])` ловит только `[2]`, но не `[2, 3]` или `[1, 2, 3]`. AI генерирует именно такой формат.
+
+2. **Источники не отображаются** — `references` берётся из `displayProfile` (= `currentProfile`, т.е. approved). После AI-генерации профайл — черновик (`draftProfile`), его `references_json` не выводится. Блок «Источники» просто не появляется.
+
+3. **В PDF тоже нет источников** — `ProfilePdfExport` получает `references` от родителя, а родитель передаёт пустой массив по той же причине.
 
 ## Решение
 
-Добавить кастомные компоненты `table`, `th`, `td` в `ReactMarkdown.components` в `PartnerProfileTab.tsx`, а также аналогичные стили для PDF-экспорта (там уже используется `jspdf-autotable`, так что PDF в порядке).
+### 1. Парсинг `[N, M]` в тексте
 
-### Что будет сделано
-
-**`src/components/partner/PartnerProfileTab.tsx`** — добавить в `components` prop `ReactMarkdown`:
-
-```tsx
-table: ({ children }) => (
-  <div className="overflow-x-auto my-2">
-    <table className="w-full text-sm border-collapse border border-border rounded">
-      {children}
-    </table>
-  </div>
-),
-thead: ({ children }) => (
-  <thead className="bg-muted/50">{children}</thead>
-),
-th: ({ children }) => (
-  <th className="border border-border px-3 py-2 text-left font-medium text-xs">{children}</th>
-),
-td: ({ children }) => (
-  <td className="border border-border px-3 py-2 text-xs">{children}</td>
-),
+**`src/components/partner/PartnerProfileTab.tsx`** — расширить regex:
 ```
+/(\[\d+\])/ → /(\[\d+(?:,\s*\d+)*\])/
+```
+И рендерить каждую цифру внутри как отдельную кликабельную ссылку.
 
-Таблицы получат чёткие границы, фон заголовков, горизонтальный скролл на узких экранах.
+### 2. Источники из draft-профайла
 
-### Файлы
+**`src/components/partner/PartnerProfileTab.tsx`**:
+- Добавить `draftReferences = parseReferences(draftProfile)` 
+- В режиме редактирования и при просмотре draft: показывать `draftReferences`
+- В режиме просмотра approved: показывать `references` как сейчас
+- Передавать актуальные references в `ProfilePdfExport`
+
+### 3. Источники при редактировании
+
+Добавить блок «Источники» в режиме редактирования (read-only, под секциями), чтобы пользователь видел что AI сгенерировал.
+
+## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/partner/PartnerProfileTab.tsx` | Добавить table/th/td компоненты в ReactMarkdown |
+| `src/components/partner/PartnerProfileTab.tsx` | Regex для `[N, M]`, источники из draft, блок источников в edit mode |
 
