@@ -10,7 +10,6 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import logo from "@/assets/logo.png";
 
 const dashboardItem = { title: "Дашборд", url: "/", icon: LayoutDashboard };
 
@@ -63,15 +62,6 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {/* Логотип */}
-        <div className={`flex flex-col items-center px-4 py-4 border-b border-sidebar-border ${collapsed ? "px-2" : ""}`}>
-          <img
-            src={logo}
-            alt="МИЭМ"
-            className={collapsed ? "h-7 w-7 object-contain" : "w-full max-w-[140px] mx-auto object-contain"}
-          />
-        </div>
-
         {/* Дашборд */}
         <SidebarGroup>
           <SidebarGroupLabel>
