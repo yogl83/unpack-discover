@@ -433,7 +433,7 @@ export default function UnitDetail() {
                         <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
                           <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
                           <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
                           <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
                         </TableRow>

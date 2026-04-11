@@ -18,7 +18,7 @@ import { ProfileFreshnessBadge } from "@/components/partner/ProfileFreshnessBadg
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-import { allStatusLabels, confidenceLevelLabels } from "@/lib/labels";
+import { allStatusLabels, confidenceLevelLabels, needTypeLabels, priorityLabels, memberRoleLabels } from "@/lib/labels";
 const statusLabels = allStatusLabels;
 
 export default function PartnerDetail() {
@@ -395,9 +395,9 @@ export default function PartnerDetail() {
                         <TableCell>
                           <Link to={`/needs/${n.need_id}`} className="font-medium text-primary hover:underline">{n.title}</Link>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{n.need_type || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{needTypeLabels[n.need_type || ""] || n.need_type || "—"}</TableCell>
                         <TableCell><Badge variant="secondary">{statusLabels[n.need_status || ""] || n.need_status || "—"}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground">{n.priority_level || "—"}</TableCell>
+                        <TableCell><Badge variant="outline">{priorityLabels[n.priority_level || ""] || n.priority_level || "—"}</Badge></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -524,7 +524,7 @@ function MiemContactsBlock({ partnerId }: { partnerId: string }) {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.contact_role || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

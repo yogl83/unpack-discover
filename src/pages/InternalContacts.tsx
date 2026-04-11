@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
+import { memberRoleLabels } from "@/lib/labels";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { useAuth } from "@/hooks/useAuth";
@@ -75,7 +76,7 @@ export default function InternalContacts() {
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Роль" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все роли</SelectItem>
-            {roles.map(r => <SelectItem key={r} value={r!}>{r}</SelectItem>)}
+            {roles.map(r => <SelectItem key={r} value={r!}>{memberRoleLabels[r!] || r}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -113,7 +114,7 @@ export default function InternalContacts() {
                         {(c.miem_units as any)?.unit_name || "—"}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{c.contact_role || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden md:table-cell">{c.email || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{c.phone || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{c.is_primary ? <Badge>Да</Badge> : "—"}</TableCell>
