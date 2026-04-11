@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProfileFreshnessBadge } from "./ProfileFreshnessBadge";
 import { ProfileFileUpload } from "./ProfileFileUpload";
+import { ProfilePdfExport } from "./ProfilePdfExport";
 import { Plus, Edit, Send, Check, Archive, History, Save, Sparkles, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -338,6 +339,13 @@ export function PartnerProfileTab({ partnerId, partnerName, legacyProfile }: Pro
             <Button size="sm" variant="outline" onClick={() => archiveProfile.mutate()} disabled={archiveProfile.isPending}>
               <Archive className="mr-1 h-3.5 w-3.5" />Архивировать
             </Button>
+          )}
+          {displayProfile && !editing && (
+            <ProfilePdfExport
+              profile={displayProfile}
+              partnerName={partnerName}
+              references={references}
+            />
           )}
           <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)}>
             <History className="mr-1 h-3.5 w-3.5" />История
