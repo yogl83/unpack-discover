@@ -91,8 +91,16 @@ function parseMarkdownTable(text: string): { headers: string[]; rows: string[][]
   if (lines.length < 2) return null;
   const parse = (line: string) =>
     line.split("|").map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length);
-  const headers = parse(lines[0]);
-  const rows = lines.slice(2).map(parse);
+  let headers = parse(lines[0]);
+  let rows = lines.slice(2).map(parse);
+
+  // Filter out entirely empty columns
+  const nonEmptyCols = headers.map((h, ci) =>
+    h !== "" || rows.some(r => (r[ci] || "").trim() !== "")
+  );
+  headers = headers.filter((_, ci) => nonEmptyCols[ci]);
+  rows = rows.map(r => r.filter((_, ci) => nonEmptyCols[ci]));
+
   return { headers, rows };
 }
 
@@ -501,15 +509,17 @@ export function ProfilePdfExport({ profile, partnerName, references }: ProfilePd
       for (let p = 1; p <= totalPages; p++) {
         doc.setPage(p);
 
-        // Header
-        doc.setFontSize(7);
-        doc.setFont("Roboto", "normal");
-        doc.setTextColor(120, 120, 120);
-        doc.text(partnerName, MARGIN, MARGIN + 4);
-        doc.text("Профайл партнёра", pageW - MARGIN, MARGIN + 4, { align: "right" });
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.2);
-        doc.line(MARGIN, MARGIN + HEADER_H - 4, pageW - MARGIN, MARGIN + HEADER_H - 4);
+        // Header (skip on first page — title zone serves as header)
+        if (p > 1) {
+          doc.setFontSize(7);
+          doc.setFont("Roboto", "normal");
+          doc.setTextColor(120, 120, 120);
+          doc.text(partnerName, MARGIN, MARGIN + 4);
+          doc.text("Профайл партнёра", pageW - MARGIN, MARGIN + 4, { align: "right" });
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.2);
+          doc.line(MARGIN, MARGIN + HEADER_H - 4, pageW - MARGIN, MARGIN + HEADER_H - 4);
+        }
 
         // Footer
         const footerY = pageH - MARGIN;
