@@ -7,6 +7,8 @@ interface WorkResult {
   doi: string | null;
   url: string | null;
   type: string | null;
+  source_name: string | null;
+  biblio_string: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -43,7 +45,7 @@ Deno.serve(async (req) => {
 
     // Fetch up to 2 pages (400 works max)
     while (page <= 2) {
-      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
+      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type,primary_location,biblio&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
       
       const resp = await fetch(apiUrl);
       if (!resp.ok) {
@@ -71,10 +73,25 @@ Deno.serve(async (req) => {
           .filter(Boolean);
         const authors = authorNames.join(", ") + (w.authorships?.length > 5 ? " и др." : "");
 
-        // URL: prefer DOI, fallback to OpenAlex page
+        // URL: prefer DOI
         const url = doi ? `https://doi.org/${doi.replace("https://doi.org/", "")}` : null;
 
-        works.push({ title, year, authors, doi, url, type });
+        // Source (journal/conference)
+        const source_name = w.primary_location?.source?.display_name || null;
+
+        // Biblio string (vol, issue, pages)
+        const biblio = w.biblio;
+        const bibParts: string[] = [];
+        if (biblio?.volume) bibParts.push(`Т. ${biblio.volume}`);
+        if (biblio?.issue) bibParts.push(`№ ${biblio.issue}`);
+        if (biblio?.first_page) {
+          bibParts.push(biblio.last_page && biblio.last_page !== biblio.first_page
+            ? `С. ${biblio.first_page}–${biblio.last_page}`
+            : `С. ${biblio.first_page}`);
+        }
+        const biblio_string = bibParts.length > 0 ? bibParts.join(", ") : null;
+
+        works.push({ title, year, authors, doi, url, type, source_name, biblio_string });
       }
 
       // No more pages
