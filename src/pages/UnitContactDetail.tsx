@@ -124,9 +124,9 @@ export default function UnitContactDetail() {
     orcid: "",
     scopus_id: "",
     elibrary_id: "",
-    scholar_url: "",
-    openalex_url: "",
-    researcherid_url: "",
+    scholar_id: "",
+    openalex_id: "",
+    researcherid: "",
     personal_summary: "",
   });
 
@@ -145,9 +145,9 @@ export default function UnitContactDetail() {
         orcid: (item as any).orcid || "",
         scopus_id: (item as any).scopus_id || "",
         elibrary_id: (item as any).elibrary_id || "",
-        scholar_url: (item as any).scholar_url || "",
-        openalex_url: (item as any).openalex_url || "",
-        researcherid_url: (item as any).researcherid_url || "",
+        scholar_id: (item as any).scholar_id || "",
+        openalex_id: (item as any).openalex_id || "",
+        researcherid: (item as any).researcherid || "",
         personal_summary: (item as any).personal_summary || "",
       });
       if (standalone && item.unit_id) {
@@ -589,30 +589,12 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
       <Card>
         <CardHeader><CardTitle>Профили в системах цитирования</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>ORCID</Label>
-            <Input value={form.orcid} onChange={(e: any) => set("orcid", e.target.value)} disabled={!canEdit} placeholder="0000-0000-0000-0000" />
-          </div>
-          <div className="space-y-2">
-            <Label>Scopus Author ID</Label>
-            <Input value={form.scopus_id} onChange={(e: any) => set("scopus_id", e.target.value)} disabled={!canEdit} placeholder="57..." />
-           </div>
-           <div className="space-y-2">
-             <Label>eLibrary Author ID</Label>
-             <Input value={form.elibrary_id} onChange={(e: any) => set("elibrary_id", e.target.value)} disabled={!canEdit} placeholder="https://elibrary.ru/author_items.asp?authorid=..." />
-           </div>
-           <div className="space-y-2">
-             <Label>Google Scholar</Label>
-             <Input value={form.scholar_url} onChange={(e: any) => set("scholar_url", e.target.value)} disabled={!canEdit} placeholder="https://scholar.google.com/citations?user=..." />
-           </div>
-           <div className="space-y-2">
-             <Label>OpenAlex</Label>
-              <Input value={form.openalex_url} onChange={(e: any) => set("openalex_url", e.target.value)} disabled={!canEdit} placeholder="https://openalex.org/authors/..." />
-            </div>
-            <div className="space-y-2">
-              <Label>ResearcherID</Label>
-              <Input value={form.researcherid_url} onChange={(e: any) => set("researcherid_url", e.target.value)} disabled={!canEdit} placeholder="https://www.researcherid.com/rid/..." />
-            </div>
+          <CitationField label="ORCID" value={form.orcid} onChange={(v: string) => set("orcid", v)} disabled={!canEdit} placeholder="0000-0003-0669-5694" urlTemplate="https://orcid.org/{id}" />
+          <CitationField label="Scopus Author ID" value={form.scopus_id} onChange={(v: string) => set("scopus_id", v)} disabled={!canEdit} placeholder="25929447800" urlTemplate="https://www.scopus.com/authid/detail.uri?authorId={id}" />
+          <CitationField label="eLibrary Author ID" value={form.elibrary_id} onChange={(v: string) => set("elibrary_id", v)} disabled={!canEdit} placeholder="177140" urlTemplate="https://elibrary.ru/author_profile.asp?id={id}" />
+          <CitationField label="Google Scholar" value={form.scholar_id} onChange={(v: string) => set("scholar_id", v)} disabled={!canEdit} placeholder="ABSiyPEAAAAJ" urlTemplate="https://scholar.google.com/citations?user={id}" />
+          <CitationField label="OpenAlex" value={form.openalex_id} onChange={(v: string) => set("openalex_id", v)} disabled={!canEdit} placeholder="A5059854048" urlTemplate="https://openalex.org/authors/{id}" />
+          <CitationField label="ResearcherID" value={form.researcherid} onChange={(v: string) => set("researcherid", v)} disabled={!canEdit} placeholder="E-6562-2014" urlTemplate="https://www.webofscience.com/wos/author/rid/{id}" />
         </CardContent>
       </Card>
 
@@ -636,6 +618,26 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
           <Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}
         </Button>
       )}
+    </div>
+  );
+}
+
+/* ── Citation profile field with auto-link ── */
+function CitationField({ label, value, onChange, disabled, placeholder, urlTemplate }: {
+  label: string; value: string; onChange: (v: string) => void; disabled: boolean; placeholder: string; urlTemplate: string;
+}) {
+  const url = value?.trim() ? urlTemplate.replace("{id}", value.trim()) : null;
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex gap-1.5">
+        <Input value={value} onChange={(e: any) => onChange(e.target.value)} disabled={disabled} placeholder={placeholder} className="flex-1" />
+        {url && (
+          <Button variant="ghost" size="icon" className="shrink-0 h-10 w-10" asChild>
+            <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
