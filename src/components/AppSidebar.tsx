@@ -68,7 +68,7 @@ export function AppSidebar() {
           <img
             src={logo}
             alt="МИЭМ"
-            className={collapsed ? "h-8 w-8 object-contain" : "w-full max-w-[100px] mx-auto object-contain"}
+            className={collapsed ? "h-10 w-10 object-contain" : "w-full max-w-[160px] mx-auto object-contain"}
           />
         </div>
 
