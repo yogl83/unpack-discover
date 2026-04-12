@@ -13,9 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus, Pencil } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus, Pencil, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
+import { UnitPortfolioFiles } from "@/components/unit/UnitPortfolioFiles";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels } from "@/lib/labels";
 const statusLabels = hypothesisStatusLabels;
@@ -80,6 +85,7 @@ export default function UnitDetail() {
     unit_name: "", unit_type: "", team_summary: "", research_area: "",
     business_problem_focus: "", application_domain: "", industry_fit: "", end_customer_fit: "",
     value_chain_role: "", readiness_level: "", discussion_readiness: "", notes: "",
+    portfolio_summary: "",
   });
   const [leadContactId, setLeadContactId] = useState<string | null>(null);
 
@@ -311,51 +317,109 @@ export default function UnitDetail() {
           {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
         </TabsContent>
 
-        {/* Portfolio tab — moved to 2nd position */}
+        {/* Portfolio tab — structured like partner profile */}
         {!isNew && (
-          <TabsContent value="portfolio" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Портфолио</h2>
-              {canEdit && <Button size="sm" variant="outline" onClick={openNewPortfolio}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
-            </div>
-            {!portfolio?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет элементов портфолио</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Организация</TableHead><TableHead>Период</TableHead>
-                    {canEdit && <TableHead className="w-[100px]">Действия</TableHead>}
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {portfolio.map(p => (
-                      <TableRow key={p.portfolio_item_id}>
-                        <TableCell className="font-medium">
-                          {p.url ? <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.title}</a> : p.title}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{portfolioTypeLabels[p.item_type] || p.item_type || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.organization_name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.year_from ? `${p.year_from}${p.year_to ? `–${p.year_to}` : "–н.в."}` : "—"}</TableCell>
-                        {canEdit && (
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditPortfolio(p)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              {isAdmin && (
-                                <ConfirmDialog title="Удалить элемент?" description="Элемент портфолио будет удалён." onConfirm={() => deletePortfolio.mutate(p.portfolio_item_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive h-7 w-7" variant="default" />
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+          <TabsContent value="portfolio" className="space-y-6">
+            {/* Portfolio summary */}
+            <Card>
+              <CardHeader><CardTitle>Достижения и результаты группы</CardTitle></CardHeader>
+              <CardContent>
+                {canEdit ? (
+                  <div className="space-y-2">
+                    <MarkdownWysiwyg
+                      value={form.portfolio_summary}
+                      onChange={(v) => set("portfolio_summary", v)}
+                    />
+                    <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+                      <Save className="mr-1 h-3.5 w-3.5" />Сохранить описание
+                    </Button>
+                  </div>
+                ) : form.portfolio_summary ? (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.portfolio_summary}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Описание не заполнено</p>
+                )}
+              </CardContent>
+            </Card>
 
-            {/* Portfolio dialog */}
+            {/* Accordion sections by type */}
+            <Card>
+              <CardContent className="pt-6">
+                <Accordion type="multiple" defaultValue={Object.keys(portfolioTypeLabels)}>
+                  {Object.entries(portfolioTypeLabels).map(([typeKey, typeLabel]) => {
+                    const items = portfolio?.filter(p => p.item_type === typeKey) || [];
+                    return (
+                      <AccordionItem key={typeKey} value={typeKey}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center gap-2">
+                            <span>{typeLabel}</span>
+                            <Badge variant="secondary" className="h-5 px-1.5 text-xs">{items.length}</Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3">
+                            {canEdit && (
+                              <Button size="sm" variant="outline" onClick={() => { setPForm({ ...emptyPortfolioForm, item_type: typeKey }); setEditingPortfolioId(null); setPortfolioDialogOpen(true); }}>
+                                <Plus className="mr-1 h-3.5 w-3.5" />Добавить
+                              </Button>
+                            )}
+                            {items.length === 0 ? (
+                              <p className="text-muted-foreground text-sm py-2">Нет элементов</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {items.map(p => (
+                                  <div key={p.portfolio_item_id} className="flex items-start gap-3 rounded-md border p-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-medium">
+                                          {p.url ? (
+                                            <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                                              {p.title}<ExternalLink className="h-3 w-3" />
+                                            </a>
+                                          ) : p.title}
+                                        </span>
+                                        {p.year_from && (
+                                          <span className="text-muted-foreground text-xs">
+                                            {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
+                                      {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
+                                    </div>
+                                    {canEdit && (
+                                      <div className="flex gap-1 shrink-0">
+                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditPortfolio(p)}>
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        {isAdmin && (
+                                          <ConfirmDialog title="Удалить элемент?" description="Элемент портфолио будет удалён." onConfirm={() => deletePortfolio.mutate(p.portfolio_item_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive h-7 w-7" variant="default" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Files section */}
+            <Card>
+              <CardContent className="pt-6">
+                <UnitPortfolioFiles unitId={id!} editable={canEdit} />
+              </CardContent>
+            </Card>
+
+            {/* Portfolio item dialog */}
             <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
