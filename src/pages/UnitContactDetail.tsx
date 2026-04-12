@@ -640,6 +640,31 @@ export default function UnitContactDetail() {
                         </div>
                       </>
                     )}
+                    {pForm.item_type === "publication" && (
+                      <>
+                        <div className="space-y-2"><Label>Авторы</Label><Input value={pForm.authors} onChange={e => setP("authors", e.target.value)} placeholder="Иванов И.И., Петров П.П." /></div>
+                        <div className="space-y-2"><Label>DOI</Label><Input value={pForm.doi} onChange={e => setP("doi", e.target.value)} placeholder="10.1234/example" /></div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div className="space-y-2"><Label>Том</Label><Input value={pForm.biblio_volume} onChange={e => setP("biblio_volume", e.target.value)} placeholder="12" /></div>
+                          <div className="space-y-2"><Label>Номер</Label><Input value={pForm.biblio_issue} onChange={e => setP("biblio_issue", e.target.value)} placeholder="3" /></div>
+                          <div className="space-y-2"><Label>С.</Label><Input value={pForm.biblio_first_page} onChange={e => setP("biblio_first_page", e.target.value)} placeholder="45" /></div>
+                          <div className="space-y-2"><Label>По</Label><Input value={pForm.biblio_last_page} onChange={e => setP("biblio_last_page", e.target.value)} placeholder="67" /></div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Режим доступа</Label>
+                          <Select value={pForm.oa_status || "__none__"} onValueChange={v => setP("oa_status", v === "__none__" ? "" : v)}>
+                            <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Не указан</SelectItem>
+                              {Object.entries(oaStatusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2"><Label>OA URL</Label><Input value={pForm.oa_url} onChange={e => setP("oa_url", e.target.value)} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label>PDF URL</Label><Input value={pForm.pdf_url} onChange={e => setP("pdf_url", e.target.value)} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label>arXiv URL</Label><Input value={pForm.arxiv_url} onChange={e => setP("arxiv_url", e.target.value)} placeholder="https://arxiv.org/abs/..." /></div>
+                      </>
+                    )
                     {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
