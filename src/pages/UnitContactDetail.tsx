@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Plus, Pencil, ExternalLink, Download, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, Save, Plus, Pencil, ExternalLink, Download, Loader2, FileText, Eye } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -630,16 +630,21 @@ export default function UnitContactDetail() {
                                       
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
-                                    {canEdit && (
-                                      <div className="flex gap-1 shrink-0">
-                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditPortfolio(p)}>
-                                          <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        {isAdmin && (
-                                          <ConfirmDialog title="Удалить элемент?" description="Элемент портфолио будет удалён." onConfirm={() => deletePortfolio.mutate(p.portfolio_item_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive h-7 w-7" variant="default" />
-                                        )}
-                                      </div>
-                                    )}
+                                    <div className="flex gap-1 shrink-0">
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setViewingPortfolio(p)}>
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </Button>
+                                      {canEdit && (
+                                        <>
+                                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditPortfolio(p)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                          {isAdmin && (
+                                            <ConfirmDialog title="Удалить элемент?" description="Элемент портфолио будет удалён." onConfirm={() => deletePortfolio.mutate(p.portfolio_item_id)} triggerLabel="" triggerSize="icon" triggerClassName="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7" variant="ghost" />
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
