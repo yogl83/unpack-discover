@@ -55,6 +55,14 @@ const emptyPortfolioForm = {
   year_from: "", year_to: "", url: "", notes: "", authors: "", registration_number: "", country: "RU",
   doi: "", oa_status: "", oa_url: "", pdf_url: "", arxiv_url: "",
   biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
+  publication_type: "", language: "", cited_by_count: "", primary_topic: "", publisher: "",
+  source_type: "", keywords: "", is_retracted: false as boolean | false,
+};
+
+const publicationTypeLabels: Record<string, string> = {
+  article: "Статья", "book-chapter": "Глава книги", "proceedings-article": "Тезисы конференции",
+  book: "Книга", dissertation: "Диссертация", preprint: "Препринт",
+  review: "Обзор", "edited-book": "Редакт. книга", other: "Другое",
 };
 
 export default function UnitContactDetail() {
