@@ -53,6 +53,8 @@ const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
 const emptyPortfolioForm = {
   title: "", item_type: "project", project_subtype: "", rid_subtype: "", organization_name: "", description: "",
   year_from: "", year_to: "", url: "", notes: "", authors: "", registration_number: "", country: "RU",
+  doi: "", oa_status: "", oa_url: "", pdf_url: "", arxiv_url: "",
+  biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
 };
 
 export default function UnitContactDetail() {
