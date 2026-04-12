@@ -1161,6 +1161,7 @@ export type Database = {
           availability_notes: string | null
           contact_role: string | null
           created_at: string
+          elibrary_id: string | null
           email: string | null
           full_name: string
           is_primary: boolean
@@ -1180,6 +1181,7 @@ export type Database = {
           availability_notes?: string | null
           contact_role?: string | null
           created_at?: string
+          elibrary_id?: string | null
           email?: string | null
           full_name: string
           is_primary?: boolean
@@ -1199,6 +1201,7 @@ export type Database = {
           availability_notes?: string | null
           contact_role?: string | null
           created_at?: string
+          elibrary_id?: string | null
           email?: string | null
           full_name?: string
           is_primary?: boolean
