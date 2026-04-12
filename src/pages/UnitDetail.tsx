@@ -85,6 +85,7 @@ export default function UnitDetail() {
     unit_name: "", unit_type: "", team_summary: "", research_area: "",
     business_problem_focus: "", application_domain: "", industry_fit: "", end_customer_fit: "",
     value_chain_role: "", readiness_level: "", discussion_readiness: "", notes: "",
+    portfolio_summary: "",
   });
   const [leadContactId, setLeadContactId] = useState<string | null>(null);
 
