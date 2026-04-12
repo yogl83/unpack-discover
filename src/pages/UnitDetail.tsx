@@ -22,11 +22,11 @@ import { UnitPortfolioFiles } from "@/components/unit/UnitPortfolioFiles";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels, portfolioFieldConfig } from "@/lib/labels";
+import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels } from "@/lib/labels";
 const statusLabels = hypothesisStatusLabels;
 
 const emptyPortfolioForm = {
-  title: "", item_type: "project", organization_name: "", description: "",
+  title: "", item_type: "project", project_subtype: "", organization_name: "", description: "",
   year_from: "", year_to: "", url: "", notes: "",
 };
 
@@ -34,7 +34,6 @@ const portfolioTitlePlaceholders: Record<string, string> = {
   project: "Наименование проекта",
   publication: "Название публикации",
   patent: "Название патента",
-  grant: "Название гранта",
   product: "Название продукта",
   other: "Название",
 };
@@ -43,7 +42,6 @@ const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
   project: { new: "Новый проект", edit: "Редактировать проект" },
   publication: { new: "Новая публикация", edit: "Редактировать публикацию" },
   patent: { new: "Новый патент", edit: "Редактировать патент" },
-  grant: { new: "Новый грант", edit: "Редактировать грант" },
   product: { new: "Новый продукт", edit: "Редактировать продукт" },
   other: { new: "Новый элемент", edit: "Редактировать элемент" },
 };
@@ -194,6 +192,7 @@ export default function UnitDetail() {
     setPForm({
       title: item.title || "",
       item_type: item.item_type || "project",
+      project_subtype: item.project_subtype || "",
       organization_name: item.organization_name || "",
       description: item.description || "",
       year_from: item.year_from?.toString() || "",
@@ -209,9 +208,10 @@ export default function UnitDetail() {
   const savePortfolio = useMutation({
     mutationFn: async () => {
       if (!pForm.title) { toast.error("Укажите название"); throw new Error("required"); }
-      const payload = {
+      const payload: any = {
         title: pForm.title,
         item_type: pForm.item_type,
+        project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         year_from: pForm.year_from ? parseInt(pForm.year_from) : null,
@@ -401,6 +401,9 @@ export default function UnitDetail() {
                                             </a>
                                           ) : p.title}
                                         </span>
+                                        {(p as any).project_subtype && projectSubtypeLabels[(p as any).project_subtype] && (
+                                          <Badge variant="outline" className="text-xs">{projectSubtypeLabels[(p as any).project_subtype]}</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
@@ -462,6 +465,18 @@ export default function UnitDetail() {
                     )}
                     <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).orgLabel}</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
                   </div>
+                  {pForm.item_type === "project" && (
+                    <div className="space-y-2">
+                      <Label>Тип проекта</Label>
+                      <Select value={pForm.project_subtype || "__none__"} onValueChange={v => setP("project_subtype", v === "__none__" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Не указан</SelectItem>
+                          {Object.entries(projectSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
