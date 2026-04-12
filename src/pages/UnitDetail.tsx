@@ -85,6 +85,12 @@ export default function UnitDetail() {
     enabled: !isNew,
   });
 
+  const { data: allContacts } = useQuery({
+    queryKey: ["all-unit-contacts"],
+    queryFn: async () => { const { data, error } = await supabase.from("unit_contacts").select("*").order("full_name"); if (error) throw error; return data; },
+    enabled: showAddMemberDialog,
+  });
+
   const { data: memberships } = useQuery({
     queryKey: ["unit-memberships", id],
     queryFn: async () => {
@@ -752,7 +758,7 @@ export default function UnitDetail() {
               <Select value={addMemberContact} onValueChange={setAddMemberContact}>
                 <SelectTrigger><SelectValue placeholder="Выберите сотрудника" /></SelectTrigger>
                 <SelectContent>
-                  {(unitContacts || [])
+                  {(allContacts || [])
                     .filter(c => !(memberships || []).some(m => m.unit_contact_id === c.unit_contact_id))
                     .map(c => (
                       <SelectItem key={c.unit_contact_id} value={c.unit_contact_id}>
