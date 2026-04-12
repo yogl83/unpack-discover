@@ -131,6 +131,7 @@ export default function UnitDetail() {
   });
 
   // Membership mutations
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberContact, setAddMemberContact] = useState("");
   const [addMemberRole, setAddMemberRole] = useState("other");
 
@@ -622,7 +623,7 @@ export default function UnitDetail() {
                     Состав коллектива
                   </CardTitle>
                   {canEdit && (
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddMemberDialog(true)}>
                       <Plus className="mr-1 h-4 w-4" />Добавить
                     </Button>
                   )}
