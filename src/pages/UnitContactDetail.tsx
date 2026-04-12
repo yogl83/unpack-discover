@@ -172,13 +172,9 @@ export default function UnitContactDetail() {
     },
     onSuccess: () => {
       toast.success(isNew ? "Контакт создан" : "Сохранено");
-      if (standalone) {
-        qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
-        navigate("/contacts/internal");
-      } else {
-        qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
-        navigate(`/units/${unitId}`);
-      }
+      qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
+      qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
+      navigate(-1);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -190,13 +186,9 @@ export default function UnitContactDetail() {
     },
     onSuccess: () => {
       toast.success("Контакт удалён");
-      if (standalone) {
-        qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
-        navigate("/contacts/internal");
-      } else {
-        qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
-        navigate(`/units/${unitId}`);
-      }
+      qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
+      qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
+      navigate(-1);
     },
   });
 
