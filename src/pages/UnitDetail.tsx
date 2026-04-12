@@ -30,6 +30,24 @@ const emptyPortfolioForm = {
   year_from: "", year_to: "", url: "", notes: "",
 };
 
+const portfolioTitlePlaceholders: Record<string, string> = {
+  project: "Наименование проекта",
+  publication: "Название публикации",
+  patent: "Название патента",
+  grant: "Название гранта",
+  product: "Название продукта",
+  other: "Название",
+};
+
+const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
+  project: { new: "Новый проект", edit: "Редактировать проект" },
+  publication: { new: "Новая публикация", edit: "Редактировать публикацию" },
+  patent: { new: "Новый патент", edit: "Редактировать патент" },
+  grant: { new: "Новый грант", edit: "Редактировать грант" },
+  product: { new: "Новый продукт", edit: "Редактировать продукт" },
+  other: { new: "Новый элемент", edit: "Редактировать элемент" },
+};
+
 export default function UnitDetail() {
   const { id } = useParams();
   const isNew = id === "new";
@@ -160,13 +178,15 @@ export default function UnitDetail() {
   });
 
   // Portfolio CRUD
-  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
-  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
-  const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
+   const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
+   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+   const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
+   const [portfolioTypePreset, setPortfolioTypePreset] = useState(false);
 
   const openNewPortfolio = () => {
     setPForm({ ...emptyPortfolioForm });
     setEditingPortfolioId(null);
+    setPortfolioTypePreset(false);
     setPortfolioDialogOpen(true);
   };
 
@@ -182,6 +202,7 @@ export default function UnitDetail() {
       notes: item.notes || "",
     });
     setEditingPortfolioId(item.portfolio_item_id);
+    setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
   };
 
@@ -361,7 +382,7 @@ export default function UnitDetail() {
                         <AccordionContent>
                           <div className="space-y-3">
                             {canEdit && (
-                              <Button size="sm" variant="outline" onClick={() => { setPForm({ ...emptyPortfolioForm, item_type: typeKey }); setEditingPortfolioId(null); setPortfolioDialogOpen(true); }}>
+                              <Button size="sm" variant="outline" onClick={() => { setPForm({ ...emptyPortfolioForm, item_type: typeKey }); setEditingPortfolioId(null); setPortfolioTypePreset(true); setPortfolioDialogOpen(true); }}>
                                 <Plus className="mr-1 h-3.5 w-3.5" />Добавить
                               </Button>
                             )}
@@ -423,20 +444,22 @@ export default function UnitDetail() {
             <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>{editingPortfolioId ? "Редактировать элемент" : "Новый элемент портфолио"}</DialogTitle>
+                  <DialogTitle>{editingPortfolioId ? (portfolioDialogTitles[pForm.item_type]?.edit || "Редактировать элемент") : (portfolioDialogTitles[pForm.item_type]?.new || "Новый элемент портфолио")}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
-                  <div className="space-y-2"><Label>Название *</Label><Input value={pForm.title} onChange={e => setP("title", e.target.value)} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Тип</Label>
-                      <Select value={pForm.item_type} onValueChange={v => setP("item_type", v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(portfolioTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2"><Label>Название *</Label><Input value={pForm.title} onChange={e => setP("title", e.target.value)} placeholder={portfolioTitlePlaceholders[pForm.item_type] || "Название"} /></div>
+                  <div className={`grid gap-4 ${portfolioTypePreset ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {!portfolioTypePreset && (
+                      <div className="space-y-2">
+                        <Label>Тип</Label>
+                        <Select value={pForm.item_type} onValueChange={v => setP("item_type", v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(portfolioTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2"><Label>Организация</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
