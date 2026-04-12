@@ -779,7 +779,10 @@ export default function UnitContactDetail() {
                               <p className="text-sm font-medium leading-snug">{w.title}</p>
                               <div className="flex items-center gap-2 flex-wrap mt-1">
                                 {w.year && <Badge variant="outline" className="text-xs">{w.year}</Badge>}
+                                {w.publication_type && <Badge variant="outline" className="text-xs">{publicationTypeLabels[w.publication_type] || w.publication_type}</Badge>}
+                                {w.is_retracted && <Badge variant="destructive" className="text-xs">ОТОЗВАНА</Badge>}
                                 {w.source_name && <span className="text-xs text-muted-foreground italic">{w.source_name}</span>}
+                                {w.cited_by_count > 0 && <span className="text-xs text-muted-foreground">🔗 {w.cited_by_count}</span>}
                                 {w._exists && <Badge variant="secondary" className="text-xs">Уже добавлено</Badge>}
                               </div>
                               {w.authors && <p className="text-xs text-muted-foreground mt-1 truncate">{w.authors}</p>}
