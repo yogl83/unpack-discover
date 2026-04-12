@@ -64,11 +64,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         {/* Логотип */}
-        <div className={`flex flex-col items-center px-4 py-6 border-b border-sidebar-border ${collapsed ? "px-2" : ""}`}>
+        <div className={`flex flex-col items-center px-4 py-3 border-b border-sidebar-border ${collapsed ? "px-2" : ""}`}>
           <img
             src={logo}
             alt="МИЭМ"
-            className={collapsed ? "h-10 w-10 object-contain" : "w-full max-w-[160px] mx-auto object-contain"}
+            className={collapsed ? "h-10 w-10 object-contain" : "w-full max-w-[75%] mx-auto object-contain"}
           />
         </div>
 
