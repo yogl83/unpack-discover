@@ -637,8 +637,8 @@ export default function UnitDetail() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {!unitContacts?.length ? (
-                  <p className="text-muted-foreground text-sm py-4 text-center">Нет контактов</p>
+                {!memberships?.length ? (
+                  <p className="text-muted-foreground text-sm py-4 text-center">Нет участников</p>
                 ) : (
                   <>
                     {/* Desktop table */}
@@ -653,37 +653,29 @@ export default function UnitDetail() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {unitContacts.map(c => {
-                            const isLead = c.unit_contact_id === leadContactId;
-                            const membership = memberships?.find(m => m.unit_contact_id === c.unit_contact_id);
+                          {memberships.map(m => {
+                            const contact = m.unit_contacts as any;
+                            const isLead = m.is_lead || m.unit_contact_id === leadContactId;
                             return (
-                              <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
+                              <TableRow key={m.membership_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${m.unit_contact_id}`)}>
                                 <TableCell className="font-medium text-primary">
-                                  {c.full_name}
+                                  {contact?.full_name || "—"}
                                   {isLead && <Badge className="ml-2" variant="default">Руководитель</Badge>}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                                <TableCell className="text-muted-foreground">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
+                                <TableCell className="text-muted-foreground">{contact?.job_title || "—"}</TableCell>
+                                <TableCell className="text-muted-foreground">{memberRoleLabels[m.member_role] || m.member_role || "—"}</TableCell>
                                 <TableCell onClick={e => e.stopPropagation()}>
                                   <div className="flex gap-1">
                                     {canEdit && !isLead && (
-                                      <>
-                                        <ConfirmDialog
-                                          title="Удалить члена коллектива"
-                                          description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
-                                          onConfirm={async () => {
-                                            const { error } = await supabase.from("unit_contacts").delete().eq("unit_contact_id", c.unit_contact_id);
-                                            if (error) { toast.error("Ошибка удаления"); return; }
-                                            toast.success("Удалено");
-                                            qc.invalidateQueries({ queryKey: ["unit-contacts", id] });
-                                            qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
-                                          }}
-                                          triggerLabel=""
-                                          triggerSize="icon"
-                                          triggerClassName="h-8 w-8"
-                                          variant="ghost"
-                                        />
-                                      </>
+                                      <ConfirmDialog
+                                        title="Удалить из коллектива"
+                                        description={`Удалить ${contact?.full_name || ""} из коллектива? Сам контакт не будет удалён.`}
+                                        onConfirm={() => removeMembership.mutate(m.membership_id)}
+                                        triggerLabel=""
+                                        triggerSize="icon"
+                                        triggerClassName="h-8 w-8"
+                                        variant="ghost"
+                                      />
                                     )}
                                   </div>
                                 </TableCell>
@@ -696,37 +688,29 @@ export default function UnitDetail() {
 
                     {/* Mobile cards */}
                     <div className="sm:hidden space-y-3">
-                      {unitContacts.map(c => {
-                        const isLead = c.unit_contact_id === leadContactId;
-                        const membership = memberships?.find(m => m.unit_contact_id === c.unit_contact_id);
+                      {memberships.map(m => {
+                        const contact = m.unit_contacts as any;
+                        const isLead = m.is_lead || m.unit_contact_id === leadContactId;
                         return (
                           <div
-                            key={c.unit_contact_id}
+                            key={m.membership_id}
                             className="rounded-lg border p-3 space-y-1.5 cursor-pointer hover:bg-muted/50"
-                            onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}
+                            onClick={() => navigate(`/units/${id}/contacts/${m.unit_contact_id}`)}
                           >
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-primary">{c.full_name}</span>
+                              <span className="font-medium text-primary">{contact?.full_name || "—"}</span>
                               {isLead && <Badge variant="default">Руководитель</Badge>}
                             </div>
-                            {c.job_title && <p className="text-sm text-muted-foreground">{c.job_title}</p>}
-                            {c.contact_role && (
-                              <Badge variant="outline" className="text-xs">
-                                {memberRoleLabels[c.contact_role] || c.contact_role}
-                              </Badge>
-                            )}
+                            {contact?.job_title && <p className="text-sm text-muted-foreground">{contact.job_title}</p>}
+                            <Badge variant="outline" className="text-xs">
+                              {memberRoleLabels[m.member_role] || m.member_role}
+                            </Badge>
                             {canEdit && !isLead && (
                               <div className="pt-1 flex gap-1" onClick={e => e.stopPropagation()}>
                                 <ConfirmDialog
-                                  title="Удалить члена коллектива"
-                                  description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
-                                  onConfirm={async () => {
-                                    const { error } = await supabase.from("unit_contacts").delete().eq("unit_contact_id", c.unit_contact_id);
-                                    if (error) { toast.error("Ошибка удаления"); return; }
-                                    toast.success("Удалено");
-                                    qc.invalidateQueries({ queryKey: ["unit-contacts", id] });
-                                    qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
-                                  }}
+                                  title="Удалить из коллектива"
+                                  description={`Удалить ${contact?.full_name || ""} из коллектива? Сам контакт не будет удалён.`}
+                                  onConfirm={() => removeMembership.mutate(m.membership_id)}
                                   triggerLabel=""
                                   triggerSize="icon"
                                   triggerClassName="h-7 w-7"
