@@ -201,6 +201,59 @@ export type Database = {
           },
         ]
       }
+      contact_portfolio_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          item_type: string
+          notes: string | null
+          organization_name: string | null
+          portfolio_item_id: string
+          title: string
+          unit_contact_id: string
+          updated_at: string
+          url: string | null
+          year_from: number | null
+          year_to: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          item_type: string
+          notes?: string | null
+          organization_name?: string | null
+          portfolio_item_id?: string
+          title: string
+          unit_contact_id: string
+          updated_at?: string
+          url?: string | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          item_type?: string
+          notes?: string | null
+          organization_name?: string | null
+          portfolio_item_id?: string
+          title?: string
+          unit_contact_id?: string
+          updated_at?: string
+          url?: string | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_portfolio_items_unit_contact_id_fkey"
+            columns: ["unit_contact_id"]
+            isOneToOne: false
+            referencedRelation: "unit_contacts"
+            referencedColumns: ["unit_contact_id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           contact_id: string
@@ -1113,7 +1166,11 @@ export type Database = {
           is_primary: boolean
           job_title: string | null
           notes: string | null
+          orcid: string | null
+          personal_summary: string | null
           phone: string | null
+          scholar_url: string | null
+          scopus_id: string | null
           telegram: string | null
           unit_contact_id: string
           unit_id: string | null
@@ -1128,7 +1185,11 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           notes?: string | null
+          orcid?: string | null
+          personal_summary?: string | null
           phone?: string | null
+          scholar_url?: string | null
+          scopus_id?: string | null
           telegram?: string | null
           unit_contact_id?: string
           unit_id?: string | null
@@ -1143,7 +1204,11 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           notes?: string | null
+          orcid?: string | null
+          personal_summary?: string | null
           phone?: string | null
+          scholar_url?: string | null
+          scopus_id?: string | null
           telegram?: string | null
           unit_contact_id?: string
           unit_id?: string | null
