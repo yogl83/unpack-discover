@@ -660,19 +660,6 @@ export default function UnitDetail() {
                                   <div className="flex gap-1">
                                     {canEdit && !isLead && (
                                       <>
-                                        <Button size="sm" variant="ghost" onClick={() => {
-                                          if (membership) {
-                                            setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
-                                          } else {
-                                            setLeadContactId(c.unit_contact_id);
-                                            supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
-                                              toast.success("Руководитель назначен");
-                                              qc.invalidateQueries({ queryKey: ["unit", id] });
-                                            });
-                                          }
-                                        }}>
-                                          Назначить рук.
-                                        </Button>
                                         <ConfirmDialog
                                           title="Удалить члена коллектива"
                                           description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
@@ -722,19 +709,6 @@ export default function UnitDetail() {
                             )}
                             {canEdit && !isLead && (
                               <div className="pt-1 flex gap-1" onClick={e => e.stopPropagation()}>
-                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
-                                  if (membership) {
-                                    setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
-                                  } else {
-                                    setLeadContactId(c.unit_contact_id);
-                                    supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
-                                      toast.success("Руководитель назначен");
-                                      qc.invalidateQueries({ queryKey: ["unit", id] });
-                                    });
-                                  }
-                                }}>
-                                  Назначить рук.
-                                </Button>
                                 <ConfirmDialog
                                   title="Удалить члена коллектива"
                                   description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
