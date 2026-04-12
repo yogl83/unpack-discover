@@ -458,9 +458,16 @@ export default function UnitContactDetail() {
                         <AccordionContent>
                           <div className="space-y-2">
                             {canEdit && (
-                              <Button size="sm" variant="outline" onClick={() => openAddPortfolio(type)}>
-                                <Plus className="mr-1 h-3.5 w-3.5" />Добавить
-                              </Button>
+                              <div className="flex gap-2 flex-wrap">
+                                <Button size="sm" variant="outline" onClick={() => openAddPortfolio(type)}>
+                                  <Plus className="mr-1 h-3.5 w-3.5" />Добавить
+                                </Button>
+                                {type === "publication" && hasImportIds && (
+                                  <Button size="sm" variant="outline" onClick={startImport}>
+                                    <Download className="mr-1 h-3.5 w-3.5" />Импорт из OpenAlex
+                                  </Button>
+                                )}
+                              </div>
                             )}
                             {items.length === 0 ? (
                               <p className="text-muted-foreground text-sm py-2">Нет записей</p>
