@@ -22,7 +22,7 @@ import { UnitPortfolioFiles } from "@/components/unit/UnitPortfolioFiles";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels } from "@/lib/labels";
+import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels, portfolioFieldConfig } from "@/lib/labels";
 const statusLabels = hypothesisStatusLabels;
 
 const emptyPortfolioForm = {
@@ -460,13 +460,17 @@ export default function UnitDetail() {
                         </Select>
                       </div>
                     )}
-                    <div className="space-y-2"><Label>Организация</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).orgLabel}</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Год начала</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
-                    <div className="space-y-2"><Label>Год окончания</Label><Input type="number" value={pForm.year_to} onChange={e => setP("year_to", e.target.value)} placeholder="2024" /></div>
-                  </div>
-                  <div className="space-y-2"><Label>Ссылка</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder="https://..." /></div>
+                  {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
+                      <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearToLabel}</Label><Input type="number" value={pForm.year_to} onChange={e => setP("year_to", e.target.value)} placeholder="2024" /></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2023" /></div>
+                  )}
+                  <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlLabel}</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder={(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlPlaceholder} /></div>
                   <div className="space-y-2"><Label>Описание</Label><Textarea value={pForm.description} onChange={e => setP("description", e.target.value)} rows={3} /></div>
                   <div className="space-y-2"><Label>Заметки</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={2} /></div>
                 </div>
