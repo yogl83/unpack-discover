@@ -1,36 +1,33 @@
 
 
-# Короткие ID вместо ссылок в профилях цитирования
+# Исправить редирект после сохранения карточки сотрудника
 
-## Идея
-Все 6 полей хранят только короткий идентификатор. Placeholder показывает формат ID. Рядом с каждым полем — кликабельная иконка-ссылка, которая автоматически формирует URL.
+## Проблема
+Сейчас при открытии карточки через маршрут `/units/:unitId/contacts/:contactId` после сохранения происходит `navigate(/units/${unitId})` — возврат на страницу коллектива, а не на список сотрудников.
 
-## Маппинг ID → URL
+## Решение
+Добавить навигацию «назад» с учётом того, откуда пришёл пользователь. Самый простой вариант — всегда возвращать на `/contacts/internal` при `standalone`, а при наличии `unitId` — на `/units/${unitId}`.
 
-| Поле | Пример ID | Шаблон ссылки |
-|------|-----------|---------------|
-| ORCID | `0000-0003-0669-5694` | `https://orcid.org/{id}` |
-| Scopus | `25929447800` | `https://www.scopus.com/authid/detail.uri?authorId={id}` |
-| eLibrary | `177140` | `https://elibrary.ru/author_profile.asp?id={id}` |
-| Google Scholar | `ABSiyPEAAAAJ` | `https://scholar.google.com/citations?user={id}` |
-| OpenAlex | `A5059854048` | `https://openalex.org/authors/{id}` |
-| ResearcherID | `E-6562-2014` | `https://www.webofscience.com/wos/author/rid/{id}` |
+Но если пользователь хочет **всегда** возвращаться на `/contacts/internal`, нужно изменить обе ветки в `onSuccess` у `save` и `del`.
 
-## Изменения
+## Предлагаемый вариант
+Использовать `navigate(-1)` (браузерная история назад) — так пользователь вернётся туда, откуда пришёл, будь то список сотрудников или страница коллектива.
 
-### 1. БД — переименовать колонки для консистентности
-Миграция:
-- `scholar_url` → `scholar_id`
-- `openalex_url` → `openalex_id`
-- `researcherid_url` → `researcherid`
+### Изменения в `src/pages/UnitContactDetail.tsx`
+В `onSuccess` мутаций `save` и `del` заменить:
+```ts
+// Было:
+if (standalone) {
+  navigate("/contacts/internal");
+} else {
+  navigate(`/units/${unitId}`);
+}
 
-### 2. `src/pages/UnitContactDetail.tsx`
-- Обновить имена полей в state/fetch/save
-- Поменять placeholder на короткие примеры ID
-- Рядом с каждым заполненным полем добавить иконку `ExternalLink`, которая открывает сформированную ссылку в новой вкладке
-- Вынести маппинг `id → url` в хелпер-функцию
+// Станет:
+qc.invalidateQueries({ queryKey: ["all-internal-contacts"] });
+qc.invalidateQueries({ queryKey: ["unit-contacts", unitId] });
+navigate(-1);
+```
 
-### Затронутые файлы
-- Миграция SQL (rename columns)
-- `src/pages/UnitContactDetail.tsx`
+Один файл, две правки (save + del).
 
