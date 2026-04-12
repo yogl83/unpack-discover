@@ -82,6 +82,7 @@ export default function UnitContactDetail() {
   const [portfolioTypePreset, setPortfolioTypePreset] = useState(false);
   const portfolioFilesRef = useRef<PortfolioItemFilesHandle>(null);
   const [pForm, setPForm] = useState(emptyPortfolioForm);
+  const [viewingPortfolio, setViewingPortfolio] = useState<any>(null);
 
   // Import publications state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -759,6 +760,56 @@ export default function UnitContactDetail() {
                     <Save className="mr-2 h-4 w-4" />{editingPortfolioId ? "Сохранить" : "Добавить"}
                   </Button>
                 </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* View portfolio item dialog */}
+            <Dialog open={!!viewingPortfolio} onOpenChange={open => !open && setViewingPortfolio(null)}>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>{viewingPortfolio?.title}</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1 overflow-auto pr-4">
+                  {viewingPortfolio && (() => {
+                    const v = viewingPortfolio;
+                    const oaLabel = oaStatusLabels[v.oa_status] || v.oa_status;
+                    const fields: [string, React.ReactNode][] = [
+                      ["Тип", portfolioTypeLabels[v.item_type] || v.item_type],
+                      ["Авторы", v.authors],
+                      ["Год", v.year_from && v.year_to && v.year_from !== v.year_to ? `${v.year_from}–${v.year_to}` : v.year_from],
+                      ["Источник", v.organization_name],
+                      ["Издательство", v.publisher],
+                      ["Книга / сборник", v.book_title],
+                      ["Конференция", v.conference_name],
+                      ["ISBN", v.isbn],
+                      ["DOI", v.doi ? <a href={`https://doi.org/${(v.doi as string).replace("https://doi.org/", "")}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{v.doi}</a> : null],
+                      ["OA-статус", v.oa_status ? oaLabel : null],
+                      ["Цитирования", typeof v.cited_by_count === "number" ? v.cited_by_count : null],
+                      ["Тип публикации", v.publication_type],
+                      ["Тип источника", v.source_type],
+                      ["Язык", v.language?.toUpperCase()],
+                      ["Том / Номер / Страницы", [v.biblio_volume && `Т. ${v.biblio_volume}`, v.biblio_issue && `№ ${v.biblio_issue}`, v.biblio_first_page && (v.biblio_last_page && v.biblio_last_page !== v.biblio_first_page ? `С. ${v.biblio_first_page}–${v.biblio_last_page}` : `С. ${v.biblio_first_page}`)].filter(Boolean).join(", ") || null],
+                      ["Тема", v.primary_topic],
+                      ["Ключевые слова", v.keywords],
+                      ["PDF", v.pdf_url ? <a href={v.pdf_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">Скачать</a> : null],
+                      ["arXiv", v.arxiv_url ? <a href={v.arxiv_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">Открыть</a> : null],
+                      ["Отозвана", v.is_retracted ? "Да" : null],
+                      ["Описание", v.description],
+                      ["Аннотация / Заметки", v.notes],
+                    ];
+                    return (
+                      <div className="space-y-3 py-2">
+                        {fields.map(([label, value]) => value != null && value !== "" && value !== 0 ? (
+                          <div key={label}>
+                            <p className="text-xs text-muted-foreground">{label}</p>
+                            <div className="text-sm mt-0.5">{value}</div>
+                          </div>
+                        ) : null)}
+                        <PortfolioItemFiles portfolioItemId={v.portfolio_item_id} itemSource="contact" editable={false} />
+                      </div>
+                    );
+                  })()}
+                </ScrollArea>
               </DialogContent>
             </Dialog>
 
