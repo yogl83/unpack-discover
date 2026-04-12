@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Plus, Pencil, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Plus, Pencil, ExternalLink, Download, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
@@ -70,6 +71,13 @@ export default function UnitContactDetail() {
   const [portfolioTypePreset, setPortfolioTypePreset] = useState(false);
   const portfolioFilesRef = useRef<PortfolioItemFilesHandle>(null);
   const [pForm, setPForm] = useState(emptyPortfolioForm);
+
+  // Import publications state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importWorks, setImportWorks] = useState<any[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importSaving, setImportSaving] = useState(false);
 
   const { data: unit } = useQuery({
     queryKey: ["unit", unitId],
@@ -263,6 +271,81 @@ export default function UnitContactDetail() {
   const setP = (k: string, v: any) => setPForm(p => ({ ...p, [k]: v }));
   const backLink = standalone ? "/contacts/internal" : `/units/${unitId}`;
 
+  const hasImportIds = !!(form.openalex_id || form.orcid || form.scopus_id);
+
+  const startImport = async () => {
+    setImportDialogOpen(true);
+    setImportLoading(true);
+    setImportWorks([]);
+    setImportSelected(new Set());
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-author-publications", {
+        body: { openalex_id: form.openalex_id || undefined, orcid: form.orcid || undefined, scopus_id: form.scopus_id || undefined },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Deduplicate against existing portfolio
+      const existing = new Set(
+        (portfolioItems || []).map((p: any) => `${(p.title || "").toLowerCase().trim()}|${p.year_from || ""}`)
+      );
+      const works = (data.works || []).map((w: any, i: number) => ({
+        ...w,
+        _index: i,
+        _exists: existing.has(`${(w.title || "").toLowerCase().trim()}|${w.year || ""}`),
+      }));
+      setImportWorks(works);
+    } catch (err: any) {
+      toast.error("Ошибка загрузки: " + (err.message || "Неизвестная ошибка"));
+      setImportDialogOpen(false);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const toggleImportItem = (idx: number) => {
+    setImportSelected(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  const toggleAllImport = () => {
+    const selectable = importWorks.filter(w => !w._exists);
+    if (importSelected.size === selectable.length) {
+      setImportSelected(new Set());
+    } else {
+      setImportSelected(new Set(selectable.map(w => w._index)));
+    }
+  };
+
+  const saveImported = async () => {
+    const toSave = importWorks.filter(w => importSelected.has(w._index));
+    if (toSave.length === 0) return;
+    setImportSaving(true);
+    try {
+      const rows = toSave.map(w => ({
+        unit_contact_id: contactId!,
+        title: w.title,
+        item_type: "publication",
+        year_from: w.year || null,
+        authors: w.authors || null,
+        url: w.url || null,
+        description: w.doi ? `DOI: ${w.doi.replace("https://doi.org/", "")}` : null,
+      }));
+      const { error } = await supabase.from("contact_portfolio_items").insert(rows);
+      if (error) throw error;
+      toast.success(`Добавлено ${rows.length} публикаций`);
+      qc.invalidateQueries({ queryKey: ["contact-portfolio", contactId] });
+      setImportDialogOpen(false);
+    } catch (err: any) {
+      toast.error("Ошибка сохранения: " + err.message);
+    } finally {
+      setImportSaving(false);
+    }
+  };
+
   const openAddPortfolio = (type?: string) => {
     setEditingPortfolioId(null);
     setPForm({ ...emptyPortfolioForm, item_type: type || "project" });
@@ -375,9 +458,16 @@ export default function UnitContactDetail() {
                         <AccordionContent>
                           <div className="space-y-2">
                             {canEdit && (
-                              <Button size="sm" variant="outline" onClick={() => openAddPortfolio(type)}>
-                                <Plus className="mr-1 h-3.5 w-3.5" />Добавить
-                              </Button>
+                              <div className="flex gap-2 flex-wrap">
+                                <Button size="sm" variant="outline" onClick={() => openAddPortfolio(type)}>
+                                  <Plus className="mr-1 h-3.5 w-3.5" />Добавить
+                                </Button>
+                                {type === "publication" && hasImportIds && (
+                                  <Button size="sm" variant="outline" onClick={startImport}>
+                                    <Download className="mr-1 h-3.5 w-3.5" />Импорт из OpenAlex
+                                  </Button>
+                                )}
+                              </div>
                             )}
                             {items.length === 0 ? (
                               <p className="text-muted-foreground text-sm py-2">Нет записей</p>
@@ -508,6 +598,70 @@ export default function UnitContactDetail() {
                   <Button variant="outline" onClick={() => setPortfolioDialogOpen(false)}>Отмена</Button>
                   <Button onClick={() => savePortfolio.mutate()} disabled={savePortfolio.isPending}>
                     <Save className="mr-2 h-4 w-4" />{editingPortfolioId ? "Сохранить" : "Добавить"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Import publications dialog */}
+            <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Импорт публикаций из OpenAlex</DialogTitle>
+                </DialogHeader>
+                {importLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Загрузка публикаций...</span>
+                  </div>
+                ) : importWorks.length === 0 ? (
+                  <p className="text-muted-foreground text-sm py-8 text-center">Публикации не найдены</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between px-1 py-2">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={importSelected.size === importWorks.filter(w => !w._exists).length && importSelected.size > 0}
+                          onCheckedChange={toggleAllImport}
+                        />
+                        Выбрать все ({importWorks.filter(w => !w._exists).length})
+                      </label>
+                      <span className="text-sm text-muted-foreground">
+                        Найдено: {importWorks.length}, уже в портфолио: {importWorks.filter(w => w._exists).length}
+                      </span>
+                    </div>
+                    <ScrollArea className="flex-1 overflow-auto border rounded-md">
+                      <div className="divide-y">
+                        {importWorks.map((w) => (
+                          <label
+                            key={w._index}
+                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 ${w._exists ? "opacity-50" : ""}`}
+                          >
+                            <Checkbox
+                              checked={importSelected.has(w._index)}
+                              onCheckedChange={() => toggleImportItem(w._index)}
+                              disabled={w._exists}
+                              className="mt-0.5"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium leading-snug">{w.title}</p>
+                              <div className="flex items-center gap-2 flex-wrap mt-1">
+                                {w.year && <Badge variant="outline" className="text-xs">{w.year}</Badge>}
+                                {w._exists && <Badge variant="secondary" className="text-xs">Уже добавлено</Badge>}
+                              </div>
+                              {w.authors && <p className="text-xs text-muted-foreground mt-1 truncate">{w.authors}</p>}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Отмена</Button>
+                  <Button onClick={saveImported} disabled={importSaving || importSelected.size === 0}>
+                    {importSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Добавить выбранные ({importSelected.size})
                   </Button>
                 </DialogFooter>
               </DialogContent>
