@@ -94,7 +94,7 @@ export default function Auth() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logo} alt="МИЭМ" className="h-16 mx-auto mb-2" />
+          <img src={logo} alt="МИЭМ" className="h-28 mx-auto mb-2" />
           <CardTitle className="text-2xl font-bold">МИЭМ НИУ ВШЭ</CardTitle>
           <CardDescription>
             {mode === "register" ? "Запрос доступа к системе" : "Система управления партнерствами"}
