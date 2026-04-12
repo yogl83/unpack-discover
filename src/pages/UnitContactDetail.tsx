@@ -402,7 +402,7 @@ export default function UnitContactDetail() {
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
                                       {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
-                                      <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={canEdit} />
+                                      <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (
                                       <div className="flex gap-1 shrink-0">
@@ -492,6 +492,12 @@ export default function UnitContactDetail() {
                     <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlLabel}</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder={(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlPlaceholder} /></div>
                     <div className="space-y-2"><Label>Описание</Label><Textarea value={pForm.description} onChange={e => setP("description", e.target.value)} rows={3} /></div>
                     <div className="space-y-2"><Label>Заметки</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={2} /></div>
+                    {editingPortfolioId && (
+                      <div className="space-y-2">
+                        <Label>Файлы</Label>
+                        <PortfolioItemFiles portfolioItemId={editingPortfolioId} itemSource="contact" editable={true} />
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
                 <DialogFooter>
