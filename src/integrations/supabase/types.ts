@@ -203,13 +203,22 @@ export type Database = {
       }
       contact_portfolio_items: {
         Row: {
+          arxiv_url: string | null
           authors: string | null
+          biblio_first_page: string | null
+          biblio_issue: string | null
+          biblio_last_page: string | null
+          biblio_volume: string | null
           country: string | null
           created_at: string
           description: string | null
+          doi: string | null
           item_type: string
           notes: string | null
+          oa_status: string | null
+          oa_url: string | null
           organization_name: string | null
+          pdf_url: string | null
           portfolio_item_id: string
           project_subtype: string | null
           registration_number: string | null
@@ -222,13 +231,22 @@ export type Database = {
           year_to: number | null
         }
         Insert: {
+          arxiv_url?: string | null
           authors?: string | null
+          biblio_first_page?: string | null
+          biblio_issue?: string | null
+          biblio_last_page?: string | null
+          biblio_volume?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          doi?: string | null
           item_type: string
           notes?: string | null
+          oa_status?: string | null
+          oa_url?: string | null
           organization_name?: string | null
+          pdf_url?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
           registration_number?: string | null
@@ -241,13 +259,22 @@ export type Database = {
           year_to?: number | null
         }
         Update: {
+          arxiv_url?: string | null
           authors?: string | null
+          biblio_first_page?: string | null
+          biblio_issue?: string | null
+          biblio_last_page?: string | null
+          biblio_volume?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          doi?: string | null
           item_type?: string
           notes?: string | null
+          oa_status?: string | null
+          oa_url?: string | null
           organization_name?: string | null
+          pdf_url?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
           registration_number?: string | null

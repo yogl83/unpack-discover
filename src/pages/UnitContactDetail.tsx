@@ -53,6 +53,8 @@ const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
 const emptyPortfolioForm = {
   title: "", item_type: "project", project_subtype: "", rid_subtype: "", organization_name: "", description: "",
   year_from: "", year_to: "", url: "", notes: "", authors: "", registration_number: "", country: "RU",
+  doi: "", oa_status: "", oa_url: "", pdf_url: "", arxiv_url: "",
+  biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
 };
 
 export default function UnitContactDetail() {
@@ -210,7 +212,7 @@ export default function UnitContactDetail() {
         item_type: pForm.item_type,
         project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         rid_subtype: pForm.item_type === "rid" ? (pForm.rid_subtype || null) : null,
-        authors: pForm.item_type === "rid" ? (pForm.authors || null) : null,
+        authors: (pForm.item_type === "rid" || pForm.item_type === "publication") ? (pForm.authors || null) : null,
         registration_number: pForm.item_type === "rid" ? (pForm.registration_number || null) : null,
         country: pForm.item_type === "rid" ? (pForm.country || null) : null,
         organization_name: pForm.organization_name || null,
@@ -219,6 +221,15 @@ export default function UnitContactDetail() {
         notes: pForm.notes || null,
         year_from: pForm.year_from ? Number(pForm.year_from) : null,
         year_to: pForm.year_to ? Number(pForm.year_to) : null,
+        doi: pForm.item_type === "publication" ? (pForm.doi || null) : null,
+        oa_status: pForm.item_type === "publication" ? (pForm.oa_status || null) : null,
+        oa_url: pForm.item_type === "publication" ? (pForm.oa_url || null) : null,
+        pdf_url: pForm.item_type === "publication" ? (pForm.pdf_url || null) : null,
+        arxiv_url: pForm.item_type === "publication" ? (pForm.arxiv_url || null) : null,
+        biblio_volume: pForm.item_type === "publication" ? (pForm.biblio_volume || null) : null,
+        biblio_issue: pForm.item_type === "publication" ? (pForm.biblio_issue || null) : null,
+        biblio_first_page: pForm.item_type === "publication" ? (pForm.biblio_first_page || null) : null,
+        biblio_last_page: pForm.item_type === "publication" ? (pForm.biblio_last_page || null) : null,
       };
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
@@ -330,14 +341,7 @@ export default function UnitContactDetail() {
     if (toSave.length === 0) return;
     setImportSaving(true);
     try {
-      const rows = toSave.map(w => {
-        const descParts: string[] = [];
-        if (w.biblio_string) descParts.push(w.biblio_string);
-        if (w.doi) descParts.push(`DOI: ${w.doi.replace("https://doi.org/", "")}`);
-        if (w.oa_status) descParts.push(`Доступ: ${oaStatusLabels[w.oa_status] || w.oa_status}`);
-        if (w.pdf_url) descParts.push(`PDF: ${w.pdf_url}`);
-        if (w.arxiv_url) descParts.push(`arXiv: ${w.arxiv_url}`);
-        return {
+      const rows = toSave.map(w => ({
           unit_contact_id: contactId!,
           title: w.title,
           item_type: "publication",
@@ -345,10 +349,18 @@ export default function UnitContactDetail() {
           authors: w.authors || null,
           url: w.oa_url || w.url || null,
           organization_name: w.source_name || null,
-          description: descParts.length > 0 ? descParts.join(" | ") : null,
+          description: null,
           notes: w.abstract || null,
-        };
-      });
+          doi: w.doi || null,
+          oa_status: w.oa_status || null,
+          oa_url: w.oa_url || null,
+          pdf_url: w.pdf_url || null,
+          arxiv_url: w.arxiv_url || null,
+          biblio_volume: w.volume || null,
+          biblio_issue: w.issue || null,
+          biblio_first_page: w.first_page || null,
+          biblio_last_page: w.last_page || null,
+      }));
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
       toast.success(`Добавлено ${rows.length} публикаций`);
@@ -380,6 +392,10 @@ export default function UnitContactDetail() {
       authors: (p as any).authors || "",
       registration_number: (p as any).registration_number || "",
       country: (p as any).country || "RU",
+      doi: p.doi || "", oa_status: p.oa_status || "", oa_url: p.oa_url || "",
+      pdf_url: p.pdf_url || "", arxiv_url: p.arxiv_url || "",
+      biblio_volume: p.biblio_volume || "", biblio_issue: p.biblio_issue || "",
+      biblio_first_page: p.biblio_first_page || "", biblio_last_page: p.biblio_last_page || "",
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
@@ -512,12 +528,39 @@ export default function UnitContactDetail() {
                                         )}
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
-                                      {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
-                                      {p.notes && p.item_type === "publication" && (
-                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-1" title={p.notes}>
-                                          <FileText className="h-3.5 w-3.5" />Есть аннотация
-                                        </span>
+                                      {p.item_type === "publication" && (() => {
+                                        const bibParts: string[] = [];
+                                        if (p.biblio_volume) bibParts.push(`Т. ${p.biblio_volume}`);
+                                        if (p.biblio_issue) bibParts.push(`№ ${p.biblio_issue}`);
+                                        if (p.biblio_first_page) bibParts.push(p.biblio_last_page && p.biblio_last_page !== p.biblio_first_page ? `С. ${p.biblio_first_page}–${p.biblio_last_page}` : `С. ${p.biblio_first_page}`);
+                                        return bibParts.length > 0 ? <p className="text-xs text-muted-foreground">{bibParts.join(", ")}</p> : null;
+                                      })()}
+                                      {p.item_type === "publication" && (
+                                        <div className="flex items-center gap-2 flex-wrap mt-1">
+                                          {p.doi && (
+                                            <a href={`https://doi.org/${(p.doi as string).replace("https://doi.org/", "")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                                              DOI
+                                            </a>
+                                          )}
+                                          {p.oa_status && (
+                                            <Badge variant={p.oa_status === "closed" ? "secondary" : "default"} className="text-xs">
+                                              {oaStatusLabels[p.oa_status] || p.oa_status}
+                                            </Badge>
+                                          )}
+                                          {p.pdf_url && (
+                                            <a href={p.pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">PDF</a>
+                                          )}
+                                          {p.arxiv_url && (
+                                            <a href={p.arxiv_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">arXiv</a>
+                                          )}
+                                          {p.notes && (
+                                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={p.notes}>
+                                              <FileText className="h-3.5 w-3.5" />Аннотация
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
+                                      {p.item_type !== "publication" && p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (
@@ -595,6 +638,31 @@ export default function UnitContactDetail() {
                           <div className="space-y-2"><Label>Номер регистрации</Label><Input value={pForm.registration_number} onChange={e => setP("registration_number", e.target.value)} placeholder="RU 2 123 456" /></div>
                           <div className="space-y-2"><Label>Страна</Label><Input value={pForm.country} onChange={e => setP("country", e.target.value)} placeholder="RU" /></div>
                         </div>
+                      </>
+                    )}
+                    {pForm.item_type === "publication" && (
+                      <>
+                        <div className="space-y-2"><Label>Авторы</Label><Input value={pForm.authors} onChange={e => setP("authors", e.target.value)} placeholder="Иванов И.И., Петров П.П." /></div>
+                        <div className="space-y-2"><Label>DOI</Label><Input value={pForm.doi} onChange={e => setP("doi", e.target.value)} placeholder="10.1234/example" /></div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div className="space-y-2"><Label>Том</Label><Input value={pForm.biblio_volume} onChange={e => setP("biblio_volume", e.target.value)} placeholder="12" /></div>
+                          <div className="space-y-2"><Label>Номер</Label><Input value={pForm.biblio_issue} onChange={e => setP("biblio_issue", e.target.value)} placeholder="3" /></div>
+                          <div className="space-y-2"><Label>С.</Label><Input value={pForm.biblio_first_page} onChange={e => setP("biblio_first_page", e.target.value)} placeholder="45" /></div>
+                          <div className="space-y-2"><Label>По</Label><Input value={pForm.biblio_last_page} onChange={e => setP("biblio_last_page", e.target.value)} placeholder="67" /></div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Режим доступа</Label>
+                          <Select value={pForm.oa_status || "__none__"} onValueChange={v => setP("oa_status", v === "__none__" ? "" : v)}>
+                            <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Не указан</SelectItem>
+                              {Object.entries(oaStatusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2"><Label>OA URL</Label><Input value={pForm.oa_url} onChange={e => setP("oa_url", e.target.value)} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label>PDF URL</Label><Input value={pForm.pdf_url} onChange={e => setP("pdf_url", e.target.value)} placeholder="https://..." /></div>
+                        <div className="space-y-2"><Label>arXiv URL</Label><Input value={pForm.arxiv_url} onChange={e => setP("arxiv_url", e.target.value)} placeholder="https://arxiv.org/abs/..." /></div>
                       </>
                     )}
                     {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (

@@ -8,12 +8,15 @@ interface WorkResult {
   url: string | null;
   type: string | null;
   source_name: string | null;
-  biblio_string: string | null;
   abstract: string | null;
   oa_status: string | null;
   oa_url: string | null;
   pdf_url: string | null;
   arxiv_url: string | null;
+  volume: string | null;
+  issue: string | null;
+  first_page: string | null;
+  last_page: string | null;
 }
 
 function invertedIndexToText(idx: Record<string, number[]>): string {
@@ -36,7 +39,6 @@ Deno.serve(async (req) => {
   try {
     const { openalex_id, orcid, scopus_id } = await req.json();
 
-    // Build OpenAlex filter
     let filter = "";
     if (openalex_id) {
       const id = openalex_id.startsWith("A") ? openalex_id : `A${openalex_id}`;
@@ -78,30 +80,21 @@ Deno.serve(async (req) => {
         const doi = w.doi || null;
         const type = w.type || null;
 
-        // Authors (first 5)
         const authorNames = (w.authorships || [])
           .slice(0, 5)
           .map((a: any) => a.author?.display_name || "")
           .filter(Boolean);
         const authors = authorNames.join(", ") + (w.authorships?.length > 5 ? " и др." : "");
 
-        // URL: prefer DOI
         const doiUrl = doi ? `https://doi.org/${doi.replace("https://doi.org/", "")}` : null;
-
-        // Source (journal/conference)
         const source_name = w.primary_location?.source?.display_name || null;
 
-        // Biblio string
+        // Biblio fields
         const biblio = w.biblio;
-        const bibParts: string[] = [];
-        if (biblio?.volume) bibParts.push(`Т. ${biblio.volume}`);
-        if (biblio?.issue) bibParts.push(`№ ${biblio.issue}`);
-        if (biblio?.first_page) {
-          bibParts.push(biblio.last_page && biblio.last_page !== biblio.first_page
-            ? `С. ${biblio.first_page}–${biblio.last_page}`
-            : `С. ${biblio.first_page}`);
-        }
-        const biblio_string = bibParts.length > 0 ? bibParts.join(", ") : null;
+        const volume = biblio?.volume || null;
+        const issue = biblio?.issue || null;
+        const first_page = biblio?.first_page || null;
+        const last_page = biblio?.last_page || null;
 
         // Abstract
         const abstractText = w.abstract_inverted_index
@@ -113,7 +106,7 @@ Deno.serve(async (req) => {
         const oa_url = w.open_access?.oa_url || null;
         const pdf_url = w.best_oa_location?.pdf_url || null;
 
-        // arXiv: search in locations
+        // arXiv
         let arxiv_url: string | null = null;
         if (w.locations && Array.isArray(w.locations)) {
           for (const loc of w.locations) {
@@ -127,7 +120,7 @@ Deno.serve(async (req) => {
 
         const url = oa_url || doiUrl;
 
-        works.push({ title, year, authors, doi, url, type, source_name, biblio_string, abstract: abstractText, oa_status, oa_url, pdf_url, arxiv_url });
+        works.push({ title, year, authors, doi, url, type, source_name, abstract: abstractText, oa_status, oa_url, pdf_url, arxiv_url, volume, issue, first_page, last_page });
       }
 
       if (results.length < perPage || works.length >= data.meta?.count) break;
