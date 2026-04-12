@@ -131,6 +131,7 @@ export default function UnitDetail() {
   });
 
   // Membership mutations
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberContact, setAddMemberContact] = useState("");
   const [addMemberRole, setAddMemberRole] = useState("other");
 
@@ -148,6 +149,7 @@ export default function UnitDetail() {
       toast.success("Участник добавлен");
       setAddMemberContact("");
       setAddMemberRole("other");
+      setShowAddMemberDialog(false);
       qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -622,7 +624,7 @@ export default function UnitDetail() {
                     Состав коллектива
                   </CardTitle>
                   {canEdit && (
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddMemberDialog(true)}>
                       <Plus className="mr-1 h-4 w-4" />Добавить
                     </Button>
                   )}
@@ -737,6 +739,49 @@ export default function UnitDetail() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Add member dialog */}
+      <Dialog open={showAddMemberDialog} onOpenChange={(open) => { if (!open) { setAddMemberContact(""); setAddMemberRole("other"); } setShowAddMemberDialog(open); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Добавить в коллектив</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Сотрудник</Label>
+              <Select value={addMemberContact} onValueChange={setAddMemberContact}>
+                <SelectTrigger><SelectValue placeholder="Выберите сотрудника" /></SelectTrigger>
+                <SelectContent>
+                  {(unitContacts || [])
+                    .filter(c => !(memberships || []).some(m => m.unit_contact_id === c.unit_contact_id))
+                    .map(c => (
+                      <SelectItem key={c.unit_contact_id} value={c.unit_contact_id}>
+                        {c.full_name}{c.job_title ? ` — ${c.job_title}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Роль в команде</Label>
+              <Select value={addMemberRole} onValueChange={setAddMemberRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(memberRoleLabels).map(([val, label]) => (
+                    <SelectItem key={val} value={val}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMemberDialog(false)}>Отмена</Button>
+            <Button onClick={() => addMembership.mutate()} disabled={!addMemberContact || addMembership.isPending}>
+              Добавить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
