@@ -67,6 +67,12 @@ export const unitTypeLabels: Record<string, string> = {
 };
 
 // Combined status labels (used in PartnerDetail where multiple entity statuses appear)
+// === Portfolio item types ===
+export const portfolioTypeLabels: Record<string, string> = {
+  project: "Проект", publication: "Публикация", patent: "Патент",
+  grant: "Грант", product: "Продукт", other: "Другое",
+};
+
 export const allStatusLabels: Record<string, string> = {
   ...partnerStatusLabels,
   ...needStatusLabels,

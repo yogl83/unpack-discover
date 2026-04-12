@@ -112,7 +112,7 @@ export default function CompetencyDetail() {
           <div className="space-y-2 sm:col-span-2"><Label>Описание</Label><Textarea value={form.description} onChange={e => set("description", e.target.value)} disabled={!canEdit} rows={3} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Методы и инструменты</Label><Textarea value={form.methods_and_tools} onChange={e => set("methods_and_tools", e.target.value)} disabled={!canEdit} rows={2} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Подтверждение опыта</Label><Textarea value={form.evidence_of_experience} onChange={e => set("evidence_of_experience", e.target.value)} disabled={!canEdit} rows={2} /></div>
-          <div className="space-y-2"><Label>Ссылка на образование</Label><Input value={form.education_link} onChange={e => set("education_link", e.target.value)} disabled={!canEdit} /></div>
+          
           <div className="space-y-2 sm:col-span-2"><Label>Заметки</Label><Textarea value={form.notes} onChange={e => set("notes", e.target.value)} disabled={!canEdit} rows={2} /></div>
         </CardContent>
       </Card>
