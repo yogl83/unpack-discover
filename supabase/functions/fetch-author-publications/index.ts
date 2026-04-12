@@ -25,6 +25,9 @@ interface WorkResult {
   source_type: string | null;
   keywords: string | null;
   is_retracted: boolean;
+  book_title: string | null;
+  conference_name: string | null;
+  isbn: string | null;
 }
 
 function invertedIndexToText(idx: Record<string, number[]>): string {
@@ -34,6 +37,43 @@ function invertedIndexToText(idx: Record<string, number[]>): string {
   }
   words.sort((a, b) => a[0] - b[0]);
   return words.map(w => w[1]).join(" ");
+}
+
+async function enrichFromCrossRef(doi: string): Promise<{ book_title: string | null; conference_name: string | null; isbn: string | null }> {
+  const result = { book_title: null as string | null, conference_name: null as string | null, isbn: null as string | null };
+  try {
+    const cleanDoi = doi.replace("https://doi.org/", "");
+    const resp = await fetch(`https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}?mailto=miem-partnership@hse.ru`);
+    if (!resp.ok) return result;
+    const data = await resp.json();
+    const msg = data.message;
+    if (!msg) return result;
+
+    // book_title: second element of container-title (first is series, second is book)
+    const ct = msg["container-title"];
+    if (Array.isArray(ct) && ct.length > 1) {
+      result.book_title = ct[1];
+    } else if (Array.isArray(ct) && ct.length === 1 && msg.type === "book-chapter") {
+      // Sometimes the only container-title IS the book title
+      result.book_title = ct[0];
+    }
+
+    // conference_name from event or assertion
+    if (msg.event?.name) {
+      result.conference_name = msg.event.name;
+    } else if (Array.isArray(msg.assertion)) {
+      const conf = msg.assertion.find((a: any) => a.name === "conference_name" || a.label === "Conference Name");
+      if (conf?.value) result.conference_name = conf.value;
+    }
+
+    // ISBN
+    if (Array.isArray(msg.ISBN) && msg.ISBN.length > 0) {
+      result.isbn = msg.ISBN.join(", ");
+    }
+  } catch (err) {
+    console.error("CrossRef enrichment error for DOI", doi, err);
+  }
+  return result;
 }
 
 Deno.serve(async (req) => {
@@ -124,8 +164,6 @@ Deno.serve(async (req) => {
         }
 
         const url = oa_url || doiUrl;
-
-        // New fields
         const publication_type = type;
         const language = w.language || null;
         const cited_by_count = w.cited_by_count ?? 0;
@@ -140,11 +178,25 @@ Deno.serve(async (req) => {
           title, year, authors, doi, url, type, source_name, abstract: abstractText,
           oa_status, oa_url, pdf_url, arxiv_url, volume, issue, first_page, last_page,
           publication_type, language, cited_by_count, primary_topic, publisher, source_type, keywords, is_retracted,
+          book_title: null, conference_name: null, isbn: null,
         });
       }
 
       if (results.length < perPage || works.length >= data.meta?.count) break;
       page++;
+    }
+
+    // Enrich book-chapters and proceedings-articles from CrossRef
+    const enrichTypes = new Set(["book-chapter", "proceedings-article"]);
+    for (const work of works) {
+      if (work.doi && work.type && enrichTypes.has(work.type)) {
+        const xr = await enrichFromCrossRef(work.doi);
+        work.book_title = xr.book_title;
+        work.conference_name = xr.conference_name;
+        work.isbn = xr.isbn;
+        // Small delay for CrossRef politeness
+        await new Promise(r => setTimeout(r, 100));
+      }
     }
 
     return new Response(
