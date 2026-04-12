@@ -332,14 +332,7 @@ export default function UnitContactDetail() {
     if (toSave.length === 0) return;
     setImportSaving(true);
     try {
-      const rows = toSave.map(w => {
-        const descParts: string[] = [];
-        if (w.biblio_string) descParts.push(w.biblio_string);
-        if (w.doi) descParts.push(`DOI: ${w.doi.replace("https://doi.org/", "")}`);
-        if (w.oa_status) descParts.push(`Доступ: ${oaStatusLabels[w.oa_status] || w.oa_status}`);
-        if (w.pdf_url) descParts.push(`PDF: ${w.pdf_url}`);
-        if (w.arxiv_url) descParts.push(`arXiv: ${w.arxiv_url}`);
-        return {
+      const rows = toSave.map(w => ({
           unit_contact_id: contactId!,
           title: w.title,
           item_type: "publication",
@@ -347,10 +340,18 @@ export default function UnitContactDetail() {
           authors: w.authors || null,
           url: w.oa_url || w.url || null,
           organization_name: w.source_name || null,
-          description: descParts.length > 0 ? descParts.join(" | ") : null,
+          description: null,
           notes: w.abstract || null,
-        };
-      });
+          doi: w.doi || null,
+          oa_status: w.oa_status || null,
+          oa_url: w.oa_url || null,
+          pdf_url: w.pdf_url || null,
+          arxiv_url: w.arxiv_url || null,
+          biblio_volume: w.volume || null,
+          biblio_issue: w.issue || null,
+          biblio_first_page: w.first_page || null,
+          biblio_last_page: w.last_page || null,
+      }));
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
       toast.success(`Добавлено ${rows.length} публикаций`);
