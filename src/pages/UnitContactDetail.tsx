@@ -17,12 +17,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ArrowLeft, Save, Plus, Pencil, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels, ridSubtypeLabels } from "@/lib/labels";
-import { PortfolioItemFiles } from "@/components/unit/PortfolioItemFiles";
+import { PortfolioItemFiles, PortfolioItemFilesHandle } from "@/components/unit/PortfolioItemFiles";
 
 const roleLabels: Record<string, string> = {
   lead: "Руководитель",
