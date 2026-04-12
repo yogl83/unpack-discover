@@ -23,7 +23,7 @@ const partnershipItems = [
 const miemItems = [
   { title: "Коллективы", url: "/units", icon: Users2 },
   { title: "Компетенции", url: "/competencies", icon: Brain },
-  { title: "Контакты", url: "/contacts/internal", icon: Contact },
+  { title: "Сотрудники", url: "/contacts/internal", icon: Contact },
 ];
 
 const workItems = [
