@@ -12,12 +12,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-import { hypothesisStatusLabels, memberRoleLabels } from "@/lib/labels";
+import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels } from "@/lib/labels";
 const statusLabels = hypothesisStatusLabels;
+
+const emptyPortfolioForm = {
+  title: "", item_type: "project", organization_name: "", description: "",
+  year_from: "", year_to: "", url: "", notes: "",
+};
 
 export default function UnitDetail() {
   const { id } = useParams();
@@ -147,6 +153,72 @@ export default function UnitDetail() {
     },
   });
 
+  // Portfolio CRUD
+  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
+  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+  const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
+
+  const openNewPortfolio = () => {
+    setPForm({ ...emptyPortfolioForm });
+    setEditingPortfolioId(null);
+    setPortfolioDialogOpen(true);
+  };
+
+  const openEditPortfolio = (item: any) => {
+    setPForm({
+      title: item.title || "",
+      item_type: item.item_type || "project",
+      organization_name: item.organization_name || "",
+      description: item.description || "",
+      year_from: item.year_from?.toString() || "",
+      year_to: item.year_to?.toString() || "",
+      url: item.url || "",
+      notes: item.notes || "",
+    });
+    setEditingPortfolioId(item.portfolio_item_id);
+    setPortfolioDialogOpen(true);
+  };
+
+  const savePortfolio = useMutation({
+    mutationFn: async () => {
+      if (!pForm.title) { toast.error("Укажите название"); throw new Error("required"); }
+      const payload = {
+        title: pForm.title,
+        item_type: pForm.item_type,
+        organization_name: pForm.organization_name || null,
+        description: pForm.description || null,
+        year_from: pForm.year_from ? parseInt(pForm.year_from) : null,
+        year_to: pForm.year_to ? parseInt(pForm.year_to) : null,
+        url: pForm.url || null,
+        notes: pForm.notes || null,
+        unit_id: id!,
+      };
+      if (editingPortfolioId) {
+        const { error } = await supabase.from("unit_portfolio_items").update(payload as any).eq("portfolio_item_id", editingPortfolioId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("unit_portfolio_items").insert(payload as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingPortfolioId ? "Сохранено" : "Добавлено");
+      setPortfolioDialogOpen(false);
+      qc.invalidateQueries({ queryKey: ["unit-portfolio", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deletePortfolio = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.from("unit_portfolio_items").delete().eq("portfolio_item_id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Удалено"); qc.invalidateQueries({ queryKey: ["unit-portfolio", id] }); },
+  });
+
+  const setP = (k: string, v: string) => setPForm(p => ({ ...p, [k]: v }));
+
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   if (!isNew && isLoading) return <p className="text-muted-foreground p-4">Загрузка...</p>;
 
@@ -170,6 +242,10 @@ export default function UnitDetail() {
           <TabsTrigger value="info">Информация</TabsTrigger>
           {!isNew && (
             <>
+              <TabsTrigger value="portfolio" className="gap-1.5">
+                <Briefcase className="h-3.5 w-3.5" />Портфолио
+                {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
+              </TabsTrigger>
               <TabsTrigger value="competencies" className="gap-1.5">
                 <Brain className="h-3.5 w-3.5" />Компетенции
                 {competencies?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{competencies.length}</Badge> : null}
@@ -177,10 +253,6 @@ export default function UnitDetail() {
               <TabsTrigger value="hypotheses" className="gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5" />Гипотезы
                 {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="portfolio" className="gap-1.5">
-                <Briefcase className="h-3.5 w-3.5" />Портфолио
-                {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
               </TabsTrigger>
               <TabsTrigger value="contacts" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" />Контакты
@@ -239,6 +311,89 @@ export default function UnitDetail() {
           {canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="mr-2 h-4 w-4" />{isNew ? "Создать" : "Сохранить"}</Button>}
         </TabsContent>
 
+        {/* Portfolio tab — moved to 2nd position */}
+        {!isNew && (
+          <TabsContent value="portfolio" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Портфолио</h2>
+              {canEdit && <Button size="sm" variant="outline" onClick={openNewPortfolio}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
+            </div>
+            {!portfolio?.length ? (
+              <p className="text-muted-foreground text-sm py-6 text-center">Нет элементов портфолио</p>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Организация</TableHead><TableHead>Период</TableHead>
+                    {canEdit && <TableHead className="w-[100px]">Действия</TableHead>}
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {portfolio.map(p => (
+                      <TableRow key={p.portfolio_item_id}>
+                        <TableCell className="font-medium">
+                          {p.url ? <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.title}</a> : p.title}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{portfolioTypeLabels[p.item_type] || p.item_type || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.organization_name || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.year_from ? `${p.year_from}${p.year_to ? `–${p.year_to}` : "–н.в."}` : "—"}</TableCell>
+                        {canEdit && (
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditPortfolio(p)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              {isAdmin && (
+                                <ConfirmDialog title="Удалить элемент?" description="Элемент портфолио будет удалён." onConfirm={() => deletePortfolio.mutate(p.portfolio_item_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive h-7 w-7" variant="default" />
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Portfolio dialog */}
+            <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{editingPortfolioId ? "Редактировать элемент" : "Новый элемент портфолио"}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-2">
+                  <div className="space-y-2"><Label>Название *</Label><Input value={pForm.title} onChange={e => setP("title", e.target.value)} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Тип</Label>
+                      <Select value={pForm.item_type} onValueChange={v => setP("item_type", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(portfolioTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2"><Label>Организация</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Год начала</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
+                    <div className="space-y-2"><Label>Год окончания</Label><Input type="number" value={pForm.year_to} onChange={e => setP("year_to", e.target.value)} placeholder="2024" /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Ссылка</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder="https://..." /></div>
+                  <div className="space-y-2"><Label>Описание</Label><Textarea value={pForm.description} onChange={e => setP("description", e.target.value)} rows={3} /></div>
+                  <div className="space-y-2"><Label>Заметки</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={2} /></div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPortfolioDialogOpen(false)}>Отмена</Button>
+                  <Button onClick={() => savePortfolio.mutate()} disabled={savePortfolio.isPending}>
+                    <Save className="mr-2 h-4 w-4" />{editingPortfolioId ? "Сохранить" : "Добавить"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
+
         {/* Competencies tab */}
         {!isNew && (
           <TabsContent value="competencies" className="space-y-4">
@@ -283,7 +438,7 @@ export default function UnitDetail() {
               <div className="rounded-lg border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead>Потребность</TableHead><TableHead>Статус</TableHead><TableHead>Статус</TableHead>
+                    <TableHead>Название</TableHead><TableHead>Организация</TableHead><TableHead>Потребность</TableHead><TableHead>Статус</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {hypotheses.map(h => (
@@ -292,38 +447,6 @@ export default function UnitDetail() {
                         <TableCell className="text-muted-foreground">{(h.partners as any)?.partner_name || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{(h.partner_needs as any)?.title || "—"}</TableCell>
                         <TableCell><Badge variant="secondary">{statusLabels[h.hypothesis_status || ""] || h.hypothesis_status || "—"}</Badge></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-        )}
-
-        {/* Portfolio tab */}
-        {!isNew && (
-          <TabsContent value="portfolio" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Портфолио</h2>
-            </div>
-            {!portfolio?.length ? (
-              <p className="text-muted-foreground text-sm py-6 text-center">Нет элементов портфолио</p>
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Название</TableHead><TableHead>Тип</TableHead><TableHead>Организация</TableHead><TableHead>Период</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {portfolio.map(p => (
-                      <TableRow key={p.portfolio_item_id}>
-                        <TableCell className="font-medium">
-                          {p.url ? <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{p.title}</a> : p.title}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{p.item_type || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.organization_name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.year_from ? `${p.year_from}${p.year_to ? `–${p.year_to}` : "–н.в."}` : "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
