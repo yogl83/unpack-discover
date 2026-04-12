@@ -209,20 +209,28 @@ export type Database = {
           biblio_issue: string | null
           biblio_last_page: string | null
           biblio_volume: string | null
+          cited_by_count: number | null
           country: string | null
           created_at: string
           description: string | null
           doi: string | null
+          is_retracted: boolean | null
           item_type: string
+          keywords: string | null
+          language: string | null
           notes: string | null
           oa_status: string | null
           oa_url: string | null
           organization_name: string | null
           pdf_url: string | null
           portfolio_item_id: string
+          primary_topic: string | null
           project_subtype: string | null
+          publication_type: string | null
+          publisher: string | null
           registration_number: string | null
           rid_subtype: string | null
+          source_type: string | null
           title: string
           unit_contact_id: string
           updated_at: string
@@ -237,20 +245,28 @@ export type Database = {
           biblio_issue?: string | null
           biblio_last_page?: string | null
           biblio_volume?: string | null
+          cited_by_count?: number | null
           country?: string | null
           created_at?: string
           description?: string | null
           doi?: string | null
+          is_retracted?: boolean | null
           item_type: string
+          keywords?: string | null
+          language?: string | null
           notes?: string | null
           oa_status?: string | null
           oa_url?: string | null
           organization_name?: string | null
           pdf_url?: string | null
           portfolio_item_id?: string
+          primary_topic?: string | null
           project_subtype?: string | null
+          publication_type?: string | null
+          publisher?: string | null
           registration_number?: string | null
           rid_subtype?: string | null
+          source_type?: string | null
           title: string
           unit_contact_id: string
           updated_at?: string
@@ -265,20 +281,28 @@ export type Database = {
           biblio_issue?: string | null
           biblio_last_page?: string | null
           biblio_volume?: string | null
+          cited_by_count?: number | null
           country?: string | null
           created_at?: string
           description?: string | null
           doi?: string | null
+          is_retracted?: boolean | null
           item_type?: string
+          keywords?: string | null
+          language?: string | null
           notes?: string | null
           oa_status?: string | null
           oa_url?: string | null
           organization_name?: string | null
           pdf_url?: string | null
           portfolio_item_id?: string
+          primary_topic?: string | null
           project_subtype?: string | null
+          publication_type?: string | null
+          publisher?: string | null
           registration_number?: string | null
           rid_subtype?: string | null
+          source_type?: string | null
           title?: string
           unit_contact_id?: string
           updated_at?: string

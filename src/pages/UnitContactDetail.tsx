@@ -55,6 +55,14 @@ const emptyPortfolioForm = {
   year_from: "", year_to: "", url: "", notes: "", authors: "", registration_number: "", country: "RU",
   doi: "", oa_status: "", oa_url: "", pdf_url: "", arxiv_url: "",
   biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
+  publication_type: "", language: "", cited_by_count: "", primary_topic: "", publisher: "",
+  source_type: "", keywords: "", is_retracted: false as boolean | false,
+};
+
+const publicationTypeLabels: Record<string, string> = {
+  article: "Статья", "book-chapter": "Глава книги", "proceedings-article": "Тезисы конференции",
+  book: "Книга", dissertation: "Диссертация", preprint: "Препринт",
+  review: "Обзор", "edited-book": "Редакт. книга", other: "Другое",
 };
 
 export default function UnitContactDetail() {
@@ -230,6 +238,14 @@ export default function UnitContactDetail() {
         biblio_issue: pForm.item_type === "publication" ? (pForm.biblio_issue || null) : null,
         biblio_first_page: pForm.item_type === "publication" ? (pForm.biblio_first_page || null) : null,
         biblio_last_page: pForm.item_type === "publication" ? (pForm.biblio_last_page || null) : null,
+        publication_type: pForm.item_type === "publication" ? (pForm.publication_type || null) : null,
+        language: pForm.item_type === "publication" ? (pForm.language || null) : null,
+        cited_by_count: pForm.item_type === "publication" ? (pForm.cited_by_count ? Number(pForm.cited_by_count) : 0) : 0,
+        primary_topic: pForm.item_type === "publication" ? (pForm.primary_topic || null) : null,
+        publisher: pForm.item_type === "publication" ? (pForm.publisher || null) : null,
+        source_type: pForm.item_type === "publication" ? (pForm.source_type || null) : null,
+        keywords: pForm.item_type === "publication" ? (pForm.keywords || null) : null,
+        is_retracted: pForm.item_type === "publication" ? (pForm.is_retracted === true) : false,
       };
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
@@ -360,6 +376,14 @@ export default function UnitContactDetail() {
           biblio_issue: w.issue || null,
           biblio_first_page: w.first_page || null,
           biblio_last_page: w.last_page || null,
+          publication_type: w.publication_type || null,
+          language: w.language || null,
+          cited_by_count: w.cited_by_count ?? 0,
+          primary_topic: w.primary_topic || null,
+          publisher: w.publisher || null,
+          source_type: w.source_type || null,
+          keywords: w.keywords || null,
+          is_retracted: w.is_retracted === true,
       }));
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
@@ -396,6 +420,10 @@ export default function UnitContactDetail() {
       pdf_url: p.pdf_url || "", arxiv_url: p.arxiv_url || "",
       biblio_volume: p.biblio_volume || "", biblio_issue: p.biblio_issue || "",
       biblio_first_page: p.biblio_first_page || "", biblio_last_page: p.biblio_last_page || "",
+      publication_type: p.publication_type || "", language: p.language || "",
+      cited_by_count: p.cited_by_count?.toString() || "", primary_topic: p.primary_topic || "",
+      publisher: p.publisher || "", source_type: p.source_type || "",
+      keywords: p.keywords || "", is_retracted: p.is_retracted === true,
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
@@ -521,13 +549,29 @@ export default function UnitContactDetail() {
                                         {(p as any).rid_subtype && ridSubtypeLabels[(p as any).rid_subtype] && (
                                           <Badge variant="outline" className="text-xs">{ridSubtypeLabels[(p as any).rid_subtype]}</Badge>
                                         )}
+                                        {p.item_type === "publication" && p.publication_type && (
+                                          <Badge variant="outline" className="text-xs">{publicationTypeLabels[p.publication_type] || p.publication_type}</Badge>
+                                        )}
+                                        {p.item_type === "publication" && p.is_retracted && (
+                                          <Badge variant="destructive" className="text-xs">ОТОЗВАНА</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : (p.item_type !== "publication" ? "–н.в." : "")}
                                           </span>
                                         )}
+                                        {p.item_type === "publication" && typeof p.cited_by_count === "number" && p.cited_by_count > 0 && (
+                                          <span className="text-xs text-muted-foreground" title="Цитирования">
+                                            🔗 {p.cited_by_count}
+                                          </span>
+                                        )}
                                       </div>
-                                      {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
+                                      {p.organization_name && (
+                                        <p className="text-sm text-muted-foreground">
+                                          {p.organization_name}
+                                          {p.item_type === "publication" && p.publisher && p.publisher !== p.organization_name && ` · ${p.publisher}`}
+                                        </p>
+                                      )}
                                       {p.item_type === "publication" && (() => {
                                         const bibParts: string[] = [];
                                         if (p.biblio_volume) bibParts.push(`Т. ${p.biblio_volume}`);
@@ -535,6 +579,12 @@ export default function UnitContactDetail() {
                                         if (p.biblio_first_page) bibParts.push(p.biblio_last_page && p.biblio_last_page !== p.biblio_first_page ? `С. ${p.biblio_first_page}–${p.biblio_last_page}` : `С. ${p.biblio_first_page}`);
                                         return bibParts.length > 0 ? <p className="text-xs text-muted-foreground">{bibParts.join(", ")}</p> : null;
                                       })()}
+                                      {p.item_type === "publication" && p.primary_topic && (
+                                        <p className="text-xs text-muted-foreground/70 mt-0.5">{p.primary_topic}</p>
+                                      )}
+                                      {p.item_type === "publication" && p.keywords && (
+                                        <p className="text-xs text-muted-foreground/60 mt-0.5 truncate" title={p.keywords}>🏷 {p.keywords}</p>
+                                      )}
                                       {p.item_type === "publication" && (
                                         <div className="flex items-center gap-2 flex-wrap mt-1">
                                           {p.doi && (
@@ -552,6 +602,9 @@ export default function UnitContactDetail() {
                                           )}
                                           {p.arxiv_url && (
                                             <a href={p.arxiv_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">arXiv</a>
+                                          )}
+                                          {p.language && (
+                                            <span className="text-xs text-muted-foreground">{p.language.toUpperCase()}</span>
                                           )}
                                           {p.notes && (
                                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={p.notes}>
@@ -734,7 +787,10 @@ export default function UnitContactDetail() {
                               <p className="text-sm font-medium leading-snug">{w.title}</p>
                               <div className="flex items-center gap-2 flex-wrap mt-1">
                                 {w.year && <Badge variant="outline" className="text-xs">{w.year}</Badge>}
+                                {w.publication_type && <Badge variant="outline" className="text-xs">{publicationTypeLabels[w.publication_type] || w.publication_type}</Badge>}
+                                {w.is_retracted && <Badge variant="destructive" className="text-xs">ОТОЗВАНА</Badge>}
                                 {w.source_name && <span className="text-xs text-muted-foreground italic">{w.source_name}</span>}
+                                {w.cited_by_count > 0 && <span className="text-xs text-muted-foreground">🔗 {w.cited_by_count}</span>}
                                 {w._exists && <Badge variant="secondary" className="text-xs">Уже добавлено</Badge>}
                               </div>
                               {w.authors && <p className="text-xs text-muted-foreground mt-1 truncate">{w.authors}</p>}
