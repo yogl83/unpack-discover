@@ -63,6 +63,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
+        {/* Логотип */}
+        <div className={`flex flex-col items-center px-4 py-6 border-b border-sidebar-border ${collapsed ? "px-2" : ""}`}>
+          <img
+            src={logo}
+            alt="МИЭМ"
+            className={collapsed ? "h-8 w-8 object-contain" : "w-full max-w-[100px] mx-auto object-contain"}
+          />
+        </div>
+
         {/* Дашборд */}
         <SidebarGroup>
           <SidebarGroupLabel>
