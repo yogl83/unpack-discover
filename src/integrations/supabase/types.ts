@@ -209,12 +209,15 @@ export type Database = {
           biblio_issue: string | null
           biblio_last_page: string | null
           biblio_volume: string | null
+          book_title: string | null
           cited_by_count: number | null
+          conference_name: string | null
           country: string | null
           created_at: string
           description: string | null
           doi: string | null
           is_retracted: boolean | null
+          isbn: string | null
           item_type: string
           keywords: string | null
           language: string | null
@@ -245,12 +248,15 @@ export type Database = {
           biblio_issue?: string | null
           biblio_last_page?: string | null
           biblio_volume?: string | null
+          book_title?: string | null
           cited_by_count?: number | null
+          conference_name?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           doi?: string | null
           is_retracted?: boolean | null
+          isbn?: string | null
           item_type: string
           keywords?: string | null
           language?: string | null
@@ -281,12 +287,15 @@ export type Database = {
           biblio_issue?: string | null
           biblio_last_page?: string | null
           biblio_volume?: string | null
+          book_title?: string | null
           cited_by_count?: number | null
+          conference_name?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
           doi?: string | null
           is_retracted?: boolean | null
+          isbn?: string | null
           item_type?: string
           keywords?: string | null
           language?: string | null
