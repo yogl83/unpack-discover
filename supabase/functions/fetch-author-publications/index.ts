@@ -9,6 +9,16 @@ interface WorkResult {
   type: string | null;
   source_name: string | null;
   biblio_string: string | null;
+  abstract: string | null;
+}
+
+function invertedIndexToText(idx: Record<string, number[]>): string {
+  const words: [number, string][] = [];
+  for (const [word, positions] of Object.entries(idx)) {
+    for (const pos of positions) words.push([pos, word]);
+  }
+  words.sort((a, b) => a[0] - b[0]);
+  return words.map(w => w[1]).join(" ");
 }
 
 Deno.serve(async (req) => {
@@ -45,7 +55,7 @@ Deno.serve(async (req) => {
 
     // Fetch up to 2 pages (400 works max)
     while (page <= 2) {
-      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type,primary_location,biblio&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
+      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type,primary_location,biblio,abstract_inverted_index&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
       
       const resp = await fetch(apiUrl);
       if (!resp.ok) {
@@ -91,7 +101,12 @@ Deno.serve(async (req) => {
         }
         const biblio_string = bibParts.length > 0 ? bibParts.join(", ") : null;
 
-        works.push({ title, year, authors, doi, url, type, source_name, biblio_string });
+        // Abstract
+        const abstractText = w.abstract_inverted_index
+          ? invertedIndexToText(w.abstract_inverted_index)
+          : null;
+
+        works.push({ title, year, authors, doi, url, type, source_name, biblio_string, abstract: abstractText });
       }
 
       // No more pages

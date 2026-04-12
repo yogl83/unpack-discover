@@ -327,6 +327,7 @@ export default function UnitContactDetail() {
     try {
       const rows = toSave.map(w => {
         const descParts: string[] = [];
+        if (w.abstract) descParts.push(w.abstract);
         if (w.biblio_string) descParts.push(w.biblio_string);
         if (w.doi) descParts.push(`DOI: ${w.doi.replace("https://doi.org/", "")}`);
         return {
