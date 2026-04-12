@@ -1,29 +1,33 @@
 
 
-# Исправить импорт публикаций: добавить журнал и убрать year_to
+# Добавить abstract публикации в описание при импорте
 
-## Проблемы
-1. **Не заполняется «Журнал/конференция»** — OpenAlex API не запрашивает поле `primary_location` (содержит название журнала/venue), и при сохранении не заполняется `organization_name`.
-2. **Годы «2010–н.в.»** — при импорте `year_from` заполняется годом публикации, а `year_to` не указан, поэтому UI показывает «–н.в.». Для публикации нужен только год, без диапазона.
+## Что будет сделано
+OpenAlex возвращает поле `abstract_inverted_index` — инвертированный индекс абстракта. Edge function будет конвертировать его в обычный текст и возвращать в новом поле `abstract`. При сохранении импорта abstract добавляется в `description` (перед выходными данными и DOI).
 
 ## Изменения
 
 ### 1. Edge function `fetch-author-publications/index.ts`
-- Добавить `primary_location` в `select` параметр API-запроса
-- Извлекать `source_name` из `w.primary_location?.source?.display_name` (название журнала/конференции)
-- Извлекать `biblio` (том, выпуск, страницы) из `w.biblio` — добавить в `select`
-- Возвращать новые поля: `source_name`, `biblio_string` (например «Vol. 12, No. 3, pp. 45–67»)
+- Убрать `select=...` из URL (abstract не входит в допустимые select-поля, нужен полный ответ) — или добавить `abstract_inverted_index` в select
+- Конвертировать `abstract_inverted_index` в текст: это объект `{ "word": [pos1, pos2], ... }` — собрать слова по позициям
+- Добавить поле `abstract: string | null` в `WorkResult` и в ответ
+
+Функция конвертации:
+```typescript
+function invertedIndexToText(idx: Record<string, number[]>): string {
+  const words: [number, string][] = [];
+  for (const [word, positions] of Object.entries(idx)) {
+    for (const pos of positions) words.push([pos, word]);
+  }
+  words.sort((a, b) => a[0] - b[0]);
+  return words.map(w => w[1]).join(" ");
+}
+```
 
 ### 2. `src/pages/UnitContactDetail.tsx` — сохранение импорта
-- `organization_name` ← `w.source_name` (журнал/конференция)
-- `description` ← собрать строку: выходные данные (biblio) + DOI
-- **Убрать `year_to`** для публикаций: не ставить его при импорте (он и так null, проблема в отображении)
-
-### 3. `src/pages/UnitContactDetail.tsx` — отображение года
-- Для `item_type === 'publication'`: показывать только `year_from` без «–н.в.»
-- Логика: `{p.year_from}{p.year_to ? `–${p.year_to}` : (p.item_type !== 'publication' ? '–н.в.' : '')}`
+- В `description` добавить abstract перед biblio/DOI строкой (если есть)
 
 ### Затронутые файлы
-- `supabase/functions/fetch-author-publications/index.ts` (добавить source + biblio)
-- `src/pages/UnitContactDetail.tsx` (маппинг при сохранении + отображение года)
+- `supabase/functions/fetch-author-publications/index.ts`
+- `src/pages/UnitContactDetail.tsx`
 
