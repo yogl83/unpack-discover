@@ -233,15 +233,22 @@ export default function UnitDetail() {
       if (editingPortfolioId) {
         const { error } = await supabase.from("unit_portfolio_items").update(payload as any).eq("portfolio_item_id", editingPortfolioId);
         if (error) throw error;
+        return { id: editingPortfolioId, wasCreate: false };
       } else {
-        const { error } = await supabase.from("unit_portfolio_items").insert(payload as any);
+        const { data, error } = await supabase.from("unit_portfolio_items").insert(payload as any).select("portfolio_item_id").single();
         if (error) throw error;
+        return { id: (data as any).portfolio_item_id, wasCreate: true };
       }
     },
-    onSuccess: () => {
-      toast.success(editingPortfolioId ? "Сохранено" : "Добавлено");
-      setPortfolioDialogOpen(false);
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["unit-portfolio", id] });
+      if (result.wasCreate) {
+        setEditingPortfolioId(result.id);
+        toast.success("Сохранено — можно прикрепить файлы");
+      } else {
+        toast.success("Сохранено");
+        setPortfolioDialogOpen(false);
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });

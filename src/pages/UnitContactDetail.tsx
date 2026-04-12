@@ -218,15 +218,22 @@ export default function UnitContactDetail() {
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
         if (error) throw error;
+        return { id: editingPortfolioId, wasCreate: false };
       } else {
-        const { error } = await supabase.from("contact_portfolio_items").insert(payload);
+        const { data, error } = await supabase.from("contact_portfolio_items").insert(payload).select("portfolio_item_id").single();
         if (error) throw error;
+        return { id: (data as any).portfolio_item_id, wasCreate: true };
       }
     },
-    onSuccess: () => {
-      toast.success(editingPortfolioId ? "Сохранено" : "Добавлено");
-      setPortfolioDialogOpen(false);
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["contact-portfolio", contactId] });
+      if (result.wasCreate) {
+        setEditingPortfolioId(result.id);
+        toast.success("Сохранено — можно прикрепить файлы");
+      } else {
+        toast.success("Сохранено");
+        setPortfolioDialogOpen(false);
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
