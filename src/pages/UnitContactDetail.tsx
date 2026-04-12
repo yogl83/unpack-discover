@@ -382,6 +382,10 @@ export default function UnitContactDetail() {
       authors: (p as any).authors || "",
       registration_number: (p as any).registration_number || "",
       country: (p as any).country || "RU",
+      doi: p.doi || "", oa_status: p.oa_status || "", oa_url: p.oa_url || "",
+      pdf_url: p.pdf_url || "", arxiv_url: p.arxiv_url || "",
+      biblio_volume: p.biblio_volume || "", biblio_issue: p.biblio_issue || "",
+      biblio_first_page: p.biblio_first_page || "", biblio_last_page: p.biblio_last_page || "",
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
