@@ -210,6 +210,7 @@ export type Database = {
           organization_name: string | null
           portfolio_item_id: string
           project_subtype: string | null
+          rid_subtype: string | null
           title: string
           unit_contact_id: string
           updated_at: string
@@ -225,6 +226,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          rid_subtype?: string | null
           title: string
           unit_contact_id: string
           updated_at?: string
@@ -240,6 +242,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          rid_subtype?: string | null
           title?: string
           unit_contact_id?: string
           updated_at?: string
@@ -1294,6 +1297,7 @@ export type Database = {
           organization_name: string | null
           portfolio_item_id: string
           project_subtype: string | null
+          rid_subtype: string | null
           title: string
           unit_id: string
           updated_at: string
@@ -1309,6 +1313,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          rid_subtype?: string | null
           title: string
           unit_id: string
           updated_at?: string
@@ -1324,6 +1329,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          rid_subtype?: string | null
           title?: string
           unit_id?: string
           updated_at?: string
