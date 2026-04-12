@@ -299,7 +299,7 @@ export default function UnitDetail() {
             <>
               <TabsTrigger value="contacts" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" />Коллектив
-                {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
+                {memberships?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{memberships.length}</Badge> : null}
               </TabsTrigger>
               <TabsTrigger value="portfolio" className="gap-1.5">
                 <Briefcase className="h-3.5 w-3.5" />Портфолио
