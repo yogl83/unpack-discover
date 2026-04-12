@@ -1,50 +1,49 @@
 
 
-# Расширить импорт публикаций дополнительными полями из OpenAlex
+# Обогащение публикаций данными из CrossRef по DOI
 
-## Какие поля добавить
+## Проблема
+OpenAlex для book-chapter возвращает только серию (Lecture Notes in Networks and Systems), но не название конкретного сборника конференции. Также нет ISBN, информации о конференции, точной даты публикации.
 
-Из JSON видно несколько полезных данных, которые сейчас не сохраняются. Предлагаю добавить самые практичные:
+## Что добавить из CrossRef
 
-| Поле | Откуда | Зачем |
-|------|--------|-------|
-| `publication_type` | `type` | Тип: article, book-chapter, proceedings-article |
-| `language` | `language` | Язык публикации (en, ru, ...) |
-| `cited_by_count` | `cited_by_count` | Число цитирований — наукометрика |
-| `primary_topic` | `primary_topic.display_name` | Научное направление |
-| `publisher` | `source.host_organization_name` | Издательство (Springer, Elsevier...) |
-| `source_type` | `source.type` | Тип источника (journal, book series, conference) |
-| `keywords` | `keywords[].display_name` | Ключевые слова через запятую |
-| `is_retracted` | `is_retracted` | Отозвана ли статья |
+Практичный минимум:
+- **`book_title`** — название сборника/книги (второй элемент `container-title` из CrossRef)
+- **`conference_name`** — название конференции (из `assertion`)
+- **`isbn`** — ISBN (text, через запятую)
 
-## Что будет сделано
+Остальное (references, license URL, ORCID авторов) — избыточно для текущих задач.
+
+## Реализация
 
 ### 1. Миграция БД
 Добавить в `contact_portfolio_items`:
-- `publication_type` (text) — article, book-chapter, и т.д.
-- `language` (text) — en, ru
-- `cited_by_count` (integer, default 0)
-- `primary_topic` (text) — научное направление
-- `publisher` (text) — издательство
-- `source_type` (text) — journal / book series / conference
-- `keywords` (text) — ключевые слова через запятую
-- `is_retracted` (boolean, default false)
+- `book_title` (text) — название сборника/книги
+- `conference_name` (text) — название конференции
+- `isbn` (text) — ISBN
 
-### 2. Edge function
-Добавить новые поля в `WorkResult` и извлечение из ответа OpenAlex. Расширить `select` параметр запроса: `primary_topic,keywords,language,is_retracted`.
+### 2. Edge function `fetch-author-publications/index.ts`
+После получения списка работ из OpenAlex — для каждой работы с DOI делать **один дополнительный запрос** к `https://api.crossref.org/works/{doi}` и извлекать:
+- `container-title[1]` → `book_title` (если есть второй элемент)
+- `assertion` с `name === "conference_name"` → `conference_name`
+- `ISBN` → `isbn` (join через ", ")
+
+**Оптимизация**: CrossRef rate limit — 50 req/sec с polite pool (указываем `mailto`). Запросы делаем последовательно с небольшой задержкой. Для статей типа `article` в журналах можно пропускать CrossRef-запрос (там OpenAlex и так достаточно). Обогащать только `book-chapter` и `proceedings-article`.
 
 ### 3. Маппинг при сохранении
-Прокинуть новые поля в `saveImported`.
+Прокинуть `book_title`, `conference_name`, `isbn` в `saveImported`.
 
-### 4. UI карточки публикации
-- Тип публикации — бейдж (article / book-chapter / proceedings)
-- Цитирования — число рядом с заголовком
-- Тема + ключевые слова — мелким шрифтом
-- Издательство — в строке с журналом
-- `is_retracted` = true → красный бейдж «ОТОЗВАНА»
+### 4. UI
+- Для book-chapter показывать: `{book_title}` вместо или после `source_name`
+- Конференция — отдельной строкой мелким шрифтом
+- ISBN — в деталях карточки
 
 ### Затронутые файлы
-- Миграция БД — новые колонки
-- `supabase/functions/fetch-author-publications/index.ts`
-- `src/pages/UnitContactDetail.tsx`
+- Миграция БД — 3 новые колонки
+- `supabase/functions/fetch-author-publications/index.ts` — CrossRef-обогащение
+- `src/pages/UnitContactDetail.tsx` — маппинг + отображение
+
+### Риски
+- CrossRef может быть медленным (300–500ms на запрос) — для 20 book-chapters это +6–10 секунд к импорту
+- Не все DOI есть в CrossRef — fallback: оставляем поля null
 
