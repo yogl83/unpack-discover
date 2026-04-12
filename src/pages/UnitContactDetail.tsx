@@ -664,7 +664,7 @@ export default function UnitContactDetail() {
                         <div className="space-y-2"><Label>PDF URL</Label><Input value={pForm.pdf_url} onChange={e => setP("pdf_url", e.target.value)} placeholder="https://..." /></div>
                         <div className="space-y-2"><Label>arXiv URL</Label><Input value={pForm.arxiv_url} onChange={e => setP("arxiv_url", e.target.value)} placeholder="https://arxiv.org/abs/..." /></div>
                       </>
-                    )
+                    )}
                     {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2020" /></div>
