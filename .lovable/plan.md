@@ -1,38 +1,21 @@
 
+# Изменить порядок типов портфолио
 
-# Кнопка «Прикрепить файл» сразу в диалоге создания
+Нужно поменять порядок ключей в `portfolioTypeLabels` в `src/lib/labels.ts`:
 
-## Проблема
-Сейчас секция файлов появляется только после сохранения (когда уже есть ID записи). Пользователь хочет видеть кнопку «Прикрепить» сразу при создании нового элемента.
+**Было:** project → publication → rid → product → other  
+**Стало:** product → project → rid → publication → other
 
-## Решение
-Добавить в `PortfolioItemFiles` режим буферизации: когда `portfolioItemId` ещё нет, файлы выбираются и хранятся локально (в state). После сохранения записи и получения ID — файлы автоматически загружаются в хранилище.
+### Изменение
+В `src/lib/labels.ts` строка 71–74 — переставить ключи:
+```ts
+export const portfolioTypeLabels: Record<string, string> = {
+  product: "Продукт", project: "Проект", rid: "РИД",
+  publication: "Публикация", other: "Другое",
+};
+```
 
-## Как это будет работать
-1. Пользователь открывает диалог создания нового элемента
-2. Кнопка «Прикрепить» видна сразу
-3. Выбранные файлы отображаются как «ожидающие загрузки» (с иконкой, именем, размером)
-4. Можно удалить файл из списка до сохранения
-5. При нажатии «Добавить» — запись сохраняется, получаем ID, затем все буферные файлы загружаются автоматически
-
-## Технические изменения
-
-### `PortfolioItemFiles.tsx`
-- Сделать `portfolioItemId` опциональным
-- Добавить prop `onPendingFilesReady?: (uploadFn: (id: string) => Promise<void>) => void` — колбэк, который передаёт родителю функцию загрузки
-- Без ID: файлы хранятся в `useState<File[]>`, отображаются в UI, кнопка работает
-- Когда родитель вызовет `uploadFn(newId)` — файлы загружаются в storage + записываются в БД
-
-### `UnitDetail.tsx` и `UnitContactDetail.tsx`
-- В диалоге показывать `<PortfolioItemFiles>` всегда (не только при `editingPortfolioId`)
-- Передавать `portfolioItemId={editingPortfolioId || undefined}`
-- Получать через ref/колбэк функцию загрузки буферных файлов
-- В `savePortfolio.onSuccess` при создании — вызывать эту функцию с новым ID
+Также переставить ключи в `portfolioFieldConfig` в том же файле для консистентности.
 
 ### Затронутые файлы
-- `src/components/unit/PortfolioItemFiles.tsx`
-- `src/pages/UnitDetail.tsx`
-- `src/pages/UnitContactDetail.tsx`
-
-Без изменений БД.
-
+- `src/lib/labels.ts`
