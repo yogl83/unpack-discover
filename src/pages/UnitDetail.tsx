@@ -302,7 +302,7 @@ export default function UnitDetail() {
                 {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
               </TabsTrigger>
               <TabsTrigger value="contacts" className="gap-1.5">
-                <Users className="h-3.5 w-3.5" />Контакты
+                <Users className="h-3.5 w-3.5" />Коллектив
                 {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
               </TabsTrigger>
             </>
@@ -340,7 +340,7 @@ export default function UnitDetail() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input disabled placeholder={isNew ? "Сначала создайте коллектив, затем добавьте контакты" : "Нет контактов — добавьте во вкладке Контакты"} />
+                  <Input disabled placeholder={isNew ? "Сначала создайте коллектив, затем добавьте контакты" : "Нет контактов — добавьте во вкладке Коллектив"} />
                 )}
               </div>
               <div className="space-y-2"><Label>Область исследований</Label><Input value={form.research_area} onChange={e => set("research_area", e.target.value)} disabled={!canEdit} /></div>
