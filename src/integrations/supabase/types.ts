@@ -384,6 +384,7 @@ export type Database = {
           lead_contact_id: string | null
           lead_name: string | null
           notes: string | null
+          portfolio_summary: string | null
           readiness_level: string | null
           research_area: string | null
           team_summary: string | null
@@ -407,6 +408,7 @@ export type Database = {
           lead_contact_id?: string | null
           lead_name?: string | null
           notes?: string | null
+          portfolio_summary?: string | null
           readiness_level?: string | null
           research_area?: string | null
           team_summary?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           lead_contact_id?: string | null
           lead_name?: string | null
           notes?: string | null
+          portfolio_summary?: string | null
           readiness_level?: string | null
           research_area?: string | null
           team_summary?: string | null
@@ -1156,6 +1159,54 @@ export type Database = {
           },
           {
             foreignKeyName: "unit_contacts_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "unit_overview"
+            referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      unit_portfolio_files: {
+        Row: {
+          created_at: string
+          file_id: string
+          file_size: number | null
+          mime_type: string | null
+          original_filename: string
+          storage_path: string
+          unit_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          mime_type?: string | null
+          original_filename: string
+          storage_path: string
+          unit_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          mime_type?: string | null
+          original_filename?: string
+          storage_path?: string
+          unit_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_portfolio_files_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "miem_units"
+            referencedColumns: ["unit_id"]
+          },
+          {
+            foreignKeyName: "unit_portfolio_files_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "unit_overview"
