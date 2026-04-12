@@ -88,7 +88,7 @@ export default function UnitDetail() {
   const { data: allContacts } = useQuery({
     queryKey: ["all-unit-contacts"],
     queryFn: async () => { const { data, error } = await supabase.from("unit_contacts").select("*").order("full_name"); if (error) throw error; return data; },
-    enabled: showAddMemberDialog,
+    enabled: !isNew,
   });
 
   const { data: memberships } = useQuery({
