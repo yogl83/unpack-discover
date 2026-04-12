@@ -1,15 +1,22 @@
 
 
-# Переименование в сайдбаре: «Контакты» → «Сотрудники» (секция МИЭМ)
+# Добавить поле «OpenAlex» в профиль сотрудника
 
-В `src/components/AppSidebar.tsx` изменить title у элемента контактов в массиве `miemItems`:
+## Что будет сделано
 
-```ts
-// Было:
-{ title: "Контакты", url: "/contacts/internal", icon: Contact }
-// Стало:
-{ title: "Сотрудники", url: "/contacts/internal", icon: Contact }
-```
+Добавить ссылку на профиль OpenAlex рядом с ORCID, Scopus, eLibrary и Google Scholar в карточке «Профили в системах цитирования».
 
-Один файл, одна строка.
+## Изменения
+
+### 1. Миграция БД
+Добавить колонку `openalex_url text` в таблицу `unit_contacts`.
+
+### 2. `src/pages/UnitContactDetail.tsx`
+- Добавить `openalex_url: ""` в state формы и в `useEffect` загрузки
+- Добавить поле ввода «OpenAlex» в секцию «Профили в системах цитирования» (после Google Scholar)
+- Placeholder: `https://openalex.org/authors/...`
+
+### Затронутые файлы
+- Миграция SQL (новая колонка)
+- `src/pages/UnitContactDetail.tsx`
 
