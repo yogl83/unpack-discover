@@ -57,6 +57,7 @@ const emptyPortfolioForm = {
   biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
   publication_type: "", language: "", cited_by_count: "", primary_topic: "", publisher: "",
   source_type: "", keywords: "", is_retracted: false as boolean | false,
+  book_title: "", conference_name: "", isbn: "",
 };
 
 const publicationTypeLabels: Record<string, string> = {
@@ -246,6 +247,9 @@ export default function UnitContactDetail() {
         source_type: pForm.item_type === "publication" ? (pForm.source_type || null) : null,
         keywords: pForm.item_type === "publication" ? (pForm.keywords || null) : null,
         is_retracted: pForm.item_type === "publication" ? (pForm.is_retracted === true) : false,
+        book_title: pForm.item_type === "publication" ? (pForm.book_title || null) : null,
+        conference_name: pForm.item_type === "publication" ? (pForm.conference_name || null) : null,
+        isbn: pForm.item_type === "publication" ? (pForm.isbn || null) : null,
       };
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
@@ -384,6 +388,9 @@ export default function UnitContactDetail() {
           source_type: w.source_type || null,
           keywords: w.keywords || null,
           is_retracted: w.is_retracted === true,
+          book_title: w.book_title || null,
+          conference_name: w.conference_name || null,
+          isbn: w.isbn || null,
       }));
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
@@ -424,6 +431,7 @@ export default function UnitContactDetail() {
       cited_by_count: p.cited_by_count?.toString() || "", primary_topic: p.primary_topic || "",
       publisher: p.publisher || "", source_type: p.source_type || "",
       keywords: p.keywords || "", is_retracted: p.is_retracted === true,
+      book_title: p.book_title || "", conference_name: p.conference_name || "", isbn: p.isbn || "",
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
@@ -571,6 +579,12 @@ export default function UnitContactDetail() {
                                           {p.organization_name}
                                           {p.item_type === "publication" && p.publisher && p.publisher !== p.organization_name && ` · ${p.publisher}`}
                                         </p>
+                                      )}
+                                      {p.item_type === "publication" && p.book_title && (
+                                        <p className="text-sm text-muted-foreground italic">📖 {p.book_title}</p>
+                                      )}
+                                      {p.item_type === "publication" && p.conference_name && (
+                                        <p className="text-xs text-muted-foreground/70">🎤 {p.conference_name}</p>
                                       )}
                                       {p.item_type === "publication" && (() => {
                                         const bibParts: string[] = [];
