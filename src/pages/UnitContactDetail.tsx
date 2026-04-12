@@ -560,7 +560,7 @@ export default function UnitContactDetail() {
                                           )}
                                         </div>
                                       )}
-                                      {p.item_type !== "publication" && p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
+                                      
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (
@@ -674,8 +674,7 @@ export default function UnitContactDetail() {
                       <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).yearFromLabel}</Label><Input type="number" value={pForm.year_from} onChange={e => setP("year_from", e.target.value)} placeholder="2023" /></div>
                     )}
                     <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlLabel}</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder={(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlPlaceholder} /></div>
-                    <div className="space-y-2"><Label>Описание</Label><Textarea value={pForm.description} onChange={e => setP("description", e.target.value)} rows={3} /></div>
-                    <div className="space-y-2"><Label>Заметки</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={2} /></div>
+                    <div className="space-y-2"><Label>Аннотация</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={3} /></div>
                     <div className="space-y-2">
                       <Label>Файлы</Label>
                       <PortfolioItemFiles ref={portfolioFilesRef} portfolioItemId={editingPortfolioId || undefined} itemSource="contact" editable={true} />
