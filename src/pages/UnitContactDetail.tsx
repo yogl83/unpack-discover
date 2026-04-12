@@ -425,6 +425,7 @@ export default function UnitContactDetail() {
       cited_by_count: p.cited_by_count?.toString() || "", primary_topic: p.primary_topic || "",
       publisher: p.publisher || "", source_type: p.source_type || "",
       keywords: p.keywords || "", is_retracted: p.is_retracted === true,
+      book_title: p.book_title || "", conference_name: p.conference_name || "", isbn: p.isbn || "",
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
