@@ -22,6 +22,7 @@ import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels, ridSubtypeLabels } from "@/lib/labels";
+import { PortfolioItemFiles } from "@/components/unit/PortfolioItemFiles";
 
 const roleLabels: Record<string, string> = {
   lead: "Руководитель",
@@ -401,6 +402,7 @@ export default function UnitContactDetail() {
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
                                       {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
+                                      <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={canEdit} />
                                     </div>
                                     {canEdit && (
                                       <div className="flex gap-1 shrink-0">
