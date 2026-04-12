@@ -1,0 +1,1 @@
+ALTER TABLE public.unit_contacts ADD COLUMN researcherid_url text;

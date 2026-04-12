@@ -126,6 +126,7 @@ export default function UnitContactDetail() {
     elibrary_id: "",
     scholar_url: "",
     openalex_url: "",
+    researcherid_url: "",
     personal_summary: "",
   });
 
@@ -146,6 +147,7 @@ export default function UnitContactDetail() {
         elibrary_id: (item as any).elibrary_id || "",
         scholar_url: (item as any).scholar_url || "",
         openalex_url: (item as any).openalex_url || "",
+        researcherid_url: (item as any).researcherid_url || "",
         personal_summary: (item as any).personal_summary || "",
       });
       if (standalone && item.unit_id) {
@@ -605,8 +607,12 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
            </div>
            <div className="space-y-2">
              <Label>OpenAlex</Label>
-             <Input value={form.openalex_url} onChange={(e: any) => set("openalex_url", e.target.value)} disabled={!canEdit} placeholder="https://openalex.org/authors/..." />
-           </div>
+              <Input value={form.openalex_url} onChange={(e: any) => set("openalex_url", e.target.value)} disabled={!canEdit} placeholder="https://openalex.org/authors/..." />
+            </div>
+            <div className="space-y-2">
+              <Label>ResearcherID</Label>
+              <Input value={form.researcherid_url} onChange={(e: any) => set("researcherid_url", e.target.value)} disabled={!canEdit} placeholder="https://www.researcherid.com/rid/..." />
+            </div>
         </CardContent>
       </Card>
 

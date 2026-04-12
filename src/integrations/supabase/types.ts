@@ -1222,6 +1222,7 @@ export type Database = {
           orcid: string | null
           personal_summary: string | null
           phone: string | null
+          researcherid_url: string | null
           scholar_url: string | null
           scopus_id: string | null
           telegram: string | null
@@ -1243,6 +1244,7 @@ export type Database = {
           orcid?: string | null
           personal_summary?: string | null
           phone?: string | null
+          researcherid_url?: string | null
           scholar_url?: string | null
           scopus_id?: string | null
           telegram?: string | null
@@ -1264,6 +1266,7 @@ export type Database = {
           orcid?: string | null
           personal_summary?: string | null
           phone?: string | null
+          researcherid_url?: string | null
           scholar_url?: string | null
           scopus_id?: string | null
           telegram?: string | null
