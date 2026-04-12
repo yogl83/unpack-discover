@@ -614,113 +614,121 @@ export default function UnitDetail() {
         {/* Contacts + Team Composition tab */}
         {!isNew && (
           <TabsContent value="contacts" className="space-y-6">
-            {/* Team Composition */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  Состав коллектива
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!memberships?.length ? (
-                  <p className="text-muted-foreground text-sm py-4 text-center">Состав не определён</p>
-                ) : (
-                  <div className="rounded-lg border">
-                    <Table>
-                      <TableHeader><TableRow>
-                        <TableHead>ФИО</TableHead><TableHead>Роль</TableHead><TableHead>Руководитель</TableHead><TableHead>Действия</TableHead>
-                      </TableRow></TableHeader>
-                      <TableBody>
-                        {memberships.map(m => (
-                          <TableRow key={m.membership_id}>
-                            <TableCell className="font-medium">
-                              <Link to={`/units/${id}/contacts/${m.unit_contact_id}`} className="text-primary hover:underline">
-                                {(m.unit_contacts as any)?.full_name || "—"}
-                              </Link>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{memberRoleLabels[m.member_role] || m.member_role}</Badge>
-                            </TableCell>
-                            <TableCell>{m.is_lead ? <Badge>Да</Badge> : "—"}</TableCell>
-                            <TableCell className="flex gap-1">
-                              {canEdit && !m.is_lead && (
-                                <Button size="sm" variant="ghost" onClick={() => setMemberLead.mutate({ membershipId: m.membership_id, contactId: m.unit_contact_id })}>
-                                  Назначить рук.
-                                </Button>
-                              )}
-                              {isAdmin && (
-                                <ConfirmDialog title="Убрать из состава?" description="Участник будет убран из коллектива." onConfirm={() => removeMembership.mutate(m.membership_id)} triggerLabel="" triggerSize="sm" triggerClassName="text-destructive" variant="default" />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-
-                {canEdit && availableContacts && availableContacts.length > 0 && (
-                  <div className="flex items-end gap-3 pt-2">
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-xs">Контакт</Label>
-                      <Select value={addMemberContact} onValueChange={setAddMemberContact}>
-                        <SelectTrigger><SelectValue placeholder="Выберите контакт" /></SelectTrigger>
-                        <SelectContent>
-                          {availableContacts.map(uc => (
-                            <SelectItem key={uc.unit_contact_id} value={uc.unit_contact_id}>
-                              {uc.full_name}{uc.job_title ? ` — ${uc.job_title}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1 w-[160px]">
-                      <Label className="text-xs">Роль</Label>
-                      <Select value={addMemberRole} onValueChange={setAddMemberRole}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(memberRoleLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button size="sm" onClick={() => addMembership.mutate()} disabled={addMembership.isPending}>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Состав коллектива
+                  </CardTitle>
+                  {canEdit && (
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}>
                       <Plus className="mr-1 h-4 w-4" />Добавить
                     </Button>
-                  </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!unitContacts?.length ? (
+                  <p className="text-muted-foreground text-sm py-4 text-center">Нет контактов</p>
+                ) : (
+                  <>
+                    {/* Desktop table */}
+                    <div className="hidden sm:block rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ФИО</TableHead>
+                            <TableHead>Должность</TableHead>
+                            <TableHead>Роль</TableHead>
+                            <TableHead>Действия</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {unitContacts.map(c => {
+                            const isLead = c.unit_contact_id === leadContactId;
+                            const membership = memberships?.find(m => m.unit_contact_id === c.unit_contact_id);
+                            return (
+                              <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
+                                <TableCell className="font-medium text-primary">
+                                  {c.full_name}
+                                  {isLead && <Badge className="ml-2" variant="default">Руководитель</Badge>}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
+                                <TableCell className="text-muted-foreground">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
+                                <TableCell onClick={e => e.stopPropagation()}>
+                                  <div className="flex gap-1">
+                                    {canEdit && !isLead && (
+                                      <Button size="sm" variant="ghost" onClick={() => {
+                                        if (membership) {
+                                          setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
+                                        } else {
+                                          // Set lead directly via unit update
+                                          setLeadContactId(c.unit_contact_id);
+                                          supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
+                                            toast.success("Руководитель назначен");
+                                            qc.invalidateQueries({ queryKey: ["unit", id] });
+                                          });
+                                        }
+                                      }}>
+                                        Назначить рук.
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Mobile cards */}
+                    <div className="sm:hidden space-y-3">
+                      {unitContacts.map(c => {
+                        const isLead = c.unit_contact_id === leadContactId;
+                        const membership = memberships?.find(m => m.unit_contact_id === c.unit_contact_id);
+                        return (
+                          <div
+                            key={c.unit_contact_id}
+                            className="rounded-lg border p-3 space-y-1.5 cursor-pointer hover:bg-muted/50"
+                            onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-primary">{c.full_name}</span>
+                              {isLead && <Badge variant="default">Руководитель</Badge>}
+                            </div>
+                            {c.job_title && <p className="text-sm text-muted-foreground">{c.job_title}</p>}
+                            {c.contact_role && (
+                              <Badge variant="outline" className="text-xs">
+                                {memberRoleLabels[c.contact_role] || c.contact_role}
+                              </Badge>
+                            )}
+                            {canEdit && !isLead && (
+                              <div className="pt-1" onClick={e => e.stopPropagation()}>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
+                                  if (membership) {
+                                    setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
+                                  } else {
+                                    setLeadContactId(c.unit_contact_id);
+                                    supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
+                                      toast.success("Руководитель назначен");
+                                      qc.invalidateQueries({ queryKey: ["unit", id] });
+                                    });
+                                  }
+                                }}>
+                                  Назначить рук.
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
-
-            {/* Contacts list */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Контакты коллектива</h2>
-                {canEdit && <Button size="sm" variant="outline" onClick={() => navigate(`/units/${id}/contacts/new`)}><Plus className="mr-1 h-4 w-4" />Добавить</Button>}
-              </div>
-              {!unitContacts?.length ? (
-                <p className="text-muted-foreground text-sm py-6 text-center">Нет контактов</p>
-              ) : (
-                <div className="rounded-lg border">
-                  <Table>
-                    <TableHeader><TableRow>
-                      <TableHead>ФИО</TableHead><TableHead>Должность</TableHead><TableHead>Роль</TableHead><TableHead>Email</TableHead><TableHead>Основной</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {unitContacts.map(c => (
-                        <TableRow key={c.unit_contact_id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/units/${id}/contacts/${c.unit_contact_id}`)}>
-                          <TableCell className="font-medium text-primary">{c.full_name}</TableCell>
-                          <TableCell className="text-muted-foreground">{c.job_title || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{memberRoleLabels[c.contact_role || ""] || c.contact_role || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{c.email || "—"}</TableCell>
-                          <TableCell>{c.is_primary ? <Badge variant="default">Да</Badge> : "—"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
           </TabsContent>
         )}
       </Tabs>
