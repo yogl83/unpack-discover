@@ -1,33 +1,25 @@
 
 
-# Добавить abstract публикации в описание при импорте
+# Исправление данных импорта публикаций
 
-## Что будет сделано
-OpenAlex возвращает поле `abstract_inverted_index` — инвертированный индекс абстракта. Edge function будет конвертировать его в обычный текст и возвращать в новом поле `abstract`. При сохранении импорта abstract добавляется в `description` (перед выходными данными и DOI).
+## Диагноз
 
-## Изменения
+Протестировал edge function — она **уже возвращает корректные данные**: `title` = название статьи, `source_name` = журнал, `abstract` = текст (когда есть в OpenAlex). Проблема в том, что публикации на скриншоте были **импортированы старой версией функции** (до исправлений), поэтому в БД лежат некорректные данные (название журнала в поле title, нет abstract).
 
-### 1. Edge function `fetch-author-publications/index.ts`
-- Убрать `select=...` из URL (abstract не входит в допустимые select-поля, нужен полный ответ) — или добавить `abstract_inverted_index` в select
-- Конвертировать `abstract_inverted_index` в текст: это объект `{ "word": [pos1, pos2], ... }` — собрать слова по позициям
-- Добавить поле `abstract: string | null` в `WorkResult` и в ответ
+## Что нужно сделать
 
-Функция конвертации:
-```typescript
-function invertedIndexToText(idx: Record<string, number[]>): string {
-  const words: [number, string][] = [];
-  for (const [word, positions] of Object.entries(idx)) {
-    for (const pos of positions) words.push([pos, word]);
-  }
-  words.sort((a, b) => a[0] - b[0]);
-  return words.map(w => w[1]).join(" ");
-}
-```
+### 1. Удалить старые импортированные публикации и заново нажать «Импорт из OpenAlex»
 
-### 2. `src/pages/UnitContactDetail.tsx` — сохранение импорта
-- В `description` добавить abstract перед biblio/DOI строкой (если есть)
+Текущий код и edge function работают корректно. Новый импорт сохранит:
+- `title` — название статьи (например, "Automatic Oligonucleotide Synthesis System")
+- `organization_name` — журнал/конференция ("Lecture notes in networks and systems")
+- `description` — abstract (если есть в OpenAlex) + выходные данные (Т., №, С.) + DOI
 
-### Затронутые файлы
-- `supabase/functions/fetch-author-publications/index.ts`
-- `src/pages/UnitContactDetail.tsx`
+### 2. Ограничение OpenAlex по abstract
+
+Не все публикации имеют abstract в OpenAlex. Например, для книжных глав (book-chapter) и ряда статей abstract = null. Это ограничение источника данных, а не бага. Для статьи «Automatic Oligonucleotide Synthesis System» OpenAlex не содержит abstract.
+
+## Изменения в коде не требуются
+
+Код edge function и маппинг при сохранении уже корректны. Нужно только удалить старые записи и импортировать заново.
 
