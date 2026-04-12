@@ -57,6 +57,7 @@ const emptyPortfolioForm = {
   biblio_volume: "", biblio_issue: "", biblio_first_page: "", biblio_last_page: "",
   publication_type: "", language: "", cited_by_count: "", primary_topic: "", publisher: "",
   source_type: "", keywords: "", is_retracted: false as boolean | false,
+  book_title: "", conference_name: "", isbn: "",
 };
 
 const publicationTypeLabels: Record<string, string> = {
