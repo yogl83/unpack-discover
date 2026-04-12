@@ -69,8 +69,8 @@ export const unitTypeLabels: Record<string, string> = {
 // Combined status labels (used in PartnerDetail where multiple entity statuses appear)
 // === Portfolio item types ===
 export const portfolioTypeLabels: Record<string, string> = {
-  project: "Проект", publication: "Публикация", rid: "РИД",
-  product: "Продукт", other: "Другое",
+  product: "Продукт", project: "Проект", rid: "РИД",
+  publication: "Публикация", other: "Другое",
 };
 
 // === Project subtypes ===
@@ -95,10 +95,10 @@ export const ridSubtypeLabels: Record<string, string> = {
 export const portfolioFieldConfig: Record<string, {
   orgLabel: string; yearFromLabel: string; yearToLabel?: string; urlLabel: string; urlPlaceholder: string; hasYearTo: boolean;
 }> = {
-  project: { orgLabel: "Организация / Фонд", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
-  publication: { orgLabel: "Журнал / Конференция", yearFromLabel: "Год публикации", urlLabel: "DOI / Ссылка", urlPlaceholder: "https://doi.org/...", hasYearTo: false },
-  rid: { orgLabel: "Правообладатель", yearFromLabel: "Год регистрации", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
   product: { orgLabel: "Организация", yearFromLabel: "Год выпуска", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
+  project: { orgLabel: "Организация / Фонд", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
+  rid: { orgLabel: "Правообладатель", yearFromLabel: "Год регистрации", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
+  publication: { orgLabel: "Журнал / Конференция", yearFromLabel: "Год публикации", urlLabel: "DOI / Ссылка", urlPlaceholder: "https://doi.org/...", hasYearTo: false },
   other: { orgLabel: "Организация", yearFromLabel: "Год", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
 };
 
