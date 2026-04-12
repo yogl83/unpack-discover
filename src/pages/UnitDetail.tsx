@@ -17,10 +17,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowLeft, Save, Trash2, Plus, Brain, Lightbulb, Briefcase, Users, UserPlus, Pencil, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
 import { UnitPortfolioFiles } from "@/components/unit/UnitPortfolioFiles";
-import { PortfolioItemFiles } from "@/components/unit/PortfolioItemFiles";
+import { PortfolioItemFiles, PortfolioItemFilesHandle } from "@/components/unit/PortfolioItemFiles";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -182,6 +182,7 @@ export default function UnitDetail() {
    const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
    const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
    const [portfolioTypePreset, setPortfolioTypePreset] = useState(false);
+   const portfolioFilesRef = useRef<PortfolioItemFilesHandle>(null);
 
   const openNewPortfolio = () => {
     setPForm({ ...emptyPortfolioForm });
@@ -240,15 +241,17 @@ export default function UnitDetail() {
         return { id: (data as any).portfolio_item_id, wasCreate: true };
       }
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       qc.invalidateQueries({ queryKey: ["unit-portfolio", id] });
-      if (result.wasCreate) {
-        setEditingPortfolioId(result.id);
-        toast.success("Сохранено — можно прикрепить файлы");
-      } else {
-        toast.success("Сохранено");
-        setPortfolioDialogOpen(false);
+      if (result.wasCreate && portfolioFilesRef.current?.hasPendingFiles()) {
+        try {
+          await portfolioFilesRef.current.flushPendingFiles(result.id);
+        } catch (err: any) {
+          toast.error("Ошибка загрузки файлов: " + err.message);
+        }
       }
+      toast.success("Сохранено");
+      setPortfolioDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -529,12 +532,10 @@ export default function UnitDetail() {
                     <div className="space-y-2"><Label>{(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlLabel}</Label><Input value={pForm.url} onChange={e => setP("url", e.target.value)} placeholder={(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).urlPlaceholder} /></div>
                     <div className="space-y-2"><Label>Описание</Label><Textarea value={pForm.description} onChange={e => setP("description", e.target.value)} rows={3} /></div>
                     <div className="space-y-2"><Label>Заметки</Label><Textarea value={pForm.notes} onChange={e => setP("notes", e.target.value)} rows={2} /></div>
-                    {editingPortfolioId && (
-                      <div className="space-y-2">
-                        <Label>Файлы</Label>
-                        <PortfolioItemFiles portfolioItemId={editingPortfolioId} itemSource="unit" editable={true} />
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <Label>Файлы</Label>
+                      <PortfolioItemFiles ref={portfolioFilesRef} portfolioItemId={editingPortfolioId || undefined} itemSource="unit" editable={true} />
+                    </div>
                   </div>
                 </ScrollArea>
                 <DialogFooter>
