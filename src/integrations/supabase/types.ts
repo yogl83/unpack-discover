@@ -203,6 +203,8 @@ export type Database = {
       }
       contact_portfolio_items: {
         Row: {
+          authors: string | null
+          country: string | null
           created_at: string
           description: string | null
           item_type: string
@@ -210,6 +212,7 @@ export type Database = {
           organization_name: string | null
           portfolio_item_id: string
           project_subtype: string | null
+          registration_number: string | null
           rid_subtype: string | null
           title: string
           unit_contact_id: string
@@ -219,6 +222,8 @@ export type Database = {
           year_to: number | null
         }
         Insert: {
+          authors?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           item_type: string
@@ -226,6 +231,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          registration_number?: string | null
           rid_subtype?: string | null
           title: string
           unit_contact_id: string
@@ -235,6 +241,8 @@ export type Database = {
           year_to?: number | null
         }
         Update: {
+          authors?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           item_type?: string
@@ -242,6 +250,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          registration_number?: string | null
           rid_subtype?: string | null
           title?: string
           unit_contact_id?: string
@@ -1290,6 +1299,8 @@ export type Database = {
       }
       unit_portfolio_items: {
         Row: {
+          authors: string | null
+          country: string | null
           created_at: string
           description: string | null
           item_type: string
@@ -1297,6 +1308,7 @@ export type Database = {
           organization_name: string | null
           portfolio_item_id: string
           project_subtype: string | null
+          registration_number: string | null
           rid_subtype: string | null
           title: string
           unit_id: string
@@ -1306,6 +1318,8 @@ export type Database = {
           year_to: number | null
         }
         Insert: {
+          authors?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           item_type: string
@@ -1313,6 +1327,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          registration_number?: string | null
           rid_subtype?: string | null
           title: string
           unit_id: string
@@ -1322,6 +1337,8 @@ export type Database = {
           year_to?: number | null
         }
         Update: {
+          authors?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           item_type?: string
@@ -1329,6 +1346,7 @@ export type Database = {
           organization_name?: string | null
           portfolio_item_id?: string
           project_subtype?: string | null
+          registration_number?: string | null
           rid_subtype?: string | null
           title?: string
           unit_id?: string

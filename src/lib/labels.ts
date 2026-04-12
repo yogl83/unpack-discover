@@ -97,7 +97,7 @@ export const portfolioFieldConfig: Record<string, {
 }> = {
   project: { orgLabel: "Организация / Фонд", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
   publication: { orgLabel: "Журнал / Конференция", yearFromLabel: "Год публикации", urlLabel: "DOI / Ссылка", urlPlaceholder: "https://doi.org/...", hasYearTo: false },
-  rid: { orgLabel: "Правообладатель", yearFromLabel: "Год регистрации", urlLabel: "Номер / Ссылка", urlPlaceholder: "RU 2 123 456", hasYearTo: false },
+  rid: { orgLabel: "Правообладатель", yearFromLabel: "Год регистрации", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
   product: { orgLabel: "Организация", yearFromLabel: "Год выпуска", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
   other: { orgLabel: "Организация", yearFromLabel: "Год", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
 };
