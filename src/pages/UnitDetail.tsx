@@ -202,6 +202,7 @@ export default function UnitDetail() {
       notes: item.notes || "",
     });
     setEditingPortfolioId(item.portfolio_item_id);
+    setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
   };
 
