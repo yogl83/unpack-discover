@@ -27,7 +27,7 @@ const statusLabels = hypothesisStatusLabels;
 
 const emptyPortfolioForm = {
   title: "", item_type: "project", project_subtype: "", rid_subtype: "", organization_name: "", description: "",
-  year_from: "", year_to: "", url: "", notes: "",
+  year_from: "", year_to: "", url: "", notes: "", authors: "", registration_number: "", country: "RU",
 };
 
 const portfolioTitlePlaceholders: Record<string, string> = {
@@ -200,6 +200,9 @@ export default function UnitDetail() {
       year_to: item.year_to?.toString() || "",
       url: item.url || "",
       notes: item.notes || "",
+      authors: (item as any).authors || "",
+      registration_number: (item as any).registration_number || "",
+      country: (item as any).country || "RU",
     });
     setEditingPortfolioId(item.portfolio_item_id);
     setPortfolioTypePreset(true);
@@ -214,6 +217,9 @@ export default function UnitDetail() {
         item_type: pForm.item_type,
         project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         rid_subtype: pForm.item_type === "rid" ? (pForm.rid_subtype || null) : null,
+        authors: pForm.item_type === "rid" ? (pForm.authors || null) : null,
+        registration_number: pForm.item_type === "rid" ? (pForm.registration_number || null) : null,
+        country: pForm.item_type === "rid" ? (pForm.country || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         year_from: pForm.year_from ? parseInt(pForm.year_from) : null,
@@ -483,16 +489,23 @@ export default function UnitDetail() {
                     </div>
                   )}
                   {pForm.item_type === "rid" && (
-                    <div className="space-y-2">
-                      <Label>Тип РИД</Label>
-                      <Select value={pForm.rid_subtype || "__none__"} onValueChange={v => setP("rid_subtype", v === "__none__" ? "" : v)}>
-                        <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Не указан</SelectItem>
-                          {Object.entries(ridSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label>Тип РИД</Label>
+                        <Select value={pForm.rid_subtype || "__none__"} onValueChange={v => setP("rid_subtype", v === "__none__" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Не указан</SelectItem>
+                            {Object.entries(ridSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2"><Label>Авторы</Label><Input value={pForm.authors} onChange={e => setP("authors", e.target.value)} placeholder="Иванов И.И., Петров П.П." /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Номер регистрации</Label><Input value={pForm.registration_number} onChange={e => setP("registration_number", e.target.value)} placeholder="RU 2 123 456" /></div>
+                        <div className="space-y-2"><Label>Страна</Label><Input value={pForm.country} onChange={e => setP("country", e.target.value)} placeholder="RU" /></div>
+                      </div>
+                    </>
                   )}
                   {(portfolioFieldConfig[pForm.item_type] || portfolioFieldConfig.other).hasYearTo ? (
                     <div className="grid grid-cols-2 gap-4">
