@@ -325,15 +325,21 @@ export default function UnitContactDetail() {
     if (toSave.length === 0) return;
     setImportSaving(true);
     try {
-      const rows = toSave.map(w => ({
-        unit_contact_id: contactId!,
-        title: w.title,
-        item_type: "publication",
-        year_from: w.year || null,
-        authors: w.authors || null,
-        url: w.url || null,
-        description: w.doi ? `DOI: ${w.doi.replace("https://doi.org/", "")}` : null,
-      }));
+      const rows = toSave.map(w => {
+        const descParts: string[] = [];
+        if (w.biblio_string) descParts.push(w.biblio_string);
+        if (w.doi) descParts.push(`DOI: ${w.doi.replace("https://doi.org/", "")}`);
+        return {
+          unit_contact_id: contactId!,
+          title: w.title,
+          item_type: "publication",
+          year_from: w.year || null,
+          authors: w.authors || null,
+          url: w.url || null,
+          organization_name: w.source_name || null,
+          description: descParts.length > 0 ? descParts.join(". ") : null,
+        };
+      });
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
       toast.success(`Добавлено ${rows.length} публикаций`);
@@ -492,7 +498,7 @@ export default function UnitContactDetail() {
                                         )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
-                                            {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
+                                            {p.year_from}{p.year_to ? `–${p.year_to}` : (p.item_type !== "publication" ? "–н.в." : "")}
                                           </span>
                                         )}
                                       </div>
@@ -647,6 +653,7 @@ export default function UnitContactDetail() {
                               <p className="text-sm font-medium leading-snug">{w.title}</p>
                               <div className="flex items-center gap-2 flex-wrap mt-1">
                                 {w.year && <Badge variant="outline" className="text-xs">{w.year}</Badge>}
+                                {w.source_name && <span className="text-xs text-muted-foreground italic">{w.source_name}</span>}
                                 {w._exists && <Badge variant="secondary" className="text-xs">Уже добавлено</Badge>}
                               </div>
                               {w.authors && <p className="text-xs text-muted-foreground mt-1 truncate">{w.authors}</p>}
