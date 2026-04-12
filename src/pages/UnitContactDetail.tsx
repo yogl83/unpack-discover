@@ -72,6 +72,13 @@ export default function UnitContactDetail() {
   const portfolioFilesRef = useRef<PortfolioItemFilesHandle>(null);
   const [pForm, setPForm] = useState(emptyPortfolioForm);
 
+  // Import publications state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importWorks, setImportWorks] = useState<any[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importSaving, setImportSaving] = useState(false);
+
   const { data: unit } = useQuery({
     queryKey: ["unit", unitId],
     queryFn: async () => {
