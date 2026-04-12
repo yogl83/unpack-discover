@@ -25,6 +25,18 @@ export default function AppLayout() {
 
   if (!user) return <Navigate to="/auth" replace />;
 
+  if (user && !profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Загрузка профиля...</p>
+      </div>
+    );
+  }
+
+  if (user && profile && !profile.approved) {
+    return <Navigate to="/auth" replace />;
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
