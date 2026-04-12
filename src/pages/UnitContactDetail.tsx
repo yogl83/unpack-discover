@@ -528,12 +528,39 @@ export default function UnitContactDetail() {
                                         )}
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
-                                      {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
-                                      {p.notes && p.item_type === "publication" && (
-                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-1" title={p.notes}>
-                                          <FileText className="h-3.5 w-3.5" />Есть аннотация
-                                        </span>
+                                      {p.item_type === "publication" && (() => {
+                                        const bibParts: string[] = [];
+                                        if (p.biblio_volume) bibParts.push(`Т. ${p.biblio_volume}`);
+                                        if (p.biblio_issue) bibParts.push(`№ ${p.biblio_issue}`);
+                                        if (p.biblio_first_page) bibParts.push(p.biblio_last_page && p.biblio_last_page !== p.biblio_first_page ? `С. ${p.biblio_first_page}–${p.biblio_last_page}` : `С. ${p.biblio_first_page}`);
+                                        return bibParts.length > 0 ? <p className="text-xs text-muted-foreground">{bibParts.join(", ")}</p> : null;
+                                      })()}
+                                      {p.item_type === "publication" && (
+                                        <div className="flex items-center gap-2 flex-wrap mt-1">
+                                          {p.doi && (
+                                            <a href={`https://doi.org/${(p.doi as string).replace("https://doi.org/", "")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                                              DOI
+                                            </a>
+                                          )}
+                                          {p.oa_status && (
+                                            <Badge variant={p.oa_status === "closed" ? "secondary" : "default"} className="text-xs">
+                                              {oaStatusLabels[p.oa_status] || p.oa_status}
+                                            </Badge>
+                                          )}
+                                          {p.pdf_url && (
+                                            <a href={p.pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">PDF</a>
+                                          )}
+                                          {p.arxiv_url && (
+                                            <a href={p.arxiv_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">arXiv</a>
+                                          )}
+                                          {p.notes && (
+                                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={p.notes}>
+                                              <FileText className="h-3.5 w-3.5" />Аннотация
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
+                                      {p.item_type !== "publication" && p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (
