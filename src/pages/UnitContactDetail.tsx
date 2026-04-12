@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Plus, Pencil, ExternalLink, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Pencil, ExternalLink, Download, Loader2, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -320,6 +320,11 @@ export default function UnitContactDetail() {
     }
   };
 
+  const oaStatusLabels: Record<string, string> = {
+    gold: "открытый (gold)", green: "открытый (green)", hybrid: "гибридный",
+    bronze: "бронзовый", diamond: "открытый (diamond)", closed: "закрытый",
+  };
+
   const saveImported = async () => {
     const toSave = importWorks.filter(w => importSelected.has(w._index));
     if (toSave.length === 0) return;
@@ -327,18 +332,21 @@ export default function UnitContactDetail() {
     try {
       const rows = toSave.map(w => {
         const descParts: string[] = [];
-        if (w.abstract) descParts.push(w.abstract);
         if (w.biblio_string) descParts.push(w.biblio_string);
         if (w.doi) descParts.push(`DOI: ${w.doi.replace("https://doi.org/", "")}`);
+        if (w.oa_status) descParts.push(`Доступ: ${oaStatusLabels[w.oa_status] || w.oa_status}`);
+        if (w.pdf_url) descParts.push(`PDF: ${w.pdf_url}`);
+        if (w.arxiv_url) descParts.push(`arXiv: ${w.arxiv_url}`);
         return {
           unit_contact_id: contactId!,
           title: w.title,
           item_type: "publication",
           year_from: w.year || null,
           authors: w.authors || null,
-          url: w.url || null,
+          url: w.oa_url || w.url || null,
           organization_name: w.source_name || null,
-          description: descParts.length > 0 ? descParts.join(". ") : null,
+          description: descParts.length > 0 ? descParts.join(" | ") : null,
+          notes: w.abstract || null,
         };
       });
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
@@ -505,6 +513,11 @@ export default function UnitContactDetail() {
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
                                       {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
+                                      {p.notes && p.item_type === "publication" && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-1" title={p.notes}>
+                                          <FileText className="h-3.5 w-3.5" />Есть аннотация
+                                        </span>
+                                      )}
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (

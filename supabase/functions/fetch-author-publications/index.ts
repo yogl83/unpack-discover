@@ -10,6 +10,10 @@ interface WorkResult {
   source_name: string | null;
   biblio_string: string | null;
   abstract: string | null;
+  oa_status: string | null;
+  oa_url: string | null;
+  pdf_url: string | null;
+  arxiv_url: string | null;
 }
 
 function invertedIndexToText(idx: Record<string, number[]>): string {
@@ -35,7 +39,6 @@ Deno.serve(async (req) => {
     // Build OpenAlex filter
     let filter = "";
     if (openalex_id) {
-      // OpenAlex IDs can be just the number or full URL
       const id = openalex_id.startsWith("A") ? openalex_id : `A${openalex_id}`;
       filter = `author.id:${id}`;
     } else if (orcid) {
@@ -53,9 +56,8 @@ Deno.serve(async (req) => {
     let page = 1;
     const perPage = 200;
 
-    // Fetch up to 2 pages (400 works max)
     while (page <= 2) {
-      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type,primary_location,biblio,abstract_inverted_index&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
+      const apiUrl = `https://api.openalex.org/works?filter=${filter}&per_page=${perPage}&page=${page}&select=title,publication_year,authorships,doi,type,primary_location,biblio,abstract_inverted_index,open_access,best_oa_location,locations&sort=publication_year:desc&mailto=miem-partnership@hse.ru`;
       
       const resp = await fetch(apiUrl);
       if (!resp.ok) {
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
         const doi = w.doi || null;
         const type = w.type || null;
 
-        // Extract authors (first 5)
+        // Authors (first 5)
         const authorNames = (w.authorships || [])
           .slice(0, 5)
           .map((a: any) => a.author?.display_name || "")
@@ -84,12 +86,12 @@ Deno.serve(async (req) => {
         const authors = authorNames.join(", ") + (w.authorships?.length > 5 ? " и др." : "");
 
         // URL: prefer DOI
-        const url = doi ? `https://doi.org/${doi.replace("https://doi.org/", "")}` : null;
+        const doiUrl = doi ? `https://doi.org/${doi.replace("https://doi.org/", "")}` : null;
 
         // Source (journal/conference)
         const source_name = w.primary_location?.source?.display_name || null;
 
-        // Biblio string (vol, issue, pages)
+        // Biblio string
         const biblio = w.biblio;
         const bibParts: string[] = [];
         if (biblio?.volume) bibParts.push(`Т. ${biblio.volume}`);
@@ -106,10 +108,28 @@ Deno.serve(async (req) => {
           ? invertedIndexToText(w.abstract_inverted_index)
           : null;
 
-        works.push({ title, year, authors, doi, url, type, source_name, biblio_string, abstract: abstractText });
+        // Open Access
+        const oa_status = w.open_access?.oa_status || null;
+        const oa_url = w.open_access?.oa_url || null;
+        const pdf_url = w.best_oa_location?.pdf_url || null;
+
+        // arXiv: search in locations
+        let arxiv_url: string | null = null;
+        if (w.locations && Array.isArray(w.locations)) {
+          for (const loc of w.locations) {
+            const srcName = loc.source?.display_name || "";
+            if (srcName.toLowerCase().includes("arxiv")) {
+              arxiv_url = loc.landing_page_url || loc.pdf_url || null;
+              break;
+            }
+          }
+        }
+
+        const url = oa_url || doiUrl;
+
+        works.push({ title, year, authors, doi, url, type, source_name, biblio_string, abstract: abstractText, oa_status, oa_url, pdf_url, arxiv_url });
       }
 
-      // No more pages
       if (results.length < perPage || works.length >= data.meta?.count) break;
       page++;
     }
