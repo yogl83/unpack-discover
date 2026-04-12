@@ -443,20 +443,22 @@ export default function UnitDetail() {
             <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>{editingPortfolioId ? "Редактировать элемент" : "Новый элемент портфолио"}</DialogTitle>
+                  <DialogTitle>{editingPortfolioId ? (portfolioDialogTitles[pForm.item_type]?.edit || "Редактировать элемент") : (portfolioDialogTitles[pForm.item_type]?.new || "Новый элемент портфолио")}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
-                  <div className="space-y-2"><Label>Название *</Label><Input value={pForm.title} onChange={e => setP("title", e.target.value)} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Тип</Label>
-                      <Select value={pForm.item_type} onValueChange={v => setP("item_type", v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(portfolioTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2"><Label>Название *</Label><Input value={pForm.title} onChange={e => setP("title", e.target.value)} placeholder={portfolioTitlePlaceholders[pForm.item_type] || "Название"} /></div>
+                  <div className={`grid gap-4 ${portfolioTypePreset ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {!portfolioTypePreset && (
+                      <div className="space-y-2">
+                        <Label>Тип</Label>
+                        <Select value={pForm.item_type} onValueChange={v => setP("item_type", v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(portfolioTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2"><Label>Организация</Label><Input value={pForm.organization_name} onChange={e => setP("organization_name", e.target.value)} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
