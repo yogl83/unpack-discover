@@ -1,44 +1,29 @@
 
 
-# Автоимпорт публикаций из систем цитирования
+# Исправить импорт публикаций: добавить журнал и убрать year_to
 
-## Идея
-Добавить кнопку «Импорт публикаций» на вкладку «Портфолио» сотрудника. При нажатии — edge function запрашивает OpenAlex API (бесплатный, без ключа) по ID автора и возвращает список публикаций. Пользователь выбирает, какие добавить в портфолио.
-
-## Почему OpenAlex
-- Бесплатный публичный API, не нужен API-ключ
-- Покрывает большинство научных публикаций (включая данные Scopus, ORCID)
-- Поддерживает поиск по OpenAlex ID, ORCID и Scopus ID
-- Возвращает: название, год, авторов, DOI, тип
-
-## Источники поиска
-Edge function принимает любой из заполненных ID сотрудника и конвертирует в OpenAlex-запрос:
-- `openalex_id` → `https://api.openalex.org/works?filter=author.id:{id}`
-- `orcid` → `https://api.openalex.org/works?filter=author.orcid:{id}`
-- `scopus_id` → `https://api.openalex.org/works?filter=author.scopus:{id}`
+## Проблемы
+1. **Не заполняется «Журнал/конференция»** — OpenAlex API не запрашивает поле `primary_location` (содержит название журнала/venue), и при сохранении не заполняется `organization_name`.
+2. **Годы «2010–н.в.»** — при импорте `year_from` заполняется годом публикации, а `year_to` не указан, поэтому UI показывает «–н.в.». Для публикации нужен только год, без диапазона.
 
 ## Изменения
 
 ### 1. Edge function `fetch-author-publications/index.ts`
-- Принимает `{ openalex_id?, orcid?, scopus_id? }`
-- Запрашивает OpenAlex API (до 200 работ, пагинация)
-- Возвращает массив `{ title, year, authors, doi, url, type }`
-- Без аутентификации к внешнему API (OpenAlex бесплатный)
+- Добавить `primary_location` в `select` параметр API-запроса
+- Извлекать `source_name` из `w.primary_location?.source?.display_name` (название журнала/конференции)
+- Извлекать `biblio` (том, выпуск, страницы) из `w.biblio` — добавить в `select`
+- Возвращать новые поля: `source_name`, `biblio_string` (например «Vol. 12, No. 3, pp. 45–67»)
 
-### 2. `src/pages/UnitContactDetail.tsx`
-- Кнопка «Импорт публикаций из OpenAlex» в секции «Публикации» (видна если есть хотя бы один из ID: openalex, orcid, scopus)
-- При нажатии — вызов edge function, показ диалога со списком найденных публикаций
-- Чекбоксы для выбора, кнопка «Добавить выбранные»
-- Выбранные публикации вставляются в `contact_portfolio_items` с `item_type = 'publication'`
-- Дедупликация: пропускаются публикации, у которых title+year уже есть в портфолио
+### 2. `src/pages/UnitContactDetail.tsx` — сохранение импорта
+- `organization_name` ← `w.source_name` (журнал/конференция)
+- `description` ← собрать строку: выходные данные (biblio) + DOI
+- **Убрать `year_to`** для публикаций: не ставить его при импорте (он и так null, проблема в отображении)
+
+### 3. `src/pages/UnitContactDetail.tsx` — отображение года
+- Для `item_type === 'publication'`: показывать только `year_from` без «–н.в.»
+- Логика: `{p.year_from}{p.year_to ? `–${p.year_to}` : (p.item_type !== 'publication' ? '–н.в.' : '')}`
 
 ### Затронутые файлы
-- `supabase/functions/fetch-author-publications/index.ts` (новый)
-- `src/pages/UnitContactDetail.tsx` (кнопка + диалог импорта)
-
-### Техническая деталь
-OpenAlex API пример:
-```
-GET https://api.openalex.org/works?filter=author.id:A5059854048&per_page=200&select=title,publication_year,authorships,doi,type
-```
+- `supabase/functions/fetch-author-publications/index.ts` (добавить source + biblio)
+- `src/pages/UnitContactDetail.tsx` (маппинг при сохранении + отображение года)
 
