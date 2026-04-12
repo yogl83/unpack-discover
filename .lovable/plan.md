@@ -1,45 +1,59 @@
 
 
-# Улучшение импорта публикаций: аннотация, режим доступа, ссылки
+# Добавить отдельные поля для публикаций в таблицу contact_portfolio_items
+
+## Текущая проблема
+Все метаданные публикации (DOI, режим доступа, PDF-ссылка, arXiv, выходные данные) сейчас склеиваются в одно текстовое поле `description` через разделитель ` | `. Это неудобно для отображения, фильтрации и повторного использования данных.
 
 ## Что будет сделано
 
-1. **Удаление всех существующих публикаций** — очистка ранее импортированных записей с `item_type = 'publication'` для текущего контакта (через UI или вручную)
+### 1. Миграция БД — новые колонки в `contact_portfolio_items`
+Добавить nullable-поля:
+- `doi` (text) — DOI публикации
+- `oa_status` (text) — режим доступа: gold, green, hybrid, bronze, diamond, closed
+- `oa_url` (text) — ссылка на открытый полнотекст
+- `pdf_url` (text) — прямая ссылка на PDF
+- `arxiv_url` (text) — ссылка на arXiv-версию
+- `source_name` (text) — журнал/конференция (дублирует `organization_name`, но семантически точнее; можно использовать `organization_name` и не добавлять)
+- `biblio_volume` (text) — том
+- `biblio_issue` (text) — номер
+- `biblio_first_page` (text) — первая страница
+- `biblio_last_page` (text) — последняя страница
 
-2. **Abstract → поле `notes`** (не `description`) — abstract сохраняется в `notes` как «Аннотация». Если abstract отсутствует в OpenAlex — поле остаётся пустым. В карточке публикации вместо текста аннотации показывается иконка 📄 (tooltip: «Есть аннотация»), полный текст виден при открытии карточки на редактирование.
+**Примечание**: `organization_name` уже хранит название журнала. Можно не дублировать `source_name`, а продолжить использовать `organization_name`.
 
-3. **Режим доступа и ссылки из OpenAlex** — из API извлекаются:
-   - `open_access.oa_status` (gold/green/hybrid/bronze/diamond/closed)
-   - `open_access.oa_url` — ссылка на открытый полнотекст
-   - `best_oa_location.pdf_url` — прямая ссылка на PDF
-   - Поиск arXiv-версии в `locations[]` (source.display_name содержит "arXiv")
-   
-   Всё это сохраняется в `description` в читаемом формате:
-   ```
-   Т. 12, № 3, С. 45–67. DOI: 10.1234/xxxx
-   Доступ: gold (открытый) | PDF: https://...
-   arXiv: https://arxiv.org/abs/...
-   ```
+### 2. Edge function — расширить ответ
+Добавить в `WorkResult` отдельные biblio-поля (`volume`, `issue`, `first_page`, `last_page`) вместо склеенной строки `biblio_string`. Остальные поля (`oa_status`, `oa_url`, `pdf_url`, `arxiv_url`, `doi`, `abstract`) уже возвращаются.
 
-4. **`url` в карточке** — основная ссылка: предпочитается `oa_url` (бесплатная), затем DOI-ссылка
+### 3. Маппинг при сохранении импорта (`UnitContactDetail.tsx`)
+Вместо склейки в `description`:
+```
+doi: w.doi,
+oa_status: w.oa_status,
+oa_url: w.oa_url,
+pdf_url: w.pdf_url,
+arxiv_url: w.arxiv_url,
+biblio_volume: w.volume,
+biblio_issue: w.issue,
+biblio_first_page: w.first_page,
+biblio_last_page: w.last_page,
+notes: w.abstract || null,
+description: null,
+```
 
-5. **Предпросмотр карточки** — для публикаций с аннотацией показывается маленькая иконка (FileText) рядом с заголовком вместо вывода полного текста
+### 4. Отображение карточки публикации
+- Выходные данные формируются из отдельных полей: `Т. {volume}, № {issue}, С. {first_page}–{last_page}`
+- DOI показывается как ссылка
+- Режим доступа — бейдж (цветной: зелёный для open, серый для closed)
+- PDF / arXiv — иконки-ссылки
+- Аннотация (`notes`) — иконка FileText с tooltip
 
-## Изменения по файлам
+### 5. Диалог редактирования публикации
+Добавить поля: DOI, Режим доступа (select), PDF URL, arXiv URL, Том, Номер, Страницы — только когда `item_type === 'publication'`.
 
-### Edge function `fetch-author-publications/index.ts`
-- Добавить в `select`: `open_access,best_oa_location,locations`
-- Добавить поля в `WorkResult`: `oa_status`, `oa_url`, `pdf_url`, `arxiv_url`
-- Извлечь `oa_status` из `w.open_access.oa_status`
-- Извлечь `oa_url` из `w.open_access.oa_url`
-- Извлечь `pdf_url` из `w.best_oa_location?.pdf_url`
-- Найти arXiv в `w.locations[]` по `source.display_name` содержащему "arxiv"
-
-### `src/pages/UnitContactDetail.tsx`
-- **Маппинг при сохранении**:
-  - `notes` ← abstract (если есть), иначе null
-  - `description` ← biblio + DOI + режим доступа + PDF-ссылка + arXiv (без abstract)
-  - `url` ← `oa_url || doi_url` (предпочтение открытому доступу)
-- **Отображение публикаций**: вместо `{p.description}` для публикаций показывать только biblio/DOI часть; если `p.notes` не пуст — иконка FileText с tooltip «Есть аннотация»
-- **Диалог редактирования**: поле «Заметки» уже показывает `notes`, так что аннотация будет видна при открытии карточки
+## Затронутые файлы
+- **Миграция** — новые колонки в `contact_portfolio_items`
+- `supabase/functions/fetch-author-publications/index.ts` — отдельные biblio-поля в ответе
+- `src/pages/UnitContactDetail.tsx` — маппинг, отображение, форма редактирования
+- `src/integrations/supabase/types.ts` — обновится автоматически
 
