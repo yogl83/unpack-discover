@@ -1,18 +1,29 @@
 
 
-# Расширить список сотрудников в диалоге «Добавить в коллектив»
+# Исправление отображения коллектива
 
 ## Проблема
-Диалог показывает только `unit_contacts` текущего подразделения. Полесский и другие привязаны к другим подразделениям и не отображаются.
+1. Таблица коллектива рендерит `unitContacts` (контакты с `unit_id` текущего подразделения), а не `memberships`. Полесский привязан к другому подразделению, поэтому его membership создаётся, но он не виден.
+2. Кнопка удаления удаляет запись `unit_contacts` (контакт целиком), а должна удалять `unit_contact_memberships` (членство в коллективе).
 
 ## Решение
 
-В `src/pages/UnitDetail.tsx`:
+В `src/pages/UnitDetail.tsx` (строки 639–740):
 
-1. **Добавить запрос всех `unit_contacts`** — новый `useQuery` загружает все записи из таблицы `unit_contacts` (без фильтра по `unit_id`)
-2. **Фильтрация в диалоге**: показывать всех сотрудников, исключая тех, кто уже состоит в `memberships` текущего подразделения
-3. **Мутация `addMembership`**: уже принимает `unit_contact_id` — менять не нужно, связь через `unit_contact_memberships` работает независимо от `unit_id` контакта
+1. **Переключить источник данных**: вместо итерации по `unitContacts` — итерировать по `memberships`, используя join-данные `unit_contacts(full_name, job_title, email)` которые уже подгружаются в запросе memberships.
+
+2. **Обновить рендер таблицы и карточек**:
+   - Каждый элемент — это `membership`, из него берём `unit_contacts.full_name`, `unit_contacts.job_title`, `member_role`
+   - `isLead` определять по `membership.is_lead` или `membership.unit_contact_id === leadContactId`
+   - Навигация при клике: `/units/${id}/contacts/${m.unit_contact_id}`
+
+3. **Исправить удаление**: удалять из `unit_contact_memberships` по `membership_id`, а не из `unit_contacts`
+
+4. **Условие «нет данных»**: проверять `!memberships?.length` вместо `!unitContacts?.length`
 
 ## Затронутый файл
-- `src/pages/UnitDetail.tsx` — добавить запрос + заменить источник данных в `Select` (~10 строк)
+- `src/pages/UnitDetail.tsx` — строки 639–740 (рендер таблицы и карточек коллектива)
+
+## Объём
+~50 строк изменений в одном файле. Без миграций.
 
