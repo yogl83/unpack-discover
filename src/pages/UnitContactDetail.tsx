@@ -121,6 +121,7 @@ export default function UnitContactDetail() {
     notes: "",
     orcid: "",
     scopus_id: "",
+    elibrary_id: "",
     scholar_url: "",
     personal_summary: "",
   });
@@ -139,6 +140,7 @@ export default function UnitContactDetail() {
         notes: item.notes || "",
         orcid: (item as any).orcid || "",
         scopus_id: (item as any).scopus_id || "",
+        elibrary_id: (item as any).elibrary_id || "",
         scholar_url: (item as any).scholar_url || "",
         personal_summary: (item as any).personal_summary || "",
       });
@@ -521,11 +523,15 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
           <div className="space-y-2">
             <Label>Scopus Author ID</Label>
             <Input value={form.scopus_id} onChange={(e: any) => set("scopus_id", e.target.value)} disabled={!canEdit} placeholder="57..." />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label>Google Scholar</Label>
-            <Input value={form.scholar_url} onChange={(e: any) => set("scholar_url", e.target.value)} disabled={!canEdit} placeholder="https://scholar.google.com/citations?user=..." />
-          </div>
+           </div>
+           <div className="space-y-2">
+             <Label>eLibrary Author ID</Label>
+             <Input value={form.elibrary_id} onChange={(e: any) => set("elibrary_id", e.target.value)} disabled={!canEdit} placeholder="https://elibrary.ru/author_items.asp?authorid=..." />
+           </div>
+           <div className="space-y-2">
+             <Label>Google Scholar</Label>
+             <Input value={form.scholar_url} onChange={(e: any) => set("scholar_url", e.target.value)} disabled={!canEdit} placeholder="https://scholar.google.com/citations?user=..." />
+           </div>
         </CardContent>
       </Card>
 
