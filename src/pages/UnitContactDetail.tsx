@@ -125,6 +125,7 @@ export default function UnitContactDetail() {
     scopus_id: "",
     elibrary_id: "",
     scholar_url: "",
+    openalex_url: "",
     personal_summary: "",
   });
 
@@ -144,6 +145,7 @@ export default function UnitContactDetail() {
         scopus_id: (item as any).scopus_id || "",
         elibrary_id: (item as any).elibrary_id || "",
         scholar_url: (item as any).scholar_url || "",
+        openalex_url: (item as any).openalex_url || "",
         personal_summary: (item as any).personal_summary || "",
       });
       if (standalone && item.unit_id) {
@@ -600,6 +602,10 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
            <div className="space-y-2">
              <Label>Google Scholar</Label>
              <Input value={form.scholar_url} onChange={(e: any) => set("scholar_url", e.target.value)} disabled={!canEdit} placeholder="https://scholar.google.com/citations?user=..." />
+           </div>
+           <div className="space-y-2">
+             <Label>OpenAlex</Label>
+             <Input value={form.openalex_url} onChange={(e: any) => set("openalex_url", e.target.value)} disabled={!canEdit} placeholder="https://openalex.org/authors/..." />
            </div>
         </CardContent>
       </Card>
