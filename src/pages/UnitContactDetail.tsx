@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels } from "@/lib/labels";
+import { portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels, ridSubtypeLabels } from "@/lib/labels";
 
 const roleLabels: Record<string, string> = {
   lead: "Руководитель",
@@ -34,7 +34,7 @@ const roleLabels: Record<string, string> = {
 const portfolioTitlePlaceholders: Record<string, string> = {
   project: "Наименование проекта",
   publication: "Название публикации",
-  patent: "Название патента",
+  rid: "Название РИД",
   product: "Название продукта",
   other: "Название",
 };
@@ -42,13 +42,13 @@ const portfolioTitlePlaceholders: Record<string, string> = {
 const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
   project: { new: "Новый проект", edit: "Редактировать проект" },
   publication: { new: "Новая публикация", edit: "Редактировать публикацию" },
-  patent: { new: "Новый патент", edit: "Редактировать патент" },
+  rid: { new: "Новый РИД", edit: "Редактировать РИД" },
   product: { new: "Новый продукт", edit: "Редактировать продукт" },
   other: { new: "Новый элемент", edit: "Редактировать элемент" },
 };
 
 const emptyPortfolioForm = {
-  title: "", item_type: "project", project_subtype: "", organization_name: "", description: "",
+  title: "", item_type: "project", project_subtype: "", rid_subtype: "", organization_name: "", description: "",
   year_from: "", year_to: "", url: "", notes: "",
 };
 
