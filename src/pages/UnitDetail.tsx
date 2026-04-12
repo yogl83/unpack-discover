@@ -289,6 +289,10 @@ export default function UnitDetail() {
           <TabsTrigger value="info">Информация</TabsTrigger>
           {!isNew && (
             <>
+              <TabsTrigger value="contacts" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" />Коллектив
+                {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
+              </TabsTrigger>
               <TabsTrigger value="portfolio" className="gap-1.5">
                 <Briefcase className="h-3.5 w-3.5" />Портфолио
                 {portfolio?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{portfolio.length}</Badge> : null}
@@ -300,10 +304,6 @@ export default function UnitDetail() {
               <TabsTrigger value="hypotheses" className="gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5" />Гипотезы
                 {hypotheses?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{hypotheses.length}</Badge> : null}
-              </TabsTrigger>
-              <TabsTrigger value="contacts" className="gap-1.5">
-                <Users className="h-3.5 w-3.5" />Коллектив
-                {unitContacts?.length ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{unitContacts.length}</Badge> : null}
               </TabsTrigger>
             </>
           )}
