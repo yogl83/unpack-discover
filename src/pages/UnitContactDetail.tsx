@@ -212,7 +212,7 @@ export default function UnitContactDetail() {
         item_type: pForm.item_type,
         project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         rid_subtype: pForm.item_type === "rid" ? (pForm.rid_subtype || null) : null,
-        authors: pForm.item_type === "rid" ? (pForm.authors || null) : null,
+        authors: (pForm.item_type === "rid" || pForm.item_type === "publication") ? (pForm.authors || null) : null,
         registration_number: pForm.item_type === "rid" ? (pForm.registration_number || null) : null,
         country: pForm.item_type === "rid" ? (pForm.country || null) : null,
         organization_name: pForm.organization_name || null,
@@ -221,6 +221,15 @@ export default function UnitContactDetail() {
         notes: pForm.notes || null,
         year_from: pForm.year_from ? Number(pForm.year_from) : null,
         year_to: pForm.year_to ? Number(pForm.year_to) : null,
+        doi: pForm.item_type === "publication" ? (pForm.doi || null) : null,
+        oa_status: pForm.item_type === "publication" ? (pForm.oa_status || null) : null,
+        oa_url: pForm.item_type === "publication" ? (pForm.oa_url || null) : null,
+        pdf_url: pForm.item_type === "publication" ? (pForm.pdf_url || null) : null,
+        arxiv_url: pForm.item_type === "publication" ? (pForm.arxiv_url || null) : null,
+        biblio_volume: pForm.item_type === "publication" ? (pForm.biblio_volume || null) : null,
+        biblio_issue: pForm.item_type === "publication" ? (pForm.biblio_issue || null) : null,
+        biblio_first_page: pForm.item_type === "publication" ? (pForm.biblio_first_page || null) : null,
+        biblio_last_page: pForm.item_type === "publication" ? (pForm.biblio_last_page || null) : null,
       };
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
