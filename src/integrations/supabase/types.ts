@@ -1218,6 +1218,7 @@ export type Database = {
           is_primary: boolean
           job_title: string | null
           notes: string | null
+          openalex_url: string | null
           orcid: string | null
           personal_summary: string | null
           phone: string | null
@@ -1238,6 +1239,7 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           notes?: string | null
+          openalex_url?: string | null
           orcid?: string | null
           personal_summary?: string | null
           phone?: string | null
@@ -1258,6 +1260,7 @@ export type Database = {
           is_primary?: boolean
           job_title?: string | null
           notes?: string | null
+          openalex_url?: string | null
           orcid?: string | null
           personal_summary?: string | null
           phone?: string | null
