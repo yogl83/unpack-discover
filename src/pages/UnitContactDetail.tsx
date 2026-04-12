@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 import { MarkdownWysiwyg } from "@/components/partner/MarkdownWysiwyg";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { portfolioTypeLabels } from "@/lib/labels";
+import { portfolioTypeLabels, portfolioFieldConfig } from "@/lib/labels";
 
 const roleLabels: Record<string, string> = {
   lead: "Руководитель",

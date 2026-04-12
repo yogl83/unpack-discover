@@ -73,6 +73,18 @@ export const portfolioTypeLabels: Record<string, string> = {
   grant: "Грант", product: "Продукт", other: "Другое",
 };
 
+// Per-type field labels for portfolio forms
+export const portfolioFieldConfig: Record<string, {
+  orgLabel: string; yearFromLabel: string; yearToLabel?: string; urlLabel: string; urlPlaceholder: string; hasYearTo: boolean;
+}> = {
+  project: { orgLabel: "Организация-заказчик", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
+  publication: { orgLabel: "Журнал / Конференция", yearFromLabel: "Год публикации", urlLabel: "DOI / Ссылка", urlPlaceholder: "https://doi.org/...", hasYearTo: false },
+  patent: { orgLabel: "Патентообладатель", yearFromLabel: "Год регистрации", urlLabel: "Номер патента / Ссылка", urlPlaceholder: "RU 2 123 456", hasYearTo: false },
+  grant: { orgLabel: "Фонд / Организация", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
+  product: { orgLabel: "Организация", yearFromLabel: "Год выпуска", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
+  other: { orgLabel: "Организация", yearFromLabel: "Год", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
+};
+
 export const allStatusLabels: Record<string, string> = {
   ...partnerStatusLabels,
   ...needStatusLabels,
