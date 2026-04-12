@@ -513,6 +513,11 @@ export default function UnitContactDetail() {
                                       </div>
                                       {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
                                       {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
+                                      {p.notes && p.item_type === "publication" && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-1" title={p.notes}>
+                                          <FileText className="h-3.5 w-3.5" />Есть аннотация
+                                        </span>
+                                      )}
                                       <PortfolioItemFiles portfolioItemId={p.portfolio_item_id} itemSource="contact" editable={false} />
                                     </div>
                                     {canEdit && (
