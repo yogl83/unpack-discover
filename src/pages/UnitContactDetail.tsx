@@ -541,13 +541,29 @@ export default function UnitContactDetail() {
                                         {(p as any).rid_subtype && ridSubtypeLabels[(p as any).rid_subtype] && (
                                           <Badge variant="outline" className="text-xs">{ridSubtypeLabels[(p as any).rid_subtype]}</Badge>
                                         )}
+                                        {p.item_type === "publication" && p.publication_type && (
+                                          <Badge variant="outline" className="text-xs">{publicationTypeLabels[p.publication_type] || p.publication_type}</Badge>
+                                        )}
+                                        {p.item_type === "publication" && p.is_retracted && (
+                                          <Badge variant="destructive" className="text-xs">ОТОЗВАНА</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : (p.item_type !== "publication" ? "–н.в." : "")}
                                           </span>
                                         )}
+                                        {p.item_type === "publication" && typeof p.cited_by_count === "number" && p.cited_by_count > 0 && (
+                                          <span className="text-xs text-muted-foreground" title="Цитирования">
+                                            🔗 {p.cited_by_count}
+                                          </span>
+                                        )}
                                       </div>
-                                      {p.organization_name && <p className="text-sm text-muted-foreground">{p.organization_name}</p>}
+                                      {p.organization_name && (
+                                        <p className="text-sm text-muted-foreground">
+                                          {p.organization_name}
+                                          {p.item_type === "publication" && p.publisher && p.publisher !== p.organization_name && ` · ${p.publisher}`}
+                                        </p>
+                                      )}
                                       {p.item_type === "publication" && (() => {
                                         const bibParts: string[] = [];
                                         if (p.biblio_volume) bibParts.push(`Т. ${p.biblio_volume}`);
@@ -555,6 +571,12 @@ export default function UnitContactDetail() {
                                         if (p.biblio_first_page) bibParts.push(p.biblio_last_page && p.biblio_last_page !== p.biblio_first_page ? `С. ${p.biblio_first_page}–${p.biblio_last_page}` : `С. ${p.biblio_first_page}`);
                                         return bibParts.length > 0 ? <p className="text-xs text-muted-foreground">{bibParts.join(", ")}</p> : null;
                                       })()}
+                                      {p.item_type === "publication" && p.primary_topic && (
+                                        <p className="text-xs text-muted-foreground/70 mt-0.5">{p.primary_topic}</p>
+                                      )}
+                                      {p.item_type === "publication" && p.keywords && (
+                                        <p className="text-xs text-muted-foreground/60 mt-0.5 truncate" title={p.keywords}>🏷 {p.keywords}</p>
+                                      )}
                                       {p.item_type === "publication" && (
                                         <div className="flex items-center gap-2 flex-wrap mt-1">
                                           {p.doi && (
@@ -572,6 +594,9 @@ export default function UnitContactDetail() {
                                           )}
                                           {p.arxiv_url && (
                                             <a href={p.arxiv_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">arXiv</a>
+                                          )}
+                                          {p.language && (
+                                            <span className="text-xs text-muted-foreground">{p.language.toUpperCase()}</span>
                                           )}
                                           {p.notes && (
                                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={p.notes}>
