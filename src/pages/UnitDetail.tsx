@@ -30,6 +30,24 @@ const emptyPortfolioForm = {
   year_from: "", year_to: "", url: "", notes: "",
 };
 
+const portfolioTitlePlaceholders: Record<string, string> = {
+  project: "Наименование проекта",
+  publication: "Название публикации",
+  patent: "Название патента",
+  grant: "Название гранта",
+  product: "Название продукта",
+  other: "Название",
+};
+
+const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
+  project: { new: "Новый проект", edit: "Редактировать проект" },
+  publication: { new: "Новая публикация", edit: "Редактировать публикацию" },
+  patent: { new: "Новый патент", edit: "Редактировать патент" },
+  grant: { new: "Новый грант", edit: "Редактировать грант" },
+  product: { new: "Новый продукт", edit: "Редактировать продукт" },
+  other: { new: "Новый элемент", edit: "Редактировать элемент" },
+};
+
 export default function UnitDetail() {
   const { id } = useParams();
   const isNew = id === "new";
@@ -160,13 +178,15 @@ export default function UnitDetail() {
   });
 
   // Portfolio CRUD
-  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
-  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
-  const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
+   const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
+   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+   const [pForm, setPForm] = useState({ ...emptyPortfolioForm });
+   const [portfolioTypePreset, setPortfolioTypePreset] = useState(false);
 
   const openNewPortfolio = () => {
     setPForm({ ...emptyPortfolioForm });
     setEditingPortfolioId(null);
+    setPortfolioTypePreset(false);
     setPortfolioDialogOpen(true);
   };
 
@@ -361,7 +381,7 @@ export default function UnitDetail() {
                         <AccordionContent>
                           <div className="space-y-3">
                             {canEdit && (
-                              <Button size="sm" variant="outline" onClick={() => { setPForm({ ...emptyPortfolioForm, item_type: typeKey }); setEditingPortfolioId(null); setPortfolioDialogOpen(true); }}>
+                              <Button size="sm" variant="outline" onClick={() => { setPForm({ ...emptyPortfolioForm, item_type: typeKey }); setEditingPortfolioId(null); setPortfolioTypePreset(true); setPortfolioDialogOpen(true); }}>
                                 <Plus className="mr-1 h-3.5 w-3.5" />Добавить
                               </Button>
                             )}
