@@ -621,3 +621,23 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
     </div>
   );
 }
+
+/* ── Citation profile field with auto-link ── */
+function CitationField({ label, value, onChange, disabled, placeholder, urlTemplate }: {
+  label: string; value: string; onChange: (v: string) => void; disabled: boolean; placeholder: string; urlTemplate: string;
+}) {
+  const url = value?.trim() ? urlTemplate.replace("{id}", value.trim()) : null;
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex gap-1.5">
+        <Input value={value} onChange={(e: any) => onChange(e.target.value)} disabled={disabled} placeholder={placeholder} className="flex-1" />
+        {url && (
+          <Button variant="ghost" size="icon" className="shrink-0 h-10 w-10" asChild>
+            <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
