@@ -401,6 +401,9 @@ export default function UnitDetail() {
                                             </a>
                                           ) : p.title}
                                         </span>
+                                        {(p as any).project_subtype && projectSubtypeLabels[(p as any).project_subtype] && (
+                                          <Badge variant="outline" className="text-xs">{projectSubtypeLabels[(p as any).project_subtype]}</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
