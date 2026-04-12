@@ -949,12 +949,12 @@ function ContactInfoForm({ form, set, canEdit, standalone, selectedUnitId, setSe
       <Card>
         <CardHeader><CardTitle>Профили в системах цитирования</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <CitationField label="ORCID" value={form.orcid} onChange={(v: string) => set("orcid", v)} disabled={!canEdit} placeholder="0000-0003-0669-5694" urlTemplate="https://orcid.org/{id}" />
-          <CitationField label="Scopus Author ID" value={form.scopus_id} onChange={(v: string) => set("scopus_id", v)} disabled={!canEdit} placeholder="25929447800" urlTemplate="https://www.scopus.com/authid/detail.uri?authorId={id}" />
-          <CitationField label="eLibrary Author ID" value={form.elibrary_id} onChange={(v: string) => set("elibrary_id", v)} disabled={!canEdit} placeholder="177140" urlTemplate="https://elibrary.ru/author_profile.asp?id={id}" />
-          <CitationField label="Google Scholar" value={form.scholar_id} onChange={(v: string) => set("scholar_id", v)} disabled={!canEdit} placeholder="ABSiyPEAAAAJ" urlTemplate="https://scholar.google.com/citations?user={id}" />
-          <CitationField label="OpenAlex" value={form.openalex_id} onChange={(v: string) => set("openalex_id", v)} disabled={!canEdit} placeholder="A5059854048" urlTemplate="https://openalex.org/authors/{id}" />
-          <CitationField label="ResearcherID" value={form.researcherid} onChange={(v: string) => set("researcherid", v)} disabled={!canEdit} placeholder="E-6562-2014" urlTemplate="https://www.webofscience.com/wos/author/rid/{id}" />
+          <CitationField label="ORCID" value={form.orcid} onChange={(v: string) => set("orcid", v)} disabled={!canEdit} placeholder="0000-0000-0000-0000" urlTemplate="https://orcid.org/{id}" />
+          <CitationField label="Scopus Author ID" value={form.scopus_id} onChange={(v: string) => set("scopus_id", v)} disabled={!canEdit} placeholder="напр. 12345678900" urlTemplate="https://www.scopus.com/authid/detail.uri?authorId={id}" />
+          <CitationField label="eLibrary Author ID" value={form.elibrary_id} onChange={(v: string) => set("elibrary_id", v)} disabled={!canEdit} placeholder="напр. 123456" urlTemplate="https://elibrary.ru/author_profile.asp?id={id}" />
+          <CitationField label="Google Scholar" value={form.scholar_id} onChange={(v: string) => set("scholar_id", v)} disabled={!canEdit} placeholder="напр. XXXXXXXXXXXX" urlTemplate="https://scholar.google.com/citations?user={id}" />
+          <CitationField label="OpenAlex" value={form.openalex_id} onChange={(v: string) => set("openalex_id", v)} disabled={!canEdit} placeholder="напр. A1234567890" urlTemplate="https://openalex.org/authors/{id}" />
+          <CitationField label="ResearcherID" value={form.researcherid} onChange={(v: string) => set("researcherid", v)} disabled={!canEdit} placeholder="напр. X-1234-5678" urlTemplate="https://www.webofscience.com/wos/author/rid/{id}" />
         </CardContent>
       </Card>
 

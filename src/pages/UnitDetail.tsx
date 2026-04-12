@@ -659,20 +659,36 @@ export default function UnitDetail() {
                                 <TableCell onClick={e => e.stopPropagation()}>
                                   <div className="flex gap-1">
                                     {canEdit && !isLead && (
-                                      <Button size="sm" variant="ghost" onClick={() => {
-                                        if (membership) {
-                                          setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
-                                        } else {
-                                          // Set lead directly via unit update
-                                          setLeadContactId(c.unit_contact_id);
-                                          supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
-                                            toast.success("Руководитель назначен");
-                                            qc.invalidateQueries({ queryKey: ["unit", id] });
-                                          });
-                                        }
-                                      }}>
-                                        Назначить рук.
-                                      </Button>
+                                      <>
+                                        <Button size="sm" variant="ghost" onClick={() => {
+                                          if (membership) {
+                                            setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
+                                          } else {
+                                            setLeadContactId(c.unit_contact_id);
+                                            supabase.from("miem_units").update({ lead_contact_id: c.unit_contact_id }).eq("unit_id", id!).then(() => {
+                                              toast.success("Руководитель назначен");
+                                              qc.invalidateQueries({ queryKey: ["unit", id] });
+                                            });
+                                          }
+                                        }}>
+                                          Назначить рук.
+                                        </Button>
+                                        <ConfirmDialog
+                                          title="Удалить члена коллектива"
+                                          description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
+                                          onConfirm={async () => {
+                                            const { error } = await supabase.from("unit_contacts").delete().eq("unit_contact_id", c.unit_contact_id);
+                                            if (error) { toast.error("Ошибка удаления"); return; }
+                                            toast.success("Удалено");
+                                            qc.invalidateQueries({ queryKey: ["unit-contacts", id] });
+                                            qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
+                                          }}
+                                          triggerLabel=""
+                                          triggerSize="icon"
+                                          triggerClassName="h-8 w-8"
+                                          variant="ghost"
+                                        />
+                                      </>
                                     )}
                                   </div>
                                 </TableCell>
@@ -705,7 +721,7 @@ export default function UnitDetail() {
                               </Badge>
                             )}
                             {canEdit && !isLead && (
-                              <div className="pt-1" onClick={e => e.stopPropagation()}>
+                              <div className="pt-1 flex gap-1" onClick={e => e.stopPropagation()}>
                                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
                                   if (membership) {
                                     setMemberLead.mutate({ membershipId: membership.membership_id, contactId: c.unit_contact_id });
@@ -719,6 +735,21 @@ export default function UnitDetail() {
                                 }}>
                                   Назначить рук.
                                 </Button>
+                                <ConfirmDialog
+                                  title="Удалить члена коллектива"
+                                  description={`Удалить ${c.full_name} из коллектива? Это действие нельзя отменить.`}
+                                  onConfirm={async () => {
+                                    const { error } = await supabase.from("unit_contacts").delete().eq("unit_contact_id", c.unit_contact_id);
+                                    if (error) { toast.error("Ошибка удаления"); return; }
+                                    toast.success("Удалено");
+                                    qc.invalidateQueries({ queryKey: ["unit-contacts", id] });
+                                    qc.invalidateQueries({ queryKey: ["unit-memberships", id] });
+                                  }}
+                                  triggerLabel=""
+                                  triggerSize="icon"
+                                  triggerClassName="h-7 w-7"
+                                  variant="ghost"
+                                />
                               </div>
                             )}
                           </div>
