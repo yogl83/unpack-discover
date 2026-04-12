@@ -238,6 +238,14 @@ export default function UnitContactDetail() {
         biblio_issue: pForm.item_type === "publication" ? (pForm.biblio_issue || null) : null,
         biblio_first_page: pForm.item_type === "publication" ? (pForm.biblio_first_page || null) : null,
         biblio_last_page: pForm.item_type === "publication" ? (pForm.biblio_last_page || null) : null,
+        publication_type: pForm.item_type === "publication" ? (pForm.publication_type || null) : null,
+        language: pForm.item_type === "publication" ? (pForm.language || null) : null,
+        cited_by_count: pForm.item_type === "publication" ? (pForm.cited_by_count ? Number(pForm.cited_by_count) : 0) : 0,
+        primary_topic: pForm.item_type === "publication" ? (pForm.primary_topic || null) : null,
+        publisher: pForm.item_type === "publication" ? (pForm.publisher || null) : null,
+        source_type: pForm.item_type === "publication" ? (pForm.source_type || null) : null,
+        keywords: pForm.item_type === "publication" ? (pForm.keywords || null) : null,
+        is_retracted: pForm.item_type === "publication" ? (pForm.is_retracted === true) : false,
       };
       if (editingPortfolioId) {
         const { error } = await supabase.from("contact_portfolio_items").update(payload).eq("portfolio_item_id", editingPortfolioId);
