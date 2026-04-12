@@ -1,25 +1,45 @@
 
 
-# Исправление данных импорта публикаций
+# Улучшение импорта публикаций: аннотация, режим доступа, ссылки
 
-## Диагноз
+## Что будет сделано
 
-Протестировал edge function — она **уже возвращает корректные данные**: `title` = название статьи, `source_name` = журнал, `abstract` = текст (когда есть в OpenAlex). Проблема в том, что публикации на скриншоте были **импортированы старой версией функции** (до исправлений), поэтому в БД лежат некорректные данные (название журнала в поле title, нет abstract).
+1. **Удаление всех существующих публикаций** — очистка ранее импортированных записей с `item_type = 'publication'` для текущего контакта (через UI или вручную)
 
-## Что нужно сделать
+2. **Abstract → поле `notes`** (не `description`) — abstract сохраняется в `notes` как «Аннотация». Если abstract отсутствует в OpenAlex — поле остаётся пустым. В карточке публикации вместо текста аннотации показывается иконка 📄 (tooltip: «Есть аннотация»), полный текст виден при открытии карточки на редактирование.
 
-### 1. Удалить старые импортированные публикации и заново нажать «Импорт из OpenAlex»
+3. **Режим доступа и ссылки из OpenAlex** — из API извлекаются:
+   - `open_access.oa_status` (gold/green/hybrid/bronze/diamond/closed)
+   - `open_access.oa_url` — ссылка на открытый полнотекст
+   - `best_oa_location.pdf_url` — прямая ссылка на PDF
+   - Поиск arXiv-версии в `locations[]` (source.display_name содержит "arXiv")
+   
+   Всё это сохраняется в `description` в читаемом формате:
+   ```
+   Т. 12, № 3, С. 45–67. DOI: 10.1234/xxxx
+   Доступ: gold (открытый) | PDF: https://...
+   arXiv: https://arxiv.org/abs/...
+   ```
 
-Текущий код и edge function работают корректно. Новый импорт сохранит:
-- `title` — название статьи (например, "Automatic Oligonucleotide Synthesis System")
-- `organization_name` — журнал/конференция ("Lecture notes in networks and systems")
-- `description` — abstract (если есть в OpenAlex) + выходные данные (Т., №, С.) + DOI
+4. **`url` в карточке** — основная ссылка: предпочитается `oa_url` (бесплатная), затем DOI-ссылка
 
-### 2. Ограничение OpenAlex по abstract
+5. **Предпросмотр карточки** — для публикаций с аннотацией показывается маленькая иконка (FileText) рядом с заголовком вместо вывода полного текста
 
-Не все публикации имеют abstract в OpenAlex. Например, для книжных глав (book-chapter) и ряда статей abstract = null. Это ограничение источника данных, а не бага. Для статьи «Automatic Oligonucleotide Synthesis System» OpenAlex не содержит abstract.
+## Изменения по файлам
 
-## Изменения в коде не требуются
+### Edge function `fetch-author-publications/index.ts`
+- Добавить в `select`: `open_access,best_oa_location,locations`
+- Добавить поля в `WorkResult`: `oa_status`, `oa_url`, `pdf_url`, `arxiv_url`
+- Извлечь `oa_status` из `w.open_access.oa_status`
+- Извлечь `oa_url` из `w.open_access.oa_url`
+- Извлечь `pdf_url` из `w.best_oa_location?.pdf_url`
+- Найти arXiv в `w.locations[]` по `source.display_name` содержащему "arxiv"
 
-Код edge function и маппинг при сохранении уже корректны. Нужно только удалить старые записи и импортировать заново.
+### `src/pages/UnitContactDetail.tsx`
+- **Маппинг при сохранении**:
+  - `notes` ← abstract (если есть), иначе null
+  - `description` ← biblio + DOI + режим доступа + PDF-ссылка + arXiv (без abstract)
+  - `url` ← `oa_url || doi_url` (предпочтение открытому доступу)
+- **Отображение публикаций**: вместо `{p.description}` для публикаций показывать только biblio/DOI часть; если `p.notes` не пуст — иконка FileText с tooltip «Есть аннотация»
+- **Диалог редактирования**: поле «Заметки» уже показывает `notes`, так что аннотация будет видна при открытии карточки
 
