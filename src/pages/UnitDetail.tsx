@@ -22,18 +22,18 @@ import { UnitPortfolioFiles } from "@/components/unit/UnitPortfolioFiles";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels } from "@/lib/labels";
+import { hypothesisStatusLabels, memberRoleLabels, portfolioTypeLabels, portfolioFieldConfig, projectSubtypeLabels, ridSubtypeLabels } from "@/lib/labels";
 const statusLabels = hypothesisStatusLabels;
 
 const emptyPortfolioForm = {
-  title: "", item_type: "project", project_subtype: "", organization_name: "", description: "",
+  title: "", item_type: "project", project_subtype: "", rid_subtype: "", organization_name: "", description: "",
   year_from: "", year_to: "", url: "", notes: "",
 };
 
 const portfolioTitlePlaceholders: Record<string, string> = {
   project: "Наименование проекта",
   publication: "Название публикации",
-  patent: "Название патента",
+  rid: "Название РИД",
   product: "Название продукта",
   other: "Название",
 };
@@ -41,7 +41,7 @@ const portfolioTitlePlaceholders: Record<string, string> = {
 const portfolioDialogTitles: Record<string, { new: string; edit: string }> = {
   project: { new: "Новый проект", edit: "Редактировать проект" },
   publication: { new: "Новая публикация", edit: "Редактировать публикацию" },
-  patent: { new: "Новый патент", edit: "Редактировать патент" },
+  rid: { new: "Новый РИД", edit: "Редактировать РИД" },
   product: { new: "Новый продукт", edit: "Редактировать продукт" },
   other: { new: "Новый элемент", edit: "Редактировать элемент" },
 };
@@ -193,6 +193,7 @@ export default function UnitDetail() {
       title: item.title || "",
       item_type: item.item_type || "project",
       project_subtype: item.project_subtype || "",
+      rid_subtype: (item as any).rid_subtype || "",
       organization_name: item.organization_name || "",
       description: item.description || "",
       year_from: item.year_from?.toString() || "",
@@ -212,6 +213,7 @@ export default function UnitDetail() {
         title: pForm.title,
         item_type: pForm.item_type,
         project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
+        rid_subtype: pForm.item_type === "rid" ? (pForm.rid_subtype || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         year_from: pForm.year_from ? parseInt(pForm.year_from) : null,
@@ -404,6 +406,9 @@ export default function UnitDetail() {
                                         {(p as any).project_subtype && projectSubtypeLabels[(p as any).project_subtype] && (
                                           <Badge variant="outline" className="text-xs">{projectSubtypeLabels[(p as any).project_subtype]}</Badge>
                                         )}
+                                        {(p as any).rid_subtype && ridSubtypeLabels[(p as any).rid_subtype] && (
+                                          <Badge variant="outline" className="text-xs">{ridSubtypeLabels[(p as any).rid_subtype]}</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
@@ -473,6 +478,18 @@ export default function UnitDetail() {
                         <SelectContent>
                           <SelectItem value="__none__">Не указан</SelectItem>
                           {Object.entries(projectSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {pForm.item_type === "rid" && (
+                    <div className="space-y-2">
+                      <Label>Тип РИД</Label>
+                      <Select value={pForm.rid_subtype || "__none__"} onValueChange={v => setP("rid_subtype", v === "__none__" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Не указан</SelectItem>
+                          {Object.entries(ridSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

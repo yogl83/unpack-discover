@@ -69,7 +69,7 @@ export const unitTypeLabels: Record<string, string> = {
 // Combined status labels (used in PartnerDetail where multiple entity statuses appear)
 // === Portfolio item types ===
 export const portfolioTypeLabels: Record<string, string> = {
-  project: "Проект", publication: "Публикация", patent: "Патент",
+  project: "Проект", publication: "Публикация", rid: "РИД",
   product: "Продукт", other: "Другое",
 };
 
@@ -79,13 +79,25 @@ export const projectSubtypeLabels: Record<string, string> = {
   initiative: "Инициативный проект", other: "Другое",
 };
 
+// === RID subtypes ===
+export const ridSubtypeLabels: Record<string, string> = {
+  invention_patent: "Патент на изобретение",
+  utility_model: "Полезная модель",
+  industrial_design: "Промышленный образец",
+  software: "Программа для ЭВМ",
+  database: "База данных",
+  trademark: "Товарный знак",
+  know_how: "Ноу-хау",
+  other: "Другое",
+};
+
 // Per-type field labels for portfolio forms
 export const portfolioFieldConfig: Record<string, {
   orgLabel: string; yearFromLabel: string; yearToLabel?: string; urlLabel: string; urlPlaceholder: string; hasYearTo: boolean;
 }> = {
   project: { orgLabel: "Организация / Фонд", yearFromLabel: "Год начала", yearToLabel: "Год окончания", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: true },
   publication: { orgLabel: "Журнал / Конференция", yearFromLabel: "Год публикации", urlLabel: "DOI / Ссылка", urlPlaceholder: "https://doi.org/...", hasYearTo: false },
-  patent: { orgLabel: "Патентообладатель", yearFromLabel: "Год регистрации", urlLabel: "Номер патента / Ссылка", urlPlaceholder: "RU 2 123 456", hasYearTo: false },
+  rid: { orgLabel: "Правообладатель", yearFromLabel: "Год регистрации", urlLabel: "Номер / Ссылка", urlPlaceholder: "RU 2 123 456", hasYearTo: false },
   product: { orgLabel: "Организация", yearFromLabel: "Год выпуска", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
   other: { orgLabel: "Организация", yearFromLabel: "Год", urlLabel: "Ссылка", urlPlaceholder: "https://...", hasYearTo: false },
 };
