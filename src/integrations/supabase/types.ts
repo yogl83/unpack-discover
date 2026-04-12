@@ -975,6 +975,42 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_item_files: {
+        Row: {
+          created_at: string
+          file_id: string
+          file_size: number | null
+          item_source: string
+          mime_type: string | null
+          original_filename: string
+          portfolio_item_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          item_source?: string
+          mime_type?: string | null
+          original_filename: string
+          portfolio_item_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          file_size?: number | null
+          item_source?: string
+          mime_type?: string | null
+          original_filename?: string
+          portfolio_item_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved: boolean
