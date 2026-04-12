@@ -602,6 +602,70 @@ export default function UnitContactDetail() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Import publications dialog */}
+            <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Импорт публикаций из OpenAlex</DialogTitle>
+                </DialogHeader>
+                {importLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Загрузка публикаций...</span>
+                  </div>
+                ) : importWorks.length === 0 ? (
+                  <p className="text-muted-foreground text-sm py-8 text-center">Публикации не найдены</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between px-1 py-2">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={importSelected.size === importWorks.filter(w => !w._exists).length && importSelected.size > 0}
+                          onCheckedChange={toggleAllImport}
+                        />
+                        Выбрать все ({importWorks.filter(w => !w._exists).length})
+                      </label>
+                      <span className="text-sm text-muted-foreground">
+                        Найдено: {importWorks.length}, уже в портфолио: {importWorks.filter(w => w._exists).length}
+                      </span>
+                    </div>
+                    <ScrollArea className="flex-1 overflow-auto border rounded-md">
+                      <div className="divide-y">
+                        {importWorks.map((w) => (
+                          <label
+                            key={w._index}
+                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50 ${w._exists ? "opacity-50" : ""}`}
+                          >
+                            <Checkbox
+                              checked={importSelected.has(w._index)}
+                              onCheckedChange={() => toggleImportItem(w._index)}
+                              disabled={w._exists}
+                              className="mt-0.5"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium leading-snug">{w.title}</p>
+                              <div className="flex items-center gap-2 flex-wrap mt-1">
+                                {w.year && <Badge variant="outline" className="text-xs">{w.year}</Badge>}
+                                {w._exists && <Badge variant="secondary" className="text-xs">Уже добавлено</Badge>}
+                              </div>
+                              {w.authors && <p className="text-xs text-muted-foreground mt-1 truncate">{w.authors}</p>}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Отмена</Button>
+                  <Button onClick={saveImported} disabled={importSaving || importSelected.size === 0}>
+                    {importSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Добавить выбранные ({importSelected.size})
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       )}
