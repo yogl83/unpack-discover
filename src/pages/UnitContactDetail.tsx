@@ -368,6 +368,14 @@ export default function UnitContactDetail() {
           biblio_issue: w.issue || null,
           biblio_first_page: w.first_page || null,
           biblio_last_page: w.last_page || null,
+          publication_type: w.publication_type || null,
+          language: w.language || null,
+          cited_by_count: w.cited_by_count ?? 0,
+          primary_topic: w.primary_topic || null,
+          publisher: w.publisher || null,
+          source_type: w.source_type || null,
+          keywords: w.keywords || null,
+          is_retracted: w.is_retracted === true,
       }));
       const { error } = await supabase.from("contact_portfolio_items").insert(rows);
       if (error) throw error;
@@ -404,6 +412,10 @@ export default function UnitContactDetail() {
       pdf_url: p.pdf_url || "", arxiv_url: p.arxiv_url || "",
       biblio_volume: p.biblio_volume || "", biblio_issue: p.biblio_issue || "",
       biblio_first_page: p.biblio_first_page || "", biblio_last_page: p.biblio_last_page || "",
+      publication_type: p.publication_type || "", language: p.language || "",
+      cited_by_count: p.cited_by_count?.toString() || "", primary_topic: p.primary_topic || "",
+      publisher: p.publisher || "", source_type: p.source_type || "",
+      keywords: p.keywords || "", is_retracted: p.is_retracted === true,
     });
     setPortfolioTypePreset(true);
     setPortfolioDialogOpen(true);
