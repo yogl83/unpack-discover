@@ -1,25 +1,20 @@
 
 
-# Исправить обрезку логотипа: симметрично + прозрачный фон
+# Дополнительная обрезка логотипа
 
-## Проблема
-1. Обрезка была только снизу — сверху осталось лишнее пустое пространство. Нужна симметричная обрезка.
-2. Прозрачный фон заменён на белый — на тёмном сайдбаре логотип выглядит как белый квадрат.
+Обрезать текущий логотип, убрав 20px сверху и снизу, 22px слева и справа, сохранив прозрачность.
 
-## Решение
+## Шаги
 
-1. **Скопировать оригинал** из `user-uploads://content-2.png`
-2. **Обрезать с `-trim` и сохранить прозрачность**: использовать `-fuzz 5% -trim +repage` без `-bordercolor white` — вместо этого `-bordercolor none -border 10` для прозрачного padding
-3. **Убедиться что формат PNG** с альфа-каналом сохранён (никаких `-flatten` или white background)
-4. **Заменить** `src/assets/logo.png` и `public/logo.png`
+1. Определить текущий размер `src/assets/logo.png` через `identify`
+2. Обрезать с `-shave 22x20` (убирает указанное количество пикселей с каждой стороны)
+3. Заменить `src/assets/logo.png` и `public/logo.png`
 
 ### Команда
 ```bash
-nix run nixpkgs#imagemagick -- convert /tmp/logo-original.png \
-  -fuzz 5% -trim +repage \
-  -bordercolor none -border 10 \
-  /tmp/logo-trimmed.png
+nix run nixpkgs#imagemagick -- convert src/assets/logo.png \
+  -shave 22x20 +repage \
+  src/assets/logo.png
+cp src/assets/logo.png public/logo.png
 ```
-
-Ключевое отличие: `-bordercolor none` вместо `-bordercolor white` сохраняет прозрачность.
 
