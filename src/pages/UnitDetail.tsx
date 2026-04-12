@@ -192,6 +192,7 @@ export default function UnitDetail() {
     setPForm({
       title: item.title || "",
       item_type: item.item_type || "project",
+      project_subtype: item.project_subtype || "",
       organization_name: item.organization_name || "",
       description: item.description || "",
       year_from: item.year_from?.toString() || "",
@@ -207,9 +208,10 @@ export default function UnitDetail() {
   const savePortfolio = useMutation({
     mutationFn: async () => {
       if (!pForm.title) { toast.error("Укажите название"); throw new Error("required"); }
-      const payload = {
+      const payload: any = {
         title: pForm.title,
         item_type: pForm.item_type,
+        project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         year_from: pForm.year_from ? parseInt(pForm.year_from) : null,

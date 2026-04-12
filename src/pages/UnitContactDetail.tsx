@@ -196,10 +196,11 @@ export default function UnitContactDetail() {
   const savePortfolio = useMutation({
     mutationFn: async () => {
       if (!pForm.title.trim()) { toast.error("Укажите название"); throw new Error("required"); }
-      const payload = {
+      const payload: any = {
         unit_contact_id: contactId!,
         title: pForm.title,
         item_type: pForm.item_type,
+        project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         url: pForm.url || null,
@@ -260,6 +261,7 @@ export default function UnitContactDetail() {
     setEditingPortfolioId(p.portfolio_item_id);
     setPForm({
       title: p.title || "", item_type: p.item_type || "other",
+      project_subtype: p.project_subtype || "",
       organization_name: p.organization_name || "", description: p.description || "",
       year_from: p.year_from?.toString() || "", year_to: p.year_to?.toString() || "",
       url: p.url || "", notes: p.notes || "",
