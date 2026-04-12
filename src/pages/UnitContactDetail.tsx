@@ -202,6 +202,7 @@ export default function UnitContactDetail() {
         title: pForm.title,
         item_type: pForm.item_type,
         project_subtype: pForm.item_type === "project" ? (pForm.project_subtype || null) : null,
+        rid_subtype: pForm.item_type === "rid" ? (pForm.rid_subtype || null) : null,
         organization_name: pForm.organization_name || null,
         description: pForm.description || null,
         url: pForm.url || null,
@@ -263,6 +264,7 @@ export default function UnitContactDetail() {
     setPForm({
       title: p.title || "", item_type: p.item_type || "other",
       project_subtype: p.project_subtype || "",
+      rid_subtype: (p as any).rid_subtype || "",
       organization_name: p.organization_name || "", description: p.description || "",
       year_from: p.year_from?.toString() || "", year_to: p.year_to?.toString() || "",
       url: p.url || "", notes: p.notes || "",
@@ -381,6 +383,9 @@ export default function UnitContactDetail() {
                                         {(p as any).project_subtype && projectSubtypeLabels[(p as any).project_subtype] && (
                                           <Badge variant="outline" className="text-xs">{projectSubtypeLabels[(p as any).project_subtype]}</Badge>
                                         )}
+                                        {(p as any).rid_subtype && ridSubtypeLabels[(p as any).rid_subtype] && (
+                                          <Badge variant="outline" className="text-xs">{ridSubtypeLabels[(p as any).rid_subtype]}</Badge>
+                                        )}
                                         {p.year_from && (
                                           <span className="text-muted-foreground text-xs">
                                             {p.year_from}{p.year_to ? `–${p.year_to}` : "–н.в."}
@@ -443,6 +448,18 @@ export default function UnitContactDetail() {
                         <SelectContent>
                           <SelectItem value="__none__">Не указан</SelectItem>
                           {Object.entries(projectSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {pForm.item_type === "rid" && (
+                    <div className="space-y-2">
+                      <Label>Тип РИД</Label>
+                      <Select value={pForm.rid_subtype || "__none__"} onValueChange={v => setP("rid_subtype", v === "__none__" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Не указан</SelectItem>
+                          {Object.entries(ridSubtypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
