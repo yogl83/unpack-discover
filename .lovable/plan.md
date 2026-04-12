@@ -1,42 +1,39 @@
 
 
-# Прикрепление файлов к элементам портфолио
+# Прикрепление файлов внутри диалога редактирования портфолио
 
 ## Проблема
-Сейчас файлы прикрепляются только к подразделению целиком (`unit_portfolio_files`). Нужна возможность прикрепить файлы к конкретному элементу портфолио — публикации, РИД, проекту, продукту и т.д.
+Сейчас компонент `PortfolioItemFiles` отображается на карточке после сохранения. Пользователь хочет прикреплять файлы прямо в процессе заполнения формы (в диалоге создания/редактирования РИД, публикации, проекта и т.д.).
 
-## Решение
+## Ограничение
+При **создании нового** элемента ещё нет `portfolio_item_id`, поэтому файлы можно прикрепить только после первого сохранения. Решение: показывать компонент загрузки файлов только в режиме редактирования (`editingPortfolioId` не null).
 
-### 1. БД — миграция
-Создать таблицу `portfolio_item_files`:
-- `file_id` (uuid, PK)
-- `portfolio_item_id` (uuid, NOT NULL) — ссылка на `unit_portfolio_items` или `contact_portfolio_items`
-- `item_source` (text, NOT NULL, default 'unit') — 'unit' или 'contact', чтобы различать источник
-- `storage_path` (text, NOT NULL)
-- `original_filename` (text, NOT NULL)
-- `mime_type` (text)
-- `file_size` (bigint)
-- `uploaded_by` (uuid)
-- `created_at` (timestamptz, default now())
+## Изменения
 
-RLS: аналогично остальным таблицам (admin/analyst insert/update, admin delete, authenticated select).
+### `src/pages/UnitDetail.tsx` и `src/pages/UnitContactDetail.tsx`
+- Внутри диалога портфолио, после поля «Заметки» и перед `DialogFooter`, добавить блок:
+  ```
+  {editingPortfolioId && (
+    <div className="space-y-2">
+      <Label>Файлы</Label>
+      <PortfolioItemFiles
+        portfolioItemId={editingPortfolioId}
+        itemSource="unit" // или "contact"
+        editable={true}
+      />
+    </div>
+  )}
+  ```
+- Убрать `<PortfolioItemFiles>` из карточки в списке (перенести целиком в диалог), либо оставить в карточке только для просмотра (`editable={false}`)
 
-Бакет `unit-portfolio-files` уже существует — использовать его же.
-
-### 2. Компонент `PortfolioItemFiles`
-Создать `src/components/unit/PortfolioItemFiles.tsx` — переиспользуемый компонент:
-- Props: `portfolioItemId`, `itemSource` ('unit'|'contact'), `editable`
-- Загрузка, скачивание, удаление файлов (аналогично `UnitPortfolioFiles`, но привязка к конкретному элементу)
-- Компактный вид: иконки файлов в строку + кнопка «Прикрепить»
-
-### 3. UI — встроить в карточки портфолио
-В `UnitDetail.tsx` и `UnitContactDetail.tsx`:
-- Внутри каждого элемента портфолио (div с border) добавить `<PortfolioItemFiles>` под описанием
-- Показывает прикреплённые файлы и кнопку загрузки (если editable)
+### Результат
+- При редактировании существующего элемента — в форме появляется секция «Файлы» с возможностью загрузки/удаления
+- При создании нового — секция не показывается (нужно сначала сохранить, потом открыть на редактирование)
+- На карточке в списке файлы остаются видны (read-only)
 
 ### Затронутые файлы
-- Миграция SQL (новая таблица + RLS)
-- `src/components/unit/PortfolioItemFiles.tsx` (новый)
-- `src/pages/UnitDetail.tsx` — встроить компонент в список элементов
-- `src/pages/UnitContactDetail.tsx` — аналогично
+- `src/pages/UnitDetail.tsx`
+- `src/pages/UnitContactDetail.tsx`
+
+Без изменений БД.
 
